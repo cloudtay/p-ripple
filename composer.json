@@ -17,5 +17,7 @@
     "ext-sockets": "*",
     "ext-pcntl": "*",
     "ext-posix": "*"
-  }
+  },
+  "version": "0.0.1",
+  "license": "MIT"
 }

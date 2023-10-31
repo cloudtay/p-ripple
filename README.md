@@ -31,7 +31,7 @@ $http = Http::new('http')->bind('tcp://127.0.0.1:3008');
 $http->defineRequestHandler(function (Http\Request $request) use ($ws) {
     $response = new Response(
         $statusCode = 200,
-        $headers = ['Content-Type' => 'text/html; charset=utf-8',],
+        $headers = ['Content-Type' => 'text/html; charset=utf-8'],
         $body = 'ws online users: ' . count($ws->getClients())
     );
     $request->client->send($response);
