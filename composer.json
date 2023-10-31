@@ -1,0 +1,21 @@
+{
+  "name": "cclilshy/p-ripple",
+  "autoload": {
+    "psr-4": {
+      "Cclilshy\\PRipple\\": "src/",
+      "Cclilshy\\PRipple\\Tests\\": "tests/"
+    }
+  },
+  "authors": [
+    {
+      "name": "cclilshy",
+      "email": "jingnigg@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=8.2",
+    "ext-sockets": "*",
+    "ext-pcntl": "*",
+    "ext-posix": "*"
+  }
+}
