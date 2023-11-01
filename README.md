@@ -6,8 +6,8 @@ composer require cclilshy/p-ripple
 
 ### create main file
 
-```php
-touch touch main.php
+```bash
+touch main.php
 ``` 
 
 ```php
@@ -15,6 +15,7 @@ touch touch main.php
 namespace Cclilshy\PRipple\Tests;
 
 use Cclilshy\PRipple\App\Http;
+use Cclilshy\PRipple\App\Http\Request;
 use Cclilshy\PRipple\App\Http\Response;
 use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\WebSocket;
@@ -22,13 +23,14 @@ use Cclilshy\PRipple\Protocol\WebSocket;
 include __DIR__ . '/vendor/autoload.php';
 
 $pRipple = PRipple::instance();
+$options = [SO_REUSEPORT => 1];
 
 # define ws
-$ws = TestWs::new('ws')->bind('tcp://127.0.0.1:3009')->protocol(WebSocket::class);
+$ws = TestWs::new('ws')->bind('tcp://127.0.0.1:3009',$options)->protocol(WebSocket::class);
 
 # define http
-$http = Http::new('http')->bind('tcp://127.0.0.1:3008');
-$http->defineRequestHandler(function (Http\Request $request) use ($ws) {
+$http = Http::new('http')->bind('tcp://127.0.0.1:3008',$options);
+$http->defineRequestHandler(function (Request $request) use ($ws) {
     $response = new Response(
         $statusCode = 200,
         $headers = ['Content-Type' => 'text/html; charset=utf-8'],
