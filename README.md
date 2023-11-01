@@ -39,8 +39,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws) {
     $request->client->send($response);
 });
 
-$pRipple->push($ws,$http)->push();
-$pRipple->launch();
+$pRipple->push($ws,$http)->launch();
 ```
 
 ### run

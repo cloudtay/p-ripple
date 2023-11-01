@@ -48,15 +48,20 @@ class RequestFactory
     {
         if ($single = $this->transfers[$client->getHash()] ?? null) {
             $single->revolve($context);
+            if ($single->statusCode === RequestFactory::COMPLETE) {
+                unset($this->transfers[$client->getHash()]);
+            }
             return;
         } elseif (!$single = $this->singles[$client->getHash()] ?? null) {
             $this->singles[$client->getHash()] = $single = new RequestSingle($client);
         }
         $single->revolve($context);
         if (isset($single->method) && $single->method === 'POST' && $single->upload) {
-            call_user_func($this->observer, $single->build());
-            $this->transfers[$client->getHash()] = $single;
+            if ($single->statusCode !== RequestFactory::COMPLETE) {
+                $this->transfers[$client->getHash()] = $single;
+            }
             unset($this->singles[$client->getHash()]);
+            call_user_func($this->observer, $single->build());
         }
         switch ($single->statusCode) {
             case RequestFactory::COMPLETE:
@@ -69,13 +74,6 @@ class RequestFactory
                 break;
             case RequestFactory::INCOMPLETE:
                 break;
-        }
-    }
-
-    public function recover(string $hash): void
-    {
-        if (isset($this->transfers[$hash])) {
-            unset($this->transfers[$hash]);
         }
     }
 }

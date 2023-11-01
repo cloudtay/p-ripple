@@ -53,10 +53,11 @@ class Http extends NetWorker
      */
     private function recover(string $hash): void
     {
+//        echo 'recover:' . $hash . PHP_EOL;
         if (isset($this->fibers[$hash])) {
             unset($this->fibers[$hash]);
         }
-        $this->requestFactory->recover($hash);
+//        $this->requestFactory->recover($hash);
     }
 
     /**
