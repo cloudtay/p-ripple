@@ -1,13 +1,8 @@
 <?php
 
-namespace Cclilshy\PRipple\App;
+namespace Cclilshy\PRipple\App\Http;
 
-use Cclilshy\PRipple\App\Http\Request;
-use Cclilshy\PRipple\App\Http\RequestFactory;
-use Cclilshy\PRipple\App\Http\RequestSingleException;
-use Cclilshy\PRipple\App\Http\Response;
 use Cclilshy\PRipple\Build;
-use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Worker\NetWorker;
 use Fiber;
@@ -34,7 +29,7 @@ class Http extends NetWorker
      * 创建请求工厂
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
         $this->subscribe('http.upload.complete');
         $this->requestFactory = new RequestFactory(function (Request $request) {
@@ -46,7 +41,7 @@ class Http extends NetWorker
             if (!$event = $this->fibers[$request->hash]->start()) {
                 $this->recover($request->hash);
             } else {
-                PRipple::publish($event);
+                $this->publish($event);
             }
         }, $this);
         parent::initialize();
@@ -67,7 +62,7 @@ class Http extends NetWorker
     /**
      * @return void
      */
-    public function heartbeat(): void
+    protected function heartbeat(): void
     {
         //TODO: Implement heartbeat() method.
     }
@@ -76,7 +71,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         $client->setNoBlock();
     }
@@ -86,7 +81,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         try {
             $this->requestFactory->revolve($context, $client);
@@ -100,7 +95,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         echo 'close:' . $client->getHash() . PHP_EOL;
     }
@@ -108,7 +103,7 @@ class Http extends NetWorker
     /**
      * @return void
      */
-    public function destroy(): void
+    protected function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
@@ -123,6 +118,11 @@ class Http extends NetWorker
         $this->requestHandler = $requestHandler;
     }
 
+    /**
+     * 处理事件
+     * @param \Cclilshy\PRipple\Build $event
+     * @return void
+     */
     protected function handleEvent(Build $event): void
     {
         switch ($event->name) {
@@ -134,7 +134,7 @@ class Http extends NetWorker
                         if (!$response = $this->fibers[$hash]->resume($event)) {
                             $this->recover($hash);
                         } else {
-                            PRipple::publish($response);
+                            $this->publish($response);
                         }
                     } catch (Throwable $e) {
                         echo $e->getMessage() . PHP_EOL;

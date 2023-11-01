@@ -6,6 +6,7 @@ namespace Cclilshy\PRipple\App\Http;
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\Service\Client;
 use Fiber;
+use Throwable;
 
 class Request
 {
@@ -65,7 +66,7 @@ class Request
      * @param callable $callable
      * @return void
      */
-    public function onUpload(callable $callable): void
+    public function handleUpload(callable $callable): void
     {
         $this->onUpload = $callable;
     }
@@ -79,11 +80,15 @@ class Request
             if ($response = Fiber::suspend(Build::new('suspend', null, $this->hash))) {
                 $this->onEvent($response);
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             echo $e->getMessage() . PHP_EOL;
         }
     }
 
+    /**
+     * @param \Cclilshy\PRipple\Build $event
+     * @return void
+     */
     private function onEvent(Build $event): void
     {
         switch ($event->name) {
@@ -96,6 +101,4 @@ class Request
                 break;
         }
     }
-
-
 }

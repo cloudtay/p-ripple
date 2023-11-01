@@ -41,6 +41,7 @@ abstract class NetWorker extends Worker
      */
     public string $socketType;
     public string $name = NetWorker::class;
+
     /**
      * 协议
      * @var ProtocolStd
@@ -49,7 +50,11 @@ abstract class NetWorker extends Worker
     private string $bindAddress;
     private array $socketServiceOptions = [];
 
-    public function __construct(string $name = NetWorker::class, $protocol = TCPProtocol::class)
+    /**
+     * @param string $name
+     * @param string $protocol
+     */
+    public function __construct(string $name = NetWorker::class, string $protocol = TCPProtocol::class)
     {
         parent::__construct($name);
         $this->protocol = new $protocol();
@@ -156,14 +161,23 @@ abstract class NetWorker extends Worker
         return $this->clients ?? [];
     }
 
-    abstract public function heartbeat(): void;
-
+    /**
+     * 绑定协议
+     * @param string $protocol
+     * @return $this
+     */
     public function protocol(string $protocol = TCPProtocol::class): static
     {
         $this->protocol = new $protocol();
         return $this;
     }
 
+    /**
+     * 绑定地址
+     * @param string     $address
+     * @param array|null $options
+     * @return $this
+     */
     public function bind(string $address, array|null $options = []): static
     {
         $this->bindAddress = $address;
@@ -234,6 +248,7 @@ abstract class NetWorker extends Worker
      */
     public function addSocket(Socket $socket): void
     {
+        socket_set_nonblock($socket);
         $name = NetWorker::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clients[$name] = new Client($socket, $this->socketType);
@@ -258,7 +273,6 @@ abstract class NetWorker extends Worker
         return $result;
     }
 
-    abstract public function onConnect(Client $client): void;
 
     /**
      * 处理异常连接
@@ -281,17 +295,6 @@ abstract class NetWorker extends Worker
         unset($this->clientSockets[$client->getHash()]);
         unset($this->clients[$client->getHash()]);
         $this->unsubscribeSocket($client->getSocket());
-    }
-
-    abstract public function destroy(): void;
-
-    abstract protected function onMessage(string $context, Client $client): void;
-
-    abstract protected function onClose(Client $client): void;
-
-    protected function initialize(): void
-    {
-        $this->listen();
     }
 
     /**
@@ -329,5 +332,26 @@ abstract class NetWorker extends Worker
         } catch (Exception $e) {
             echo $e->getMessage() . PHP_EOL;
         }
+    }
+
+
+    /**
+     * 有连接到达到达
+     * @param \Cclilshy\PRipple\Service\Client $client
+     * @return void
+     */
+    abstract protected function onConnect(Client $client): void;
+
+    abstract protected function heartbeat(): void;
+
+    abstract protected function destroy(): void;
+
+    abstract protected function onMessage(string $context, Client $client): void;
+
+    abstract protected function onClose(Client $client): void;
+
+    protected function initialize(): void
+    {
+        $this->listen();
     }
 }
