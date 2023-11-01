@@ -7,14 +7,14 @@ composer require cclilshy/p-ripple
 ### create main file
 
 ```bash
-touch main.php
+vim main.php
 ``` 
 
 ```php
 <?php
 namespace Cclilshy\PRipple\Tests;
 
-use Cclilshy\PRipple\App\Http;
+use Cclilshy\PRipple\App\Http\Http;
 use Cclilshy\PRipple\App\Http\Request;
 use Cclilshy\PRipple\App\Http\Response;
 use Cclilshy\PRipple\PRipple;

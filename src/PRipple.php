@@ -137,7 +137,6 @@ class PRipple
          * @var Build $event
          */
         foreach ($this->generator() as $event) {
-            echo "event:{$event->name}" . PHP_EOL;
             switch ($event->name) {
                 case 'socket.expect':
                 case 'socket.read':
