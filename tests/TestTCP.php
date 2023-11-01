@@ -5,22 +5,20 @@ namespace Cclilshy\PRipple\Tests;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Worker\NetWorker;
 
-class TestWs extends NetWorker
+class TestTCP extends NetWorker
 {
 
-    public function heartbeat(): void
-    {
-        foreach ($this->getClients() as $client) {
-            $client->send('hello');
-        }
-    }
-
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
     }
 
-    public function destroy(): void
+    protected function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
+    }
+
+    protected function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
