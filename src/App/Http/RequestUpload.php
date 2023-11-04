@@ -6,6 +6,9 @@ namespace Cclilshy\PRipple\App\Http;
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
 
+/**
+ *
+ */
 class RequestUpload
 {
     public const STATUS_ILLEGAL = -1;

@@ -5,6 +5,9 @@ namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Service\Client;
 
+/**
+ *
+ */
 class RequestSingle
 {
     public string $hash;
@@ -140,6 +143,9 @@ class RequestSingle
         return false;
     }
 
+    /**
+     * @return Request
+     */
     public function build(): Request
     {
         return new Request($this);

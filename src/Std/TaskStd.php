@@ -1,11 +1,16 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Std;
 
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
 use Fiber;
+use Throwable;
 
+/**
+ *
+ */
 abstract class TaskStd
 {
     public string $hash;
@@ -21,7 +26,7 @@ abstract class TaskStd
      * @param string $eventName
      * @param mixed  $eventData
      * @return mixed
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function publishAwait(string $eventName, mixed $eventData): mixed
     {
@@ -32,7 +37,7 @@ abstract class TaskStd
      * @param string $eventName
      * @param mixed  $eventData
      * @return void
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function publishAsync(string $eventName, mixed $eventData): void
     {
@@ -41,5 +46,9 @@ abstract class TaskStd
         }
     }
 
+    /**
+     * @param Build $event
+     * @return void
+     */
     abstract protected function handleEvent(Build $event): void;
 }

@@ -11,6 +11,9 @@ use Cclilshy\PRipple\Std\TunnelStd;
 use Cclilshy\PRipple\Worker\NetWorker;
 use Exception;
 
+/**
+ *
+ */
 class SocketAisle implements TunnelStd
 {
     public const EXT = '.tunnel';
@@ -53,6 +56,9 @@ class SocketAisle implements TunnelStd
     // 上次活跃时间
     protected string $identity;
 
+    /**
+     * @param mixed $socket
+     */
     public function __construct(mixed $socket)
     {
         socket_getsockname($socket, $address, $port);
@@ -477,6 +483,9 @@ class SocketAisle implements TunnelStd
         }
     }
 
+    /**
+     * @return void
+     */
     public function close(): void
     {
         socket_close($this->socket);

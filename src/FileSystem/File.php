@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\FileSystem;
 
 
+/**
+ *
+ */
 class File
 {
     public const EXT = '.tmp';

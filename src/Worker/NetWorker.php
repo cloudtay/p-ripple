@@ -12,6 +12,9 @@ use Cclilshy\PRipple\Std\ProtocolStd;
 use Exception;
 use Socket;
 
+/**
+ *
+ */
 abstract class NetWorker extends Worker
 {
     /**
@@ -259,7 +262,7 @@ abstract class NetWorker extends Worker
 
     /**
      * 有连接到达到达
-     * @param \Cclilshy\PRipple\Service\Client $client
+     * @param Client $client
      * @return void
      */
     abstract protected function onConnect(Client $client): void;
@@ -287,14 +290,32 @@ abstract class NetWorker extends Worker
         $this->unsubscribeSocket($client->getSocket());
     }
 
+    /**
+     * @return void
+     */
     abstract protected function destroy(): void;
 
+    /**
+     * @param string $context
+     * @param Client $client
+     * @return void
+     */
     abstract protected function onMessage(string $context, Client $client): void;
 
+    /**
+     * @param Client $client
+     * @return void
+     */
     abstract protected function onClose(Client $client): void;
 
+    /**
+     * @return void
+     */
     abstract protected function heartbeat(): void;
 
+    /**
+     * @return void
+     */
     protected function initialize(): void
     {
         $this->listen();
@@ -337,5 +358,9 @@ abstract class NetWorker extends Worker
         }
     }
 
+    /**
+     * @param Client $client
+     * @return void
+     */
     abstract protected function onHandshake(Client $client): void;
 }

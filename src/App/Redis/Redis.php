@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Redis;
 
@@ -8,6 +9,9 @@ use Cclilshy\PRipple\Worker\NetWorker;
 use Fiber;
 use Throwable;
 
+/**
+ *
+ */
 class Redis extends NetWorker
 {
     /**
@@ -131,7 +135,7 @@ class Redis extends NetWorker
     }
 
     /**
-     * @param \Cclilshy\PRipple\Service\Client $client
+     * @param Client $client
      * @return void
      */
     protected function onHandshake(Client $client): void

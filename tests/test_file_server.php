@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Tests;
 
@@ -8,6 +9,9 @@ use Cclilshy\PRipple\Worker\NetWorker;
 
 include 'autoload.php';
 
+/**
+ *
+ */
 class test_file_server extends NetWorker
 {
     /**
@@ -83,6 +87,10 @@ class test_file_server extends NetWorker
 
     }
 
+    /**
+     * @param Client $client
+     * @return void
+     */
     protected function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.

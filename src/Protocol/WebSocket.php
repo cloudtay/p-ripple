@@ -10,6 +10,9 @@ use Cclilshy\PRipple\Std\TunnelStd;
 use Exception;
 use stdClass;
 
+/**
+ *
+ */
 class WebSocket implements ProtocolStd
 {
     /**

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Http;
 
@@ -8,6 +9,9 @@ use Cclilshy\PRipple\Worker\NetWorker;
 use Fiber;
 use Throwable;
 
+/**
+ *
+ */
 class Http extends NetWorker
 {
     /**
@@ -124,7 +128,7 @@ class Http extends NetWorker
                 $this->onRequest($request);
             }
         } catch (RequestSingleException $exception) {
-            $client->send(new Response(400, [], $exception->getMessage()));
+            $client->send((new Response(400, [], $exception->getMessage()))->__toString());
         }
     }
 
@@ -148,7 +152,7 @@ class Http extends NetWorker
 
     /**
      * 处理事件
-     * @param \Cclilshy\PRipple\Build $event
+     * @param Build $event
      * @return void
      */
     protected function handleEvent(Build $event): void

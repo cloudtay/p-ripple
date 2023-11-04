@@ -1,9 +1,13 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Service\Client;
 
+/**
+ *
+ */
 class RequestFactory
 {
     public const INVALID = -1;
@@ -25,6 +29,9 @@ class RequestFactory
      */
     private array $transfers = [];
 
+    /**
+     * @param Http $httpService
+     */
     public function __construct(Http $httpService)
     {
         $this->httpService = $httpService;
@@ -33,8 +40,8 @@ class RequestFactory
     /**
      * @param string $context
      * @param Client $client
-     * @return \Cclilshy\PRipple\App\Http\Request|null
-     * @throws \Cclilshy\PRipple\App\Http\RequestSingleException
+     * @return Request|null
+     * @throws RequestSingleException
      */
     public function revolve(string $context, Client $client): ?Request
     {

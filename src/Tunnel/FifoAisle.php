@@ -6,6 +6,9 @@ namespace Cclilshy\PRipple\Tunnel;
 use Cclilshy\PRipple\FileSystem\Fifo;
 use Cclilshy\PRipple\Std\TunnelStd;
 
+/**
+ *
+ */
 class FifoAisle implements TunnelStd
 {
     public const EXT = '.fifo';

@@ -8,6 +8,9 @@ use Cclilshy\PRipple\Std\ProtocolStd;
 use Cclilshy\PRipple\Tunnel\SocketAisle;
 use stdClass;
 
+/**
+ *
+ */
 #[AllowDynamicProperties] class Client extends SocketAisle
 {
     public string $verifyBuffer;

@@ -7,6 +7,9 @@ namespace Cclilshy\PRipple\FileSystem;
 use Cclilshy\PRipple\FileSystem\Std\FileStd;
 
 
+/**
+ *
+ */
 class Pipe implements FileStd
 {
     private $resource;

@@ -6,6 +6,9 @@ namespace Cclilshy\PRipple\Tunnel;
 use Cclilshy\PRipple\FileSystem\File;
 use Cclilshy\PRipple\Std\TunnelStd;
 
+/**
+ *
+ */
 class FileAisle implements TunnelStd
 {
     public const EXT = '.temp';

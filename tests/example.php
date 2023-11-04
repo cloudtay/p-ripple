@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Tests;
 
@@ -20,7 +21,7 @@ $ws = TestTcp::new('ws_worker_name')->bind('tcp://127.0.0.1:3002', $options)->pr
 $http = Http::new('http_worker_name')
     ->bind('tcp://0.0.0.0:8001', $options)
     ->bind('tcp://127.0.0.1:8002', $options);
-$redis = Redis::new('redis_worker_name')->authorize(1, 1, 1, 1);
+$redis = Redis::new('redis_worker_name')->authorize('127.0.0.1', 1, '', 1);
 
 $http->defineRequestHandler(function (Request $request) use ($tcp, $ws, $redis) {
 //    foreach ($tcp->getClients() as $client) {
@@ -60,7 +61,7 @@ $http->defineRequestHandler(function (Request $request) use ($tcp, $ws, $redis) 
             $body = "Hello,{$name}! You n submitted:" . json_encode($request->post)
         );
     }
-    $request->client->send($response);
+    $request->client->send($response->__toString());
 });
 
 $pRipple->push($tcp, $ws, $http, $redis)->launch();

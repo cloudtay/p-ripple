@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Std;
 
+/**
+ *
+ */
 interface TunnelStd
 {
     public const EXT = '.switch';

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Worker;
 
@@ -7,6 +8,9 @@ use Cclilshy\PRipple\Tunnel\SocketAisle;
 use Socket;
 
 
+/**
+ *
+ */
 class BufferWorker extends Worker
 {
     /**
@@ -14,12 +18,18 @@ class BufferWorker extends Worker
      */
     private array $buffers = [];
 
+    /**
+     * @return void
+     */
     protected function initialize(): void
     {
         $this->subscribe('socket.buffer');
         $this->subscribe('socket.unBuffer');
     }
 
+    /**
+     * @return void
+     */
     protected function heartbeat(): void
     {
         foreach ($this->buffers as $buffer) {
@@ -28,6 +38,10 @@ class BufferWorker extends Worker
         }
     }
 
+    /**
+     * @param Build $event
+     * @return void
+     */
     protected function handleEvent(Build $event): void
     {
         switch ($event->name) {
@@ -42,16 +56,27 @@ class BufferWorker extends Worker
         }
     }
 
+    /**
+     * @param Socket $socket
+     * @return void
+     */
     protected function handleSocket(Socket $socket): void
     {
         // TODO: Implement handleSocket() method.
     }
 
+    /**
+     * @return void
+     */
     protected function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
 
+    /**
+     * @param Socket $socket
+     * @return void
+     */
     protected function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.

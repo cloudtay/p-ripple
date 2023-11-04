@@ -1,7 +1,11 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple;
 
+/**
+ *
+ */
 class Build
 {
     public string $name;
@@ -24,7 +28,7 @@ class Build
      * @param string $name
      * @param mixed  $data
      * @param mixed  $publisher
-     * @return \Cclilshy\PRipple\Build
+     * @return Build
      */
     public static function new(string $name, mixed $data, mixed $publisher): Build
     {

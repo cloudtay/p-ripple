@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\FileSystem\Std;
 
 
+/**
+ *
+ */
 interface FileStd
 {
     public const STP = PP_RUNTIME_PATH;

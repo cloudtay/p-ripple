@@ -6,6 +6,9 @@ namespace Cclilshy\PRipple\Std;
 use Cclilshy\PRipple\Service\Client;
 use stdClass;
 
+/**
+ *
+ */
 interface ProtocolStd
 {
     /**

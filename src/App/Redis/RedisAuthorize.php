@@ -1,7 +1,11 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Redis;
 
+/**
+ *
+ */
 class RedisAuthorize
 {
     private string $host;
@@ -9,6 +13,12 @@ class RedisAuthorize
     private string $password;
     private int $database;
 
+    /**
+     * @param string $host
+     * @param int $port
+     * @param string $password
+     * @param int $database
+     */
     public function __construct(string $host, int $port, string $password, int $database)
     {
         $this->host = $host;
@@ -27,11 +37,20 @@ class RedisAuthorize
         return "*2\r\n$3\r\nGET\r\n$" . strlen($key) . "\r\n$key\r\n";
     }
 
+    /**
+     * @param string $key
+     * @param string $value
+     * @return string
+     */
     public function buildSetCommand(string $key, string $value): string
     {
         return "*3\r\n$3\r\nSET\r\n$" . strlen($key) . "\r\n$key\r\n$" . strlen($value) . "\r\n$value\r\n";
     }
 
+    /**
+     * @param string $response
+     * @return mixed
+     */
     public function parseResponse(string $response): mixed
     {
         $response = explode("\r\n", $response);

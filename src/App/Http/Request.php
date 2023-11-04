@@ -7,6 +7,9 @@ use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\TaskStd;
 
+/**
+ *
+ */
 class Request extends TaskStd
 {
     public const EVENT_UPLOAD = 'http.upload.complete';

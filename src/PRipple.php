@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple;
 
@@ -10,6 +11,9 @@ use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
 
+/**
+ *
+ */
 class PRipple
 {
     use StrFunctions;
@@ -54,6 +58,9 @@ class PRipple
         $this->initialize();
     }
 
+    /**
+     * @return void
+     */
     private function initialize(): void
     {
         error_reporting(E_ALL & ~E_WARNING);
@@ -252,6 +259,9 @@ class PRipple
         }
     }
 
+    /**
+     * @return void
+     */
     private function adjustRate(): void
     {
         $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);

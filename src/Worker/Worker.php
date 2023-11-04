@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Worker;
 
@@ -9,6 +10,9 @@ use JetBrains\PhpStorm\NoReturn;
 use Socket;
 use Throwable;
 
+/**
+ *
+ */
 abstract class Worker
 {
     /**
@@ -118,7 +122,7 @@ abstract class Worker
 
     /**
      * 发布一个事件
-     * @param \Cclilshy\PRipple\Build $event
+     * @param Build $event
      * @return void
      */
     protected function publishAsync(Build $event): void

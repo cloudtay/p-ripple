@@ -4,7 +4,7 @@
 composer require cclilshy/p-ripple
 ```
 
-### create main file
+### create the main file
 
 ```bash
 vim main.php

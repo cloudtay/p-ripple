@@ -6,6 +6,9 @@ namespace Cclilshy\PRipple\Service\SocketType;
 use Exception;
 use Socket;
 
+/**
+ *
+ */
 class SocketUnix
 {
     /**
