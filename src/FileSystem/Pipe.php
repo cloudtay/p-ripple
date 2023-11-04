@@ -17,7 +17,7 @@ class Pipe implements FileStd
 
     /**
      * @param string $name
-     * @param int $eof
+     * @param int    $eof
      */
     private function __construct(string $name, int $eof = -1)
     {
@@ -64,7 +64,7 @@ class Pipe implements FileStd
 
     /**
      * @param string $context
-     * @param ?int $start
+     * @param ?int   $start
      * @return int|false
      */
     public function write(string $context, int|null $start = 0): int|false

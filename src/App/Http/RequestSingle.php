@@ -46,16 +46,16 @@ class RequestSingle
     /**
      * Push request body
      * @param string $context
-     * @return void
+     * @return RequestSingle
      * @throws RequestSingleException
      */
-    public function revolve(string $context): void
+    public function revolve(string $context): self
     {
         if (!isset($this->method)) {
             if ($this->parseRequestHead($context)) {
                 $context = $this->body;
             } else {
-                return;
+                return $this;
             }
         }
         switch ($this->method) {
@@ -78,6 +78,7 @@ class RequestSingle
                 }
                 break;
         }
+        return $this;
     }
 
     /**

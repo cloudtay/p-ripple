@@ -300,7 +300,7 @@ class SocketAisle implements TunnelStd
             if ($cacheFile = File::create($this->cacheFilePath, 'r+')) {
                 $this->cacheFile = FileAisle::create($cacheFile);
                 $this->openCache = true;
-                PRipple::publish(Build::new('socket.buffer', $this, SocketAisle::class));
+                PRipple::publishAsync(Build::new('socket.buffer', $this, SocketAisle::class));
 
             } else {
                 throw new FileException("Unable to create socket cache buffer file, please check directory permissions: " . $this->cacheFilePath);
@@ -324,7 +324,7 @@ class SocketAisle implements TunnelStd
     /**
      * 实时写入数据
      * @param string $context
-     * @param bool $async
+     * @param bool   $async
      * @return int|false
      */
     public function write(string $context, bool $async = true): int|false
@@ -355,8 +355,7 @@ class SocketAisle implements TunnelStd
             // 处理缓冲区数据
             $list = str_split($this->sendBuffer, $this->sendBufferSize);
             while ($item = array_shift($list)) {
-                $writeLength = socket_send($this->socket, $item, strlen($item), 0);
-                if ($writeLength === false || $writeLength === 0) {
+                if (!$writeLength = socket_send($this->socket, $item, strlen($item), 0)) {
                     $this->cacheToFile($item);
                     $handledLengthCount += strlen($item);
                     while ($item = array_shift($list)) {
@@ -383,6 +382,11 @@ class SocketAisle implements TunnelStd
                 }
             }
 
+        } catch (FileException $exception) {
+            return false;
+        }
+
+        try {
             // 处理请求文本
             $list = str_split($context, $this->sendBufferSize);
             while ($item = array_shift($list)) {
@@ -400,7 +404,7 @@ class SocketAisle implements TunnelStd
                 $this->closeCache();
             }
             return $handledLengthCount;
-        } catch (FileException $exception) {
+        } catch (Exception $exception) {
             return false;
         }
     }
@@ -457,7 +461,7 @@ class SocketAisle implements TunnelStd
     {
         $this->cacheFile->destroy();
         $this->openCache = false;
-        PRipple::publish(Build::new('socket.unBuffer', $this, SocketAisle::class));
+        PRipple::publishAsync(Build::new('socket.unBuffer', $this, SocketAisle::class));
 
     }
 
@@ -524,7 +528,7 @@ class SocketAisle implements TunnelStd
      * 通过协议发送数据
      * @param string $protocol
      * @param string $method
-     * @param array $options
+     * @param array  $options
      * @return mixed
      */
     public function sendByAgree(string $protocol, string $method, array $options): mixed

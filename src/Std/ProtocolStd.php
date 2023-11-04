@@ -18,7 +18,7 @@ interface ProtocolStd
     /**
      * 通过协议发送
      * @param TunnelStd $tunnel
-     * @param string $context
+     * @param string    $context
      * @return bool
      */
     public function send(TunnelStd $tunnel, string $context): bool;

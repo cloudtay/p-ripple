@@ -4,6 +4,7 @@ namespace Cclilshy\PRipple;
 
 use Cclilshy\PRipple\Help\StrFunctions;
 use Cclilshy\PRipple\Worker\BufferWorker;
+use Cclilshy\PRipple\Worker\Worker;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
@@ -14,7 +15,7 @@ class PRipple
     use StrFunctions;
 
     /**
-     * 单例子
+     * 单例
      * @var PRipple $instance
      */
     private static PRipple $instance;
@@ -43,6 +44,10 @@ class PRipple
      * @var Worker[]
      */
     private array $services = [];
+    private int $index = 0;
+    private int $rate = 1000000;
+    private int $socketNumber = 0;
+    private int $eventNumber = 0;
 
     public function __construct()
     {
@@ -67,9 +72,10 @@ class PRipple
      * @param Build $event
      * @return void
      */
-    public static function publish(Build $event): void
+    public static function publishAsync(Build $event): void
     {
         PRipple::instance()->events[] = $event;
+        PRipple::instance()->eventNumber++;
     }
 
     /**
@@ -95,6 +101,33 @@ class PRipple
     }
 
     /**
+     * @param Build $event
+     * @return mixed
+     */
+    public static function publishSync(Build $event): mixed
+    {
+        try {
+            return Fiber::suspend($event);
+        } catch (Throwable $exception) {
+            echo $exception->getMessage() . PHP_EOL;
+            return false;
+        }
+    }
+
+    /**
+     * @return Build|false
+     */
+    public static function suspend(): mixed
+    {
+        try {
+            return Fiber::suspend(Build::new('suspend', null, PRipple::class));
+        } catch (Throwable $exception) {
+            echo $exception->getMessage() . PHP_EOL;
+            return false;
+        }
+    }
+
+    /**
      * 插入服务
      * @param Worker ...$workers
      * @return PRipple
@@ -108,10 +141,10 @@ class PRipple
             $this->services[$worker->name] = $worker;
             try {
                 if ($response = $this->fibers[$worker->name]->start()) {
-                    $this->events[] = $response;
+                    PRipple::publishAsync($response);
                 }
-            } catch (Throwable $e) {
-                echo $e->getMessage() . PHP_EOL;
+            } catch (Throwable $exception) {
+                echo $exception->getMessage() . PHP_EOL;
             }
         }
         return $this;
@@ -142,10 +175,10 @@ class PRipple
                 case 'socket.read':
                 case 'socket.write':
                     $socketHash = spl_object_hash($event->data);
-                    $event = new Build($event->name, $event->data, PRipple::class);
+                $event = Build::new($event->name, $event->data, PRipple::class);
                     if ($clientName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
                         if ($response = $this->fibers[$clientName]?->resume($event)) {
-                            $this->events[] = $response;
+                            PRipple::publishAsync($response);
                             break;
                         }
                     }
@@ -167,11 +200,17 @@ class PRipple
                     unset($this->socketSubscribeHashMap[$event->data]);
                     break;
                 case 'heartbeat':
-                    foreach ($this->fibers as $fiber) {
-                        if ($response = $fiber->resume($event)) {
-                            $this->events[] = $response;
+                    $this->adjustRate();
+                    if ($event->publisher === PRipple::class) {
+                        foreach ($this->fibers as $fiber) {
+                            if ($response = $fiber->resume($event)) {
+                                PRipple::publishAsync($response);
+                            }
                         }
                     }
+                    break;
+                case 'kernel.rate.set':
+                    $this->rate = $event->data;
                     break;
                 default:
                     $this->distribute($event);
@@ -188,29 +227,34 @@ class PRipple
         while (true) {
             while ($event = array_shift($this->events)) {
                 yield $event;
+                $this->eventNumber--;
             }
             $readSockets = $this->sockets;
             if (count($readSockets) === 0) {
-                sleep(1);
-                yield new Build('heartbeat', null, PRipple::class);
+                usleep($this->rate);
             } else {
                 $writeSockets = [];
                 $exceptSockets = $this->sockets;
-                if (socket_select($readSockets, $writeSockets, $exceptSockets, 0, 1000000)) {
+                if (socket_select($readSockets, $writeSockets, $exceptSockets, 0, $this->rate)) {
                     foreach ($exceptSockets as $socket) {
-                        yield new Build('socket.expect', $socket, PRipple::class);
+                        yield Build::new('socket.expect', $socket, PRipple::class);
                     }
                     foreach ($readSockets as $socket) {
-                        yield new Build('socket.read', $socket, PRipple::class);
+                        yield Build::new('socket.read', $socket, PRipple::class);
                     }
                     foreach ($writeSockets as $socket) {
-                        yield new Build('socket.write', $socket, PRipple::class);
+                        yield Build::new('socket.write', $socket, PRipple::class);
                     }
                 } else {
-                    yield new Build('heartbeat', null, PRipple::class);
+                    yield Build::new('heartbeat', null, PRipple::class);
                 }
             }
         }
+    }
+
+    private function adjustRate(): void
+    {
+        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
     }
 
     /**
@@ -223,5 +267,14 @@ class PRipple
         if ($subscriber = $this->socketSubscribeHashMap[$event->name] ?? null) {
             $this->fibers[$subscriber]->resume($event);
         }
+    }
+
+    /**
+     * 唯一HASH
+     * @return string
+     */
+    public function uniqueHash(): string
+    {
+        return md5(strval($this->index++));
     }
 }

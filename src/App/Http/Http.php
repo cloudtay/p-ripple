@@ -26,24 +26,49 @@ class Http extends NetWorker
     private mixed $requestHandler;
 
     /**
+     * @var Request[]
+     */
+    private array $requests = [];
+
+    /**
+     * 定义请求处理
+     * @param callable $requestHandler
+     * @return void
+     */
+    public function defineRequestHandler(callable $requestHandler): void
+    {
+        $this->requestHandler = $requestHandler;
+    }
+
+    /**
+     * @param Request $request
+     * @return void
+     */
+    public function onRequest(Request $request): void
+    {
+        $this->requests[$request->hash] = $request;
+        $this->fibers[$request->hash] = new Fiber(function () use ($request) {
+            call_user_func($this->requestHandler, $request);
+        });
+        try {
+            if (!$response = $this->fibers[$request->hash]->start()) {
+                $this->recover($request->hash);
+            } else {
+                $this->publishAsync($response);
+            }
+        } catch (Throwable $exception) {
+            echo $exception->getMessage() . PHP_EOL;
+        }
+    }
+
+    /**
      * 创建请求工厂
      * @return void
      */
     protected function initialize(): void
     {
-        $this->subscribe('http.upload.complete');
-        $this->requestFactory = new RequestFactory(function (Request $request) {
-            $this->fibers[$request->hash] = new Fiber(function () use ($request) {
-                if ($this->requestHandler) {
-                    call_user_func($this->requestHandler, $request);
-                }
-            });
-            if (!$event = $this->fibers[$request->hash]->start()) {
-                $this->recover($request->hash);
-            } else {
-                $this->publish($event);
-            }
-        }, $this);
+        $this->subscribe(Request::EVENT_UPLOAD);
+        $this->requestFactory = new RequestFactory($this);
         parent::initialize();
     }
 
@@ -53,11 +78,8 @@ class Http extends NetWorker
      */
     private function recover(string $hash): void
     {
-//        echo 'recover:' . $hash . PHP_EOL;
-        if (isset($this->fibers[$hash])) {
-            unset($this->fibers[$hash]);
-        }
-//        $this->requestFactory->recover($hash);
+        unset($this->fibers[$hash]);
+        unset($this->requests[$hash]);
     }
 
     /**
@@ -65,7 +87,20 @@ class Http extends NetWorker
      */
     protected function heartbeat(): void
     {
-        //TODO: Implement heartbeat() method.
+//        while ($request = array_shift($this->requests)) {
+//            $this->fibers[$request->hash] = new Fiber(function () use ($request) {
+//                call_user_func($this->requestHandler, $request);
+//            });
+//            try {
+//                if (!$response = $this->fibers[$request->hash]->start()) {
+//                    $this->recover($request->hash);
+//                } else {
+//                    $this->publishAsync($response);
+//                }
+//            } catch (Throwable $exception) {
+//                echo $exception->getMessage() . PHP_EOL;
+//            }
+//        }
     }
 
     /**
@@ -85,7 +120,9 @@ class Http extends NetWorker
     protected function onMessage(string $context, Client $client): void
     {
         try {
-            $this->requestFactory->revolve($context, $client);
+            if (($request = $this->requestFactory->revolve($context, $client)) instanceof Request) {
+                $this->onRequest($request);
+            }
         } catch (RequestSingleException $exception) {
             $client->send(new Response(400, [], $exception->getMessage()));
         }
@@ -98,7 +135,7 @@ class Http extends NetWorker
      */
     protected function onClose(Client $client): void
     {
-        echo 'close:' . $client->getHash() . PHP_EOL;
+//        echo 'close:' . $client->getHash() . PHP_EOL;
     }
 
     /**
@@ -110,42 +147,33 @@ class Http extends NetWorker
     }
 
     /**
-     * 定义请求处理
-     * @param callable $requestHandler
-     * @return void
-     */
-    public function defineRequestHandler(callable $requestHandler): void
-    {
-        $this->requestHandler = $requestHandler;
-    }
-
-    /**
      * 处理事件
      * @param \Cclilshy\PRipple\Build $event
      * @return void
      */
     protected function handleEvent(Build $event): void
     {
-        switch ($event->name) {
-            case 'http.upload.complete':
-                $data = $event->data;
-                $hash = $data['hash'];
-                if (isset($this->fibers[$hash])) {
-                    try {
-                        if (!$response = $this->fibers[$hash]->resume($event)) {
-                            $this->recover($hash);
-                        } else {
-                            $this->publish($response);
-                        }
-                    } catch (Throwable $e) {
-                        echo $e->getMessage() . PHP_EOL;
-                        $this->recover($hash);
-                    }
+        $hash = $event->publisher;
+        if (isset($this->fibers[$hash])) {
+            try {
+                if (!$response = $this->fibers[$hash]->resume($event)) {
+                    $this->recover($hash);
+                } else {
+                    $this->publishAsync($response);
                 }
-                break;
-            default:
-                break;
+            } catch (Throwable $exception) {
+                echo $exception->getMessage() . PHP_EOL;
+                $this->recover($hash);
+            }
         }
-        parent::handleEvent($event); // TODO: Change the autogenerated stub
+    }
+
+    /**
+     * @param Client $client
+     * @return void
+     */
+    protected function onHandshake(Client $client): void
+    {
+        // TODO: Implement onHandshake() method.
     }
 }

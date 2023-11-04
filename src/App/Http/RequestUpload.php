@@ -23,7 +23,7 @@ class RequestUpload
 
     /**
      * @param RequestSingle $requestSingle
-     * @param string $boundary
+     * @param string        $boundary
      */
     public function __construct(RequestSingle $requestSingle, string $boundary)
     {
@@ -120,10 +120,7 @@ class RequestUpload
             fwrite($this->currentTransferFile, $content);
             fclose($this->currentTransferFile);
             $this->status = RequestUpload::STATUS_WAIT;
-            PRipple::publish(Build::new('http.upload.complete', [
-                'hash' => $this->requestSingle->hash,
-                'info' => $this->files[count($this->files) - 1],
-            ], RequestUpload::class));
+            PRipple::publishAsync(Build::new(Request::EVENT_UPLOAD, current($this->files), $this->requestSingle->hash));
         } else {
             fwrite($this->currentTransferFile, $this->buffer);
             $this->buffer = '';

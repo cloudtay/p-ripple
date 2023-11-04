@@ -7,7 +7,6 @@ use Cclilshy\PRipple\Worker\NetWorker;
 
 class TestWS extends NetWorker
 {
-
     public function heartbeat(): void
     {
         foreach ($this->getClients() as $client) {
@@ -33,5 +32,10 @@ class TestWS extends NetWorker
     protected function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
+    }
+
+    protected function onHandshake(Client $client): void
+    {
+        // TODO: Implement onHandshake() method.
     }
 }

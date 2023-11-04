@@ -3,8 +3,6 @@
 namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Service\Client;
-use Cclilshy\PRipple\Worker\NetWorker;
-use Closure;
 
 class RequestFactory
 {
@@ -13,14 +11,9 @@ class RequestFactory
     public const INCOMPLETE = 1;
 
     /**
-     * @var Closure $observer
+     * @var Http $httpService
      */
-    private Closure $observer;
-
-    /**
-     * @var NetWorker $httpService
-     */
-    private NetWorker $httpService;
+    private Http $httpService;
 
     /**
      * @var RequestSingle[] $singles
@@ -32,48 +25,50 @@ class RequestFactory
      */
     private array $transfers = [];
 
-    public function __construct(Closure $observer, NetWorker $httpService)
+    public function __construct(Http $httpService)
     {
-        $this->observer = $observer;
         $this->httpService = $httpService;
     }
 
     /**
      * @param string $context
      * @param Client $client
-     * @return void
-     * @throws RequestSingleException
+     * @return \Cclilshy\PRipple\App\Http\Request|null
+     * @throws \Cclilshy\PRipple\App\Http\RequestSingleException
      */
-    public function revolve(string $context, Client $client): void
+    public function revolve(string $context, Client $client): ?Request
     {
-        if ($single = $this->transfers[$client->getHash()] ?? null) {
-            $single->revolve($context);
-            if ($single->statusCode === RequestFactory::COMPLETE) {
-                unset($this->transfers[$client->getHash()]);
+        $clientHash = $client->getHash();
+        if ($single = $this->transfers[$clientHash] ?? null) {
+            if ($single->revolve($context)->statusCode === RequestFactory::COMPLETE) {
+                unset($this->transfers[$clientHash]);
             }
-            return;
-        } elseif (!$single = $this->singles[$client->getHash()] ?? null) {
-            $this->singles[$client->getHash()] = $single = new RequestSingle($client);
+            return null;
         }
+        if (!$single = $this->singles[$clientHash] ?? null) {
+            $this->singles[$clientHash] = $single = new RequestSingle($client);
+        }
+
         $single->revolve($context);
         if (isset($single->method) && $single->method === 'POST' && $single->upload) {
             if ($single->statusCode !== RequestFactory::COMPLETE) {
-                $this->transfers[$client->getHash()] = $single;
+                $this->transfers[$clientHash] = $single;
             }
-            unset($this->singles[$client->getHash()]);
-            call_user_func($this->observer, $single->build());
+            unset($this->singles[$clientHash]);
+            return $single->build();
         }
+
         switch ($single->statusCode) {
             case RequestFactory::COMPLETE:
-                call_user_func($this->observer, $single->build());
-                unset($this->singles[$client->getHash()]);
-                break;
+                unset($this->singles[$clientHash]);
+                return $single->build();
             case RequestFactory::INVALID:
-                unset($this->singles[$client->getHash()]);
                 $this->httpService->removeClient($client);
+                unset($this->singles[$clientHash]);
                 break;
             case RequestFactory::INCOMPLETE:
                 break;
         }
+        return null;
     }
 }

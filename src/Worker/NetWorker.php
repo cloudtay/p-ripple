@@ -9,17 +9,11 @@ use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Service\SocketType\SocketInet;
 use Cclilshy\PRipple\Service\SocketType\SocketUnix;
 use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Worker;
 use Exception;
 use Socket;
 
 abstract class NetWorker extends Worker
 {
-    /**
-     * 监听的入口套接字
-     * @var mixed
-     */
-    public mixed $listenSocket;
     /**
      * 客户端套接字列表
      * @var array
@@ -47,7 +41,11 @@ abstract class NetWorker extends Worker
      * @var ProtocolStd
      */
     private ProtocolStd $protocol;
-    private string $bindAddress;
+    /**
+     * @var string[]
+     */
+    private array $bindAddressList = [];
+    private array $bindAddressHashMap = [];
     private array $socketServiceOptions = [];
 
     /**
@@ -180,10 +178,8 @@ abstract class NetWorker extends Worker
      */
     public function bind(string $address, array|null $options = []): static
     {
-        $this->bindAddress = $address;
-        if ($options !== null) {
-            $this->socketServiceOptions = $options;
-        }
+        $this->bindAddressList[] = $address;
+        $this->socketServiceOptions = $options;
         return $this;
     }
 
@@ -204,34 +200,40 @@ abstract class NetWorker extends Worker
      */
     protected function handleSocket(Socket $socket): void
     {
-        if ($socket === $this->listenSocket) {
-            $this->accept();
-        } elseif ($client = $this->getClientBySocket($socket)) {
-            if (!$client->verify) {
-                if ($handshake = $this->handshake($client)) {
-                    $this->onConnect($client);
-                } elseif ($handshake === false) {
-                    $this->expectSocket($socket);
-                }
+        if (in_array($socket, array_values($this->bindAddressHashMap), true)) {
+            $this->accept($socket);
+            return;
+        }
+        if (!$client = $this->getClientBySocket($socket)) {
+            return;
+        }
+        if (!$client->verify) {
+            if ($handshake = $this->protocol->handshake($client)) {
+                $client->handshake($this->protocol);
+                $this->onHandshake($client);
+            } elseif ($handshake === false) {
+                $this->expectSocket($socket);
+                return;
             } else {
-                if ($content = $client->getPlaintext()) {
-                    $this->onMessage($content, $client);
-                } else {
-                    $this->onClose($client);
-                    $this->removeClient($client);
-                }
+                return;
             }
         }
 
+        if ($content = $client->getPlaintext()) {
+            $this->onMessage($content, $client);
+        } else {
+            $this->onClose($client);
+            $this->removeClient($client);
+        }
     }
 
     /**
      * 同意一个连接
      */
-    public function accept(): bool
+    public function accept(Socket $listenSocket): bool
     {
         try {
-            if ($socket = socket_accept($this->listenSocket)) {
+            if ($socket = socket_accept($listenSocket)) {
                 $this->addSocket($socket);
                 return true;
             }
@@ -248,31 +250,19 @@ abstract class NetWorker extends Worker
      */
     public function addSocket(Socket $socket): void
     {
-        socket_set_nonblock($socket);
         $name = NetWorker::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clients[$name] = new Client($socket, $this->socketType);
-        if ($handshake = $this->handshake($this->clients[$name])) {
-            $this->onConnect($this->clients[$name]);
-        } elseif ($handshake === false) {
-            $this->expectSocket($socket);
-        }
+        $this->onConnect($this->clients[$name]);
         $this->subscribeSocket($socket);
     }
 
     /**
-     * 尝试握手
-     * @param Client $client
-     * @return bool|null
+     * 有连接到达到达
+     * @param \Cclilshy\PRipple\Service\Client $client
+     * @return void
      */
-    public function handshake(Client $client): bool|null
-    {
-        if ($result = $this->protocol->handshake($client)) {
-            $client->handshake($this->protocol);
-        }
-        return $result;
-    }
-
+    abstract protected function onConnect(Client $client): void;
 
     /**
      * 处理异常连接
@@ -297,6 +287,19 @@ abstract class NetWorker extends Worker
         $this->unsubscribeSocket($client->getSocket());
     }
 
+    abstract protected function destroy(): void;
+
+    abstract protected function onMessage(string $context, Client $client): void;
+
+    abstract protected function onClose(Client $client): void;
+
+    abstract protected function heartbeat(): void;
+
+    protected function initialize(): void
+    {
+        $this->listen();
+    }
+
     /**
      * 创建监听
      * @return void
@@ -304,54 +307,35 @@ abstract class NetWorker extends Worker
     public function listen(): void
     {
         try {
-            if (!isset($this->bindAddress)) {
-                return;
+            while ($addressFull = array_shift($this->bindAddressList)) {
+                $type = match (true) {
+                    str_contains($addressFull, 'unix://') => SocketUnix::class,
+                    str_contains($addressFull, 'tcp://') => SocketInet::class,
+                    default => throw new Exception('Invalid address')
+                };
+                $addressFull = str_replace(['unix://', 'tcp://'], '', $addressFull);
+                $addressInfo = explode(':', $addressFull);
+                $address = $addressInfo[0];
+                $port = (int)($addressInfo[1] ?? 0);
+                switch ($type) {
+                    case SocketInet::class:
+                        $this->socketType = SocketInet::class;
+                        $listenSocket = SocketInet::create($address, $port, SOCK_STREAM, $this->socketServiceOptions);
+                        break;
+                    case SocketUnix::class:
+                        $this->socketType = SocketInet::class;
+                        $listenSocket = SocketUnix::create($address);
+                        break;
+                    default:
+                        return;
+                }
+                $this->bindAddressHashMap[$addressFull] = $listenSocket;
+                $this->subscribeSocket($listenSocket);
             }
-            $type = match (true) {
-                str_contains($this->bindAddress, 'unix://') => SocketUnix::class,
-                str_contains($this->bindAddress, 'tcp://') => SocketInet::class,
-                default => throw new Exception('Invalid address')
-            };
-            $this->bindAddress = str_replace(['unix://', 'tcp://'], '', $this->bindAddress);
-            $addressInfo = explode(':', $this->bindAddress);
-            $this->bindAddress = $addressInfo[0];
-            $port = (int)($addressInfo[1] ?? 0);
-            switch ($type) {
-                case SocketInet::class:
-                    $this->socketType = SocketInet::class;
-                    $this->listenSocket = SocketInet::create($this->bindAddress, $port, SOCK_STREAM, $this->socketServiceOptions);
-                    break;
-                case SocketUnix::class:
-                    $this->socketType = SocketInet::class;
-                    $this->listenSocket = SocketUnix::create($this->bindAddress);
-                    break;
-                default:
-                    return;
-            }
-            $this->subscribeSocket($this->listenSocket);
-        } catch (Exception $e) {
-            echo $e->getMessage() . PHP_EOL;
+        } catch (Exception $exception) {
+            echo $exception->getMessage() . PHP_EOL;
         }
     }
 
-
-    /**
-     * 有连接到达到达
-     * @param \Cclilshy\PRipple\Service\Client $client
-     * @return void
-     */
-    abstract protected function onConnect(Client $client): void;
-
-    abstract protected function heartbeat(): void;
-
-    abstract protected function destroy(): void;
-
-    abstract protected function onMessage(string $context, Client $client): void;
-
-    abstract protected function onClose(Client $client): void;
-
-    protected function initialize(): void
-    {
-        $this->listen();
-    }
+    abstract protected function onHandshake(Client $client): void;
 }

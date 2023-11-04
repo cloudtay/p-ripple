@@ -5,6 +5,7 @@ namespace Cclilshy\PRipple\Tests;
 use Cclilshy\PRipple\App\Http\Http;
 use Cclilshy\PRipple\App\Http\Request;
 use Cclilshy\PRipple\App\Http\Response;
+use Cclilshy\PRipple\App\Redis\Redis;
 use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\WebSocket;
 
@@ -15,39 +16,51 @@ $pRipple = PRipple::instance();
 $options = [SO_REUSEPORT => true];
 
 $tcp = TestTcp::new('tcp_worker_name')->bind('tcp://127.0.0.1:3001', $options);
-$ws = TestWS::new('ws_worker_name')->bind('tcp://127.0.0.1:3002', $options)->protocol(WebSocket::class);
-$http = Http::new('http_worker_name')->bind('tcp://127.0.0.1:3008', $options);
+$ws = TestTcp::new('ws_worker_name')->bind('tcp://127.0.0.1:3002', $options)->protocol(WebSocket::class);
+$http = Http::new('http_worker_name')
+    ->bind('tcp://0.0.0.0:8001', $options)
+    ->bind('tcp://127.0.0.1:8002', $options);
+$redis = Redis::new('redis_worker_name')->authorize(1, 1, 1, 1);
 
-$http->defineRequestHandler(function (Request $request) use ($tcp, $ws) {
+$http->defineRequestHandler(function (Request $request) use ($tcp, $ws, $redis) {
+//    foreach ($tcp->getClients() as $client) {
+//        $client->send("Access [{$request->client->getAddress()}] :{$request->method} {$request->path}" . PHP_EOL);
+//    }
     if ($request->method === 'GET') {
+//        $response = new Response(
+//            $statusCode = 200,
+//            $headers = ['Content-Type' => 'text/html; charset=utf-8'],
+//            $body = file_get_contents(__DIR__ . '/example.html')
+//        );
+//        $name = $redis->get('name');
         $response = new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = file_get_contents(__DIR__ . '/example.html')
+            $body = "hello,world!"
         );
     } elseif ($request->upload) {
-        $request->handleUpload(function ($info) use ($tcp, $ws) {
-            foreach ($ws->getClients() as $client) {
-                $client->send('上传成功:' . json_encode($info));
-            }
+        $request->publishAsync(Request::EVENT_UPLOAD, function ($info) use ($tcp, $ws) {
             foreach ($tcp->getClients() as $client) {
-                $client->send('上传成功:' . json_encode($info) . PHP_EOL);
+                $client->send("Upload complete: " . json_encode($info) . PHP_EOL);
+            }
+            foreach ($ws->getClients() as $client) {
+                $client->send("Upload complete: " . json_encode($info) . PHP_EOL);
             }
         });
         $response = new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = '请勿关闭页面,上传中...'
+            $body = 'Please do not close the page, uploading is in progress...'
         );
-        $request->wait();
     } else {
+        $name = $redis->get('name');
         $response = new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = 'You submitted:' . json_encode($request->post)
+            $body = "Hello,{$name}! You n submitted:" . json_encode($request->post)
         );
     }
     $request->client->send($response);
 });
 
-$pRipple->push($tcp, $ws, $http)->launch();
+$pRipple->push($tcp, $ws, $http, $redis)->launch();

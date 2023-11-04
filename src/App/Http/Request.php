@@ -5,12 +5,12 @@ namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\Service\Client;
-use Fiber;
-use Throwable;
+use Cclilshy\PRipple\Std\TaskStd;
 
-class Request
+class Request extends TaskStd
 {
-    public string $hash;
+    public const EVENT_UPLOAD = 'http.upload.complete';
+
     public string $host;
     public string $scheme;
     public string $url;
@@ -29,14 +29,13 @@ class Request
     /**
      * @var callable $onUpload
      */
-    private $onUpload;
+    private $asyncHandlers = array();
 
     /**
      * @param RequestSingle $requestSingle
      */
     public function __construct(RequestSingle $requestSingle)
     {
-        $this->hash = $requestSingle->hash;
         $this->url = $requestSingle->url;
         $this->method = $requestSingle->method;
         if (($this->upload = $requestSingle->upload)) {
@@ -60,45 +59,27 @@ class Request
         } else {
             parse_str($this->body, $this->post);
         }
+        parent::__construct();
     }
 
     /**
+     * @param string $action
      * @param callable $callable
      * @return void
      */
-    public function handleUpload(callable $callable): void
+    public function async(string $action, callable $callable): void
     {
-        $this->onUpload = $callable;
+        $this->asyncHandlers[$action] = $callable;
     }
 
     /**
+     * @param Build $event
      * @return void
      */
-    public function wait(): void
+    protected function handleEvent(Build $event): void
     {
-        try {
-            if ($response = Fiber::suspend(Build::new('suspend', null, $this->hash))) {
-                $this->onEvent($response);
-            }
-        } catch (Throwable $e) {
-            echo $e->getMessage() . PHP_EOL;
-        }
-    }
-
-    /**
-     * @param \Cclilshy\PRipple\Build $event
-     * @return void
-     */
-    private function onEvent(Build $event): void
-    {
-        switch ($event->name) {
-            case 'http.upload.complete':
-                if (isset($this->onUpload)) {
-                    call_user_func($this->onUpload, $event->data['info']);
-                }
-                break;
-            default:
-                break;
+        if ($uploadHandler = $this->asyncHandlers[$event->name]) {
+            call_user_func_array($uploadHandler, [$event->data]);
         }
     }
 }

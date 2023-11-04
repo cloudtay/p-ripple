@@ -6,16 +6,27 @@ class Build
 {
     public string $name;
     public mixed $data;
-    public string $publisher;
+    public mixed $publisher;
 
-    public function __construct(string $name, mixed $data, string $publisher)
+    /**
+     * @param string $name
+     * @param mixed  $data
+     * @param mixed  $publisher
+     */
+    public function __construct(string $name, mixed $data, mixed $publisher)
     {
         $this->name = $name;
         $this->data = $data;
         $this->publisher = $publisher;
     }
 
-    public static function new(string $name, mixed $data, string $publisher): Build
+    /**
+     * @param string $name
+     * @param mixed  $data
+     * @param mixed  $publisher
+     * @return \Cclilshy\PRipple\Build
+     */
+    public static function new(string $name, mixed $data, mixed $publisher): Build
     {
         return new Build($name, $data, $publisher);
     }

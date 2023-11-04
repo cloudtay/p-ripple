@@ -82,6 +82,11 @@ class test_file_server extends NetWorker
     {
 
     }
+
+    protected function onHandshake(Client $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
 }
 
 $server = test_file_server::new('test_file_server')->bind('tcp://127.0.0.1:3002', [SO_REUSEADDR => true]);

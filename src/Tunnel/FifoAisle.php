@@ -55,7 +55,7 @@ class FifoAisle implements TunnelStd
     /**
      * 写入数据
      * @param string $context
-     * @param bool $async
+     * @param bool   $async
      * @return int|bool
      */
     public function write(string $context, bool $async = false): int|bool

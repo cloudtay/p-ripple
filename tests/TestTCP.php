@@ -7,7 +7,6 @@ use Cclilshy\PRipple\Worker\NetWorker;
 
 class TestTCP extends NetWorker
 {
-
     protected function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
@@ -31,5 +30,10 @@ class TestTCP extends NetWorker
     protected function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
+    }
+
+    protected function onHandshake(Client $client): void
+    {
+        // TODO: Implement onHandshake() method.
     }
 }

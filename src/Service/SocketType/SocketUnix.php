@@ -10,9 +10,9 @@ class SocketUnix
 {
     /**
      * Create a UNIX socket with a custom buffer size
-     * @param string $sockFile SOCKET FILE ADDRESS
+     * @param string    $sockFile   SOCKET FILE ADDRESS
      * @param bool|null $block
-     * @param int|null $bufferSize The default buffer size is 8M
+     * @param int|null  $bufferSize The default buffer size is 8M
      * @return Socket
      * @throws Exception
      */
