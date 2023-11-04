@@ -6,10 +6,26 @@ namespace Cclilshy\PRipple;
 use Cclilshy\PRipple\Help\StrFunctions;
 use Cclilshy\PRipple\Worker\BufferWorker;
 use Cclilshy\PRipple\Worker\Worker;
+use Error;
+use Exception;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
+use function array_shift;
+use function count;
+use function define;
+use function error_reporting;
+use function gc_collect_cycles;
+use function ini_get;
+use function ini_set;
+use function md5;
+use function shell_exec;
+use function socket_select;
+use function spl_object_hash;
+use function time;
+use function usleep;
+
 
 /**
  *
@@ -116,7 +132,7 @@ class PRipple
         try {
             return Fiber::suspend($event);
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
             return false;
         }
     }
@@ -129,9 +145,19 @@ class PRipple
         try {
             return Fiber::suspend(Build::new('suspend', null, PRipple::class));
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
             return false;
         }
+    }
+
+    public static function printExpect(Error|Exception $exception): void
+    {
+        echo <<<EOF
+            file: {$exception->getFile()}
+            line: {$exception->getLine()}
+            message: {$exception->getMessage()}
+            
+            EOF;
     }
 
     /**
@@ -151,7 +177,7 @@ class PRipple
                     PRipple::publishAsync($response);
                 }
             } catch (Throwable $exception) {
-                echo $exception->getMessage() . PHP_EOL;
+                PRipple::printExpect($exception);
             }
         }
         return $this;
@@ -215,6 +241,7 @@ class PRipple
                             }
                         }
                     }
+                    gc_collect_cycles();
                     break;
                 case 'kernel.rate.set':
                     $this->rate = $event->data;

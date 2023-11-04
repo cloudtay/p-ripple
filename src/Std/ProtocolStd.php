@@ -20,11 +20,11 @@ interface ProtocolStd
 
     /**
      * 通过协议发送
-     * @param TunnelStd $tunnel
-     * @param string    $context
-     * @return bool
+     * @param TunnelStd|Client $tunnel
+     * @param string $context
+     * @return bool|int
      */
-    public function send(TunnelStd $tunnel, string $context): bool;
+    public function send(TunnelStd|Client $tunnel, string $context): bool|int;
 
     /**
      * 报文验证
@@ -36,17 +36,17 @@ interface ProtocolStd
 
     /**
      * 报文切片
-     * @param TunnelStd $tunnel 任意通道
+     * @param TunnelStd|Client $tunnel 任意通道
      * @return string|false 切片结果
      */
-    public function cut(TunnelStd $tunnel): string|false;
+    public function cut(TunnelStd|Client $tunnel): string|false;
 
     /**
      * 抛弃脏数据，调整通道指针
-     * @param TunnelStd $tunnel
+     * @param TunnelStd|Client $tunnel
      * @return string|false
      */
-    public function corrective(TunnelStd $tunnel): string|false;
+    public function corrective(TunnelStd|Client $tunnel): string|false;
 
     /**
      * 解析报文

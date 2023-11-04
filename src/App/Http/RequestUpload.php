@@ -5,6 +5,17 @@ namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
+use function current;
+use function fclose;
+use function fopen;
+use function fwrite;
+use function md5;
+use function microtime;
+use function preg_match;
+use function str_starts_with;
+use function strpos;
+use function substr;
+use const FS;
 
 /**
  *
@@ -26,7 +37,7 @@ class RequestUpload
 
     /**
      * @param RequestSingle $requestSingle
-     * @param string        $boundary
+     * @param string $boundary
      */
     public function __construct(RequestSingle $requestSingle, string $boundary)
     {
@@ -51,7 +62,7 @@ class RequestUpload
                     break;
                 }
             } catch (RequestSingleException $exception) {
-                echo $exception->getMessage() . PHP_EOL;
+                PRipple::printExpect($exception);
                 $this->status = RequestUpload::STATUS_ILLEGAL;
                 $this->requestSingle->statusCode = RequestFactory::INVALID;
             }

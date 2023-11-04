@@ -25,9 +25,9 @@ class TCPProtocol implements ProtocolStd
     /**
      * @param TunnelStd $tunnel
      * @param string $context
-     * @return bool
+     * @return bool|int
      */
-    public function send(TunnelStd $tunnel, string $context): bool
+    public function send(TunnelStd $tunnel, string $context): bool|int
     {
         return $tunnel->write($context);
     }

@@ -6,6 +6,10 @@ namespace Cclilshy\PRipple\App\Http;
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\TaskStd;
+use function call_user_func_array;
+use function json_decode;
+use function parse_str;
+use function parse_url;
 
 /**
  *

@@ -4,6 +4,15 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Service\Client;
+use function count;
+use function explode;
+use function md5;
+use function mt_rand;
+use function preg_match;
+use function strlen;
+use function strpos;
+use function strtok;
+use function trim;
 
 /**
  *

@@ -84,9 +84,9 @@ use stdClass;
     /**
      * 发送信息
      * @param string $context
-     * @return bool
+     * @return bool|int
      */
-    public function send(string $context): bool
+    public function send(string $context): bool|int
     {
         if (isset($this->protocol)) {
             return $this->protocol->send($this, $context);

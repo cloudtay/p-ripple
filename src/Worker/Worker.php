@@ -116,7 +116,7 @@ abstract class Worker
                 $this->builds[] = $response;
             }
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -131,7 +131,7 @@ abstract class Worker
             PRipple::publishAsync($event);
 //            $this->builds[] = Fiber::suspend($event);
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -145,7 +145,7 @@ abstract class Worker
         try {
             $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -160,7 +160,7 @@ abstract class Worker
         try {
             $this->publishAsync(Build::new('event.unsubscribe', $event, $this->name));
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -175,7 +175,7 @@ abstract class Worker
             socket_set_nonblock($socket);
             $this->publishAsync(Build::new('socket.subscribe', $socket, $this->name));
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -189,7 +189,7 @@ abstract class Worker
         try {
             $this->publishAsync(Build::new('socket.unsubscribe', $socket, $this->name));
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 

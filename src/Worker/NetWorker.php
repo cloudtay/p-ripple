@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\Worker;
 
 use Cclilshy\PRipple\Build;
+use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\TCPProtocol;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Service\SocketType\SocketInet;
@@ -241,7 +242,7 @@ abstract class NetWorker extends Worker
                 return true;
             }
         } catch (Exception $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
         return false;
     }
@@ -354,7 +355,7 @@ abstract class NetWorker extends Worker
                 $this->subscribeSocket($listenSocket);
             }
         } catch (Exception $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 

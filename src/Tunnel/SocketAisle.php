@@ -330,7 +330,7 @@ class SocketAisle implements TunnelStd
     /**
      * 实时写入数据
      * @param string $context
-     * @param bool   $async
+     * @param bool $async
      * @return int|false
      */
     public function write(string $context, bool $async = true): int|false
@@ -389,6 +389,7 @@ class SocketAisle implements TunnelStd
             }
 
         } catch (FileException $exception) {
+//            PRipple::printExpect($exception);
             return false;
         }
 
@@ -411,6 +412,7 @@ class SocketAisle implements TunnelStd
             }
             return $handledLengthCount;
         } catch (Exception $exception) {
+//            PRipple::printExpect($exception);
             return false;
         }
     }
@@ -537,7 +539,7 @@ class SocketAisle implements TunnelStd
      * 通过协议发送数据
      * @param string $protocol
      * @param string $method
-     * @param array  $options
+     * @param array $options
      * @return mixed
      */
     public function sendByAgree(string $protocol, string $method, array $options): mixed

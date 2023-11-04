@@ -4,10 +4,12 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Build;
+use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Worker\NetWorker;
 use Fiber;
 use Throwable;
+use function call_user_func;
 
 /**
  *
@@ -61,7 +63,7 @@ class Http extends NetWorker
                 $this->publishAsync($response);
             }
         } catch (Throwable $exception) {
-            echo $exception->getMessage() . PHP_EOL;
+            PRipple::printExpect($exception);
         }
     }
 
@@ -102,7 +104,7 @@ class Http extends NetWorker
 //                    $this->publishAsync($response);
 //                }
 //            } catch (Throwable $exception) {
-//                echo $exception->getMessage() . PHP_EOL;
+//                PRipple::self::printExpect($exception);
 //            }
 //        }
     }
@@ -166,7 +168,7 @@ class Http extends NetWorker
                     $this->publishAsync($response);
                 }
             } catch (Throwable $exception) {
-                echo $exception->getMessage() . PHP_EOL;
+                PRipple::printExpect($exception);
                 $this->recover($hash);
             }
         }
