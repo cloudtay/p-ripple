@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Service\SocketType;
+namespace Cclilshy\PRipple\Worker\NetWorker\SocketType;
 
 use Exception;
 use Socket;

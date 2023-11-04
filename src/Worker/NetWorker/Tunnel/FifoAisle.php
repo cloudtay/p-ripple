@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Tunnel;
+namespace Cclilshy\PRipple\Worker\NetWorker\Tunnel;
 
 use Cclilshy\PRipple\FileSystem\Fifo;
 use Cclilshy\PRipple\Std\TunnelStd;
@@ -58,7 +58,7 @@ class FifoAisle implements TunnelStd
     /**
      * 写入数据
      * @param string $context
-     * @param bool   $async
+     * @param bool $async
      * @return int|bool
      */
     public function write(string $context, bool $async = false): int|bool

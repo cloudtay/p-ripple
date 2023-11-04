@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Protocol;
 
-use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\ProtocolStd;
 use Cclilshy\PRipple\Std\TunnelStd;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
 use stdClass;
 
 /**

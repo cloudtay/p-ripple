@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Worker;
 
-use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
@@ -37,13 +36,19 @@ abstract class Worker
     }
 
     /**
-     * 快捷创建
-     * @param string $name
-     * @return static
+     * 启动服务
+     * @return void
      */
-    public static function new(string $name): static
+    #[NoReturn] public function launch(): void
     {
-        return new static($name);
+        $this->initialize();
+        while (true) {
+            while ($build = array_shift($this->builds)) {
+                $this->consumption($build);
+            }
+//            $this->heartbeat();
+            $this->publishAwait();
+        }
     }
 
     /**
@@ -93,17 +98,17 @@ abstract class Worker
     abstract protected function expectSocket(Socket $socket): void;
 
     /**
+     * 心跳
+     * @return void
+     */
+    abstract protected function heartbeat(): void;
+
+    /**
      * 处理事件
      * @param Build $event
      * @return void
      */
     abstract protected function handleEvent(Build $event): void;
-
-    /**
-     * 心跳
-     * @return void
-     */
-    abstract protected function heartbeat(): void;
 
     /**
      * 等待驱动
@@ -115,6 +120,20 @@ abstract class Worker
             if ($response = Fiber::suspend(Build::new('suspend', null, $this->name))) {
                 $this->builds[] = $response;
             }
+        } catch (Throwable $exception) {
+            PRipple::printExpect($exception);
+        }
+    }
+
+    /**
+     * 订阅一个事件
+     * @param string $event
+     * @return void
+     */
+    protected function subscribe(string $event): void
+    {
+        try {
+            $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
         } catch (Throwable $exception) {
             PRipple::printExpect($exception);
         }
@@ -136,17 +155,13 @@ abstract class Worker
     }
 
     /**
-     * 订阅一个事件
-     * @param string $event
-     * @return void
+     * 快捷创建
+     * @param string $name
+     * @return static
      */
-    protected function subscribe(string $event): void
+    public static function new(string $name): static
     {
-        try {
-            $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-        }
+        return new static($name);
     }
 
     /**
@@ -198,20 +213,4 @@ abstract class Worker
      * @return void
      */
     abstract protected function destroy(): void;
-
-    /**
-     * 启动服务
-     * @return void
-     */
-    #[NoReturn] public function launch(): void
-    {
-        $this->initialize();
-        while (true) {
-            while ($build = array_shift($this->builds)) {
-                $this->consumption($build);
-            }
-//            $this->heartbeat();
-            $this->publishAwait();
-        }
-    }
 }

@@ -3,8 +3,7 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Worker;
 
-use Cclilshy\PRipple\Build;
-use Cclilshy\PRipple\Tunnel\SocketAisle;
+use Cclilshy\PRipple\Worker\NetWorker\Tunnel\SocketAisle;
 use Socket;
 
 

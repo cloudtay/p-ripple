@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Tests;
 
-use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Worker\NetWorker;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
 
 /**
  *

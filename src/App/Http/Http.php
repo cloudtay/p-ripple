@@ -3,11 +3,12 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Http;
 
-use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Service\Client;
+use Cclilshy\PRipple\Worker\Build;
 use Cclilshy\PRipple\Worker\NetWorker;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
 use Fiber;
+use Generator;
 use Throwable;
 
 
@@ -47,27 +48,6 @@ class Http extends NetWorker
     }
 
     /**
-     * @param Request $request
-     * @return void
-     */
-    public function onRequest(Request $request): void
-    {
-        $this->requests[$request->hash] = $request;
-        $this->fibers[$request->hash] = new Fiber(function () use ($request) {
-            call_user_func($this->requestHandler, $request);
-        });
-        try {
-            if (!$response = $this->fibers[$request->hash]->start()) {
-                $this->recover($request->hash);
-            } else {
-                $this->publishAsync($response);
-            }
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-        }
-    }
-
-    /**
      * 创建请求工厂
      * @return void
      */
@@ -76,16 +56,6 @@ class Http extends NetWorker
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->requestFactory = new RequestFactory($this);
         parent::initialize();
-    }
-
-    /**
-     * @param string $hash
-     * @return void
-     */
-    private function recover(string $hash): void
-    {
-        unset($this->fibers[$hash]);
-        unset($this->requests[$hash]);
     }
 
     /**
@@ -132,6 +102,43 @@ class Http extends NetWorker
         } catch (RequestSingleException $exception) {
             $client->send((new Response(400, [], $exception->getMessage()))->__toString());
         }
+    }
+
+    /**
+     * @param Request $request
+     * @return void
+     */
+    public function onRequest(Request $request): void
+    {
+        $this->requests[$request->hash] = $request;
+        $this->fibers[$request->hash] = new Fiber(function () use ($request) {
+            /**
+             * @var Generator $requesting
+             */
+            $requesting = call_user_func($this->requestHandler, $request);
+            foreach ($requesting as $response) {
+                $request->client->send($response->__toString());
+            }
+        });
+        try {
+            if (!$response = $this->fibers[$request->hash]->start()) {
+                $this->recover($request->hash);
+            } else {
+                $this->publishAsync($response);
+            }
+        } catch (Throwable $exception) {
+            PRipple::printExpect($exception);
+        }
+    }
+
+    /**
+     * @param string $hash
+     * @return void
+     */
+    private function recover(string $hash): void
+    {
+        unset($this->fibers[$hash]);
+        unset($this->requests[$hash]);
     }
 
     /**

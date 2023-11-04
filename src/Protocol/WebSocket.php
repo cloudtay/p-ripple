@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\Protocol;
 
 use Cclilshy\PRipple\Protocol\WebSocket\Handshake;
-use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\ProtocolStd;
 use Cclilshy\PRipple\Std\TunnelStd;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
 use Exception;
 use stdClass;
 
@@ -18,7 +18,7 @@ class WebSocket implements ProtocolStd
     /**
      * SEND VIA INTERFACE
      * @param TunnelStd $tunnel
-     * @param string    $context
+     * @param string $context
      * @return bool
      */
     public function send(TunnelStd $tunnel, string $context): bool

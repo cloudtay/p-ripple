@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple;
+namespace Cclilshy\PRipple\Worker;
 
 /**
  *
@@ -14,8 +14,8 @@ class Build
 
     /**
      * @param string $name
-     * @param mixed  $data
-     * @param mixed  $publisher
+     * @param mixed $data
+     * @param mixed $publisher
      */
     public function __construct(string $name, mixed $data, mixed $publisher)
     {
@@ -24,20 +24,20 @@ class Build
         $this->publisher = $publisher;
     }
 
-    public function __toString(): string
-    {
-        return serialize($this);
-    }
-
     /**
      * @param string $name
-     * @param mixed  $data
-     * @param mixed  $publisher
+     * @param mixed $data
+     * @param mixed $publisher
      * @return Build
      */
     public static function new(string $name, mixed $data, mixed $publisher): Build
     {
         return new Build($name, $data, $publisher);
+    }
+
+    public function __toString(): string
+    {
+        return serialize($this);
     }
 
 }

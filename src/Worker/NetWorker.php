@@ -3,13 +3,12 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Worker;
 
-use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\TCPProtocol;
-use Cclilshy\PRipple\Service\Client;
-use Cclilshy\PRipple\Service\SocketType\SocketInet;
-use Cclilshy\PRipple\Service\SocketType\SocketUnix;
 use Cclilshy\PRipple\Std\ProtocolStd;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
+use Cclilshy\PRipple\Worker\NetWorker\SocketType\SocketInet;
+use Cclilshy\PRipple\Worker\NetWorker\SocketType\SocketUnix;
 use Exception;
 use Socket;
 
@@ -176,7 +175,7 @@ abstract class NetWorker extends Worker
 
     /**
      * 绑定地址
-     * @param string     $address
+     * @param string $address
      * @param array|null $options
      * @return $this
      */
@@ -231,11 +230,6 @@ abstract class NetWorker extends Worker
         }
     }
 
-    protected function splitMessage(Client $client): string|false
-    {
-        return $client->getPlaintext();
-    }
-
     /**
      * 同意一个连接
      */
@@ -274,6 +268,12 @@ abstract class NetWorker extends Worker
     abstract protected function onConnect(Client $client): void;
 
     /**
+     * @param Client $client
+     * @return void
+     */
+    abstract protected function onHandshake(Client $client): void;
+
+    /**
      * 处理异常连接
      * @param Socket $socket
      * @return void
@@ -300,6 +300,11 @@ abstract class NetWorker extends Worker
      * @return void
      */
     abstract protected function destroy(): void;
+
+    protected function splitMessage(Client $client): string|false
+    {
+        return $client->getPlaintext();
+    }
 
     /**
      * @param string $context
@@ -363,10 +368,4 @@ abstract class NetWorker extends Worker
             PRipple::printExpect($exception);
         }
     }
-
-    /**
-     * @param Client $client
-     * @return void
-     */
-    abstract protected function onHandshake(Client $client): void;
 }

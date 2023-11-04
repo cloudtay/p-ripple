@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Service\SocketType;
+namespace Cclilshy\PRipple\Worker\NetWorker\SocketType;
 
 use Exception;
 use Socket;
@@ -13,9 +13,9 @@ class SocketUnix
 {
     /**
      * Create a UNIX socket with a custom buffer size
-     * @param string    $sockFile   SOCKET FILE ADDRESS
+     * @param string $sockFile SOCKET FILE ADDRESS
      * @param bool|null $block
-     * @param int|null  $bufferSize The default buffer size is 8M
+     * @param int|null $bufferSize The default buffer size is 8M
      * @return Socket
      * @throws Exception
      */

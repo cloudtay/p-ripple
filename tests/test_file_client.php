@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-include 'autoload.php';
+include __DIR__ . '/vendor/autoload.php';
 
 try {
     $socket = socket_create($domain = AF_INET, SOCK_STREAM, SOL_TCP);

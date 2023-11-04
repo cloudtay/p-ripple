@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\Std;
 
-use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
+use Cclilshy\PRipple\Worker\Build;
 use Fiber;
 use Throwable;
 
@@ -24,7 +24,7 @@ abstract class TaskStd
 
     /**
      * @param string $eventName
-     * @param mixed  $eventData
+     * @param mixed $eventData
      * @return mixed
      * @throws Throwable
      */
@@ -35,7 +35,7 @@ abstract class TaskStd
 
     /**
      * @param string $eventName
-     * @param mixed  $eventData
+     * @param mixed $eventData
      * @return void
      * @throws Throwable
      */

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Tunnel;
+namespace Cclilshy\PRipple\Worker\NetWorker\Tunnel;
 
 use Cclilshy\PRipple\FileSystem\File;
 use Cclilshy\PRipple\Std\TunnelStd;

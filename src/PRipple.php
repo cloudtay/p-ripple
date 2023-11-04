@@ -7,6 +7,7 @@ use Cclilshy\PRipple\App\ProcessManager\ProcessManager;
 use Cclilshy\PRipple\Help\StrFunctions;
 use Cclilshy\PRipple\Protocol\CCL;
 use Cclilshy\PRipple\Worker\BufferWorker;
+use Cclilshy\PRipple\Worker\Build;
 use Cclilshy\PRipple\Worker\Worker;
 use Error;
 use Exception;
@@ -21,8 +22,6 @@ use Throwable;
  */
 class PRipple
 {
-    use StrFunctions;
-
     /**
      * 单例
      * @var PRipple $instance
@@ -77,17 +76,16 @@ class PRipple
         define('PP_ROOT_PATH', __DIR__);
         define('PP_RUNTIME_PATH', '/tmp');
         define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
-        define('PP_MAX_MEMORY', $this->strToBytes(ini_get('memory_limit')));
     }
 
     /**
-     * @param Build $event
-     * @return void
+     * 获取一个服务
+     * @param string $name
+     * @return Worker|null
      */
-    public static function publishAsync(Build $event): void
+    public static function worker(string $name): Worker|null
     {
-        PRipple::instance()->events[] = $event;
-        PRipple::instance()->eventNumber++;
+        return PRipple::instance()->services[$name] ?? null;
     }
 
     /**
@@ -100,16 +98,6 @@ class PRipple
             PRipple::$instance = new PRipple();
         }
         return PRipple::$instance;
-    }
-
-    /**
-     * 获取一个服务
-     * @param string $name
-     * @return Worker|null
-     */
-    public static function worker(string $name): Worker|null
-    {
-        return PRipple::instance()->services[$name] ?? null;
     }
 
     /**
@@ -278,6 +266,16 @@ class PRipple
                 }
             }
         }
+    }
+
+    /**
+     * @param Build $event
+     * @return void
+     */
+    public static function publishAsync(Build $event): void
+    {
+        PRipple::instance()->events[] = $event;
+        PRipple::instance()->eventNumber++;
     }
 
     /**

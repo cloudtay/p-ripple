@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\Http;
 
-use Cclilshy\PRipple\Build;
-use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\TaskStd;
+use Cclilshy\PRipple\Worker\Build;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
+use Throwable;
 
 
 /**
@@ -64,6 +65,7 @@ class Request extends TaskStd
             parse_str($this->body, $this->post);
         }
         parent::__construct();
+        $this->hash = $requestSingle->hash;
     }
 
     /**
@@ -84,6 +86,17 @@ class Request extends TaskStd
     {
         if ($uploadHandler = $this->asyncHandlers[$event->name]) {
             call_user_func_array($uploadHandler, [$event->data]);
+        }
+    }
+
+    /**
+     * @return void
+     * @throws Throwable
+     */
+    public function await(): void
+    {
+        foreach ($this->asyncHandlers as $action => $handler) {
+            $this->handleEvent($this->publishAwait($action, null));
         }
     }
 }

@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\App\ProcessManager;
 
-use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\ProtocolStd;
+use Cclilshy\PRipple\Worker\Build;
 use Cclilshy\PRipple\Worker\NetWorker;
+use Cclilshy\PRipple\Worker\NetWorker\Client;
 use Cclilshy\PRipple\Worker\Worker;
 
 class ProcessManager extends NetWorker

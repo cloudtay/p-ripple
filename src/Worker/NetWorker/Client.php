@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Service;
+namespace Cclilshy\PRipple\Worker\NetWorker;
 
 use AllowDynamicProperties;
 use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Tunnel\SocketAisle;
+use Cclilshy\PRipple\Worker\NetWorker\Tunnel\SocketAisle;
 use stdClass;
 
 /**

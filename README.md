@@ -27,35 +27,47 @@ $pRipple = PRipple::instance();
 
 $options = [SO_REUSEPORT => true];
 
+$tcp = TestTCP::new('tcp_worker_name')->bind('tcp://127.0.0.1:3001', $options);
+$ws = TestWS::new('ws_worker_name')->bind('tcp://127.0.0.1:3002', $options);
 $http = Http::new('http_worker_name')
-    ->bind('tcp://0.0.0.0:8001', $options)
-    ->bind('tcp://127.0.0.1:8002', $options);
+    ->bind('tcp://0.0.0.0:3008', $options)
+    ->bind('tcp://127.0.0.1:3009', $options);
 
-$http->defineRequestHandler(function (Request $request) {
+$http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
     if ($request->method === 'GET') {
-        $response = new Response(
+        yield new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
             $body = file_get_contents(__DIR__ . '/example.html')
         );
     } elseif ($request->upload) {
-        $response = new Response(
+        yield new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = 'Please do not close the page, uploading is in progress...'
+            $body = 'File transfer is in progress, please do not close the page...'
         );
+
+        $request->async(Request::EVENT_UPLOAD, function (array $info) use ($ws, $tcp) {
+            foreach ($ws->getClients() as $client) {
+                $client->send('file upload completed:' . json_encode($info) . PHP_EOL);
+            }
+
+            foreach ($tcp->getClients() as $client) {
+                $client->send('file upload completed:' . json_encode($info) . PHP_EOL);
+            }
+        });
+
+        $request->await();
     } else {
-        $response = new Response(
+        yield new Response(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = "You n submitted:" . json_encode($request->post)
+            $body = "you submitted:" . json_encode($request->post)
         );
     }
-    $request->client->send($response->__toString());
 });
 
-$pRipple->push($http)->launch();
-
+$pRipple->push($http, $ws, $tcp)->launch();
 
 ```
 
@@ -90,5 +102,21 @@ php main.php
 ```
 
 ### show
-
 > `http://127.0.0.1:3008`
+
+### Process
+
+```php
+use Cclilshy\PRipple\App\ProcessManager\Process;
+
+Process::fork(function(){
+    Process::fork(function(){
+        Process::fork(function(){
+            echo "some pid:" . posix_getpid() . PHP_EOL;
+        });
+    });
+});
+
+// anywhere
+ProcessManager::instance()->signal('some pid',SIGTERM);
+```
