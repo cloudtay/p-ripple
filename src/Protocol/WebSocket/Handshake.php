@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Cclilshy\PRipple\Protocol\WebSocket;
 
 use Cclilshy\PRipple\Service\Client;
-use function str_contains;
+
 
 /**
  *

@@ -55,7 +55,7 @@ class SocketUnix
         if ($_) {
             return $sock;
         } else {
-            throw new Exception("Unable to connect Unix socket, probably the server is not started");
+            throw new Exception("Unable to connect Unix socket, {$sockFile}");
         }
     }
 }

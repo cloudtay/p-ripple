@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple;
 
+use Cclilshy\PRipple\App\ProcessManager\ProcessManager;
 use Cclilshy\PRipple\Help\StrFunctions;
+use Cclilshy\PRipple\Protocol\CCL;
 use Cclilshy\PRipple\Worker\BufferWorker;
 use Cclilshy\PRipple\Worker\Worker;
 use Error;
@@ -12,19 +14,6 @@ use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
-use function array_shift;
-use function count;
-use function define;
-use function error_reporting;
-use function gc_collect_cycles;
-use function ini_get;
-use function ini_set;
-use function md5;
-use function shell_exec;
-use function socket_select;
-use function spl_object_hash;
-use function time;
-use function usleep;
 
 
 /**
@@ -118,7 +107,7 @@ class PRipple
      * @param string $name
      * @return Worker|null
      */
-    public static function service(string $name): Worker|null
+    public static function worker(string $name): Worker|null
     {
         return PRipple::instance()->services[$name] ?? null;
     }
@@ -189,7 +178,12 @@ class PRipple
      */
     #[NoReturn] public function launch(): void
     {
-        PRipple::instance()->push(BufferWorker::new('bufferHandler'));
+        $bufferWorker = BufferWorker::new(BufferWorker::class);
+        $processManager = ProcessManager::new(ProcessManager::class)
+            ->bind('unix:///tmp/pripple_process_manager.sock')
+            ->protocol(CCL::class);
+
+        $this->push($bufferWorker, $processManager);
         $this->loop();
     }
 

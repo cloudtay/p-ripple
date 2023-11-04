@@ -3,16 +3,6 @@ declare(strict_types=1);
 
 namespace Cclilshy\PRipple\FileSystem;
 
-use function fclose;
-use function file_exists;
-use function fopen;
-use function fread;
-use function fseek;
-use function ftell;
-use function ftruncate;
-use function fwrite;
-use function touch;
-use function unlink;
 
 /**
  *

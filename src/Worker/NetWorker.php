@@ -44,7 +44,7 @@ abstract class NetWorker extends Worker
      * 协议
      * @var ProtocolStd
      */
-    private ProtocolStd $protocol;
+    protected ProtocolStd $protocol;
     /**
      * @var string[]
      */
@@ -223,12 +223,17 @@ abstract class NetWorker extends Worker
             }
         }
 
-        if ($content = $client->getPlaintext()) {
+        if ($content = $this->splitMessage($client)) {
             $this->onMessage($content, $client);
         } else {
             $this->onClose($client);
             $this->removeClient($client);
         }
+    }
+
+    protected function splitMessage(Client $client): string|false
+    {
+        return $client->getPlaintext();
     }
 
     /**
@@ -338,7 +343,7 @@ abstract class NetWorker extends Worker
                 $addressFull = str_replace(['unix://', 'tcp://'], '', $addressFull);
                 $addressInfo = explode(':', $addressFull);
                 $address = $addressInfo[0];
-                $port = (int)($addressInfo[1] ?? 0);
+                $port = intval(($addressInfo[1] ?? 0));
                 switch ($type) {
                     case SocketInet::class:
                         $this->socketType = SocketInet::class;

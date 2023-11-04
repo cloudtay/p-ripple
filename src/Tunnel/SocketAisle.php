@@ -52,9 +52,9 @@ class SocketAisle implements TunnelStd
     // 自定义的名称
     protected int $cachePoint = 0;
     // 自定义身份标识
-    protected string $name;
+    protected string|int $name;
     // 上次活跃时间
-    protected string $identity;
+    protected string|int $identity;
 
     /**
      * @param mixed $socket
@@ -134,38 +134,38 @@ class SocketAisle implements TunnelStd
 
     /**
      * 获取客户端名称
-     * @return string
+     * @return string|int
      */
-    public function getName(): string
+    public function getName(): string|int
     {
         return $this->name;
     }
 
     /**
      * 设置客户端名称
-     * @param string $name
+     * @param string|int $name
      * @return void
      */
-    public function setName(string $name): void
+    public function setName(string|int $name): void
     {
         $this->name = $name;
     }
 
     /**
      * 获取客户端身份标识
-     * @return string
+     * @return string|int
      */
-    public function getIdentity(): string
+    public function getIdentity(): string|int
     {
         return $this->identity ?? '';
     }
 
     /**
      * 设置客户端身份标识
-     * @param string $identity
+     * @param string|int $identity
      * @return void
      */
-    public function setIdentity(string $identity): void
+    public function setIdentity(string|int $identity): void
     {
         $this->identity = $identity;
     }

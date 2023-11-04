@@ -5,7 +5,6 @@ namespace Cclilshy\PRipple\Protocol;
 
 use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Std\TunnelStd;
 use stdClass;
 
 class RESPProtocol implements ProtocolStd
@@ -15,7 +14,7 @@ class RESPProtocol implements ProtocolStd
         // TODO: Implement build() method.
     }
 
-    public function send(TunnelStd|Client $tunnel, string $context): bool|int
+    public function send(Client $tunnel, string $context): bool|int
     {
         // TODO: Implement send() method.
     }
@@ -25,12 +24,12 @@ class RESPProtocol implements ProtocolStd
         // TODO: Implement verify() method.
     }
 
-    public function cut(TunnelStd|Client $tunnel): string|false
+    public function cut(Client $tunnel): string|false
     {
         // TODO: Implement cut() method.
     }
 
-    public function corrective(TunnelStd|Client $tunnel): string|false
+    public function corrective(Client $tunnel): string|false
     {
         // TODO: Implement corrective() method.
     }

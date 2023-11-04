@@ -5,17 +5,8 @@ namespace Cclilshy\PRipple\App\Http;
 
 use Cclilshy\PRipple\Build;
 use Cclilshy\PRipple\PRipple;
-use function current;
-use function fclose;
-use function fopen;
-use function fwrite;
-use function md5;
-use function microtime;
-use function preg_match;
-use function str_starts_with;
-use function strpos;
-use function substr;
 use const FS;
+
 
 /**
  *

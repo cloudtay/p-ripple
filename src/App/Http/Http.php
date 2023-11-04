@@ -9,7 +9,7 @@ use Cclilshy\PRipple\Service\Client;
 use Cclilshy\PRipple\Worker\NetWorker;
 use Fiber;
 use Throwable;
-use function call_user_func;
+
 
 /**
  *

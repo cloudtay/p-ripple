@@ -24,6 +24,11 @@ class Build
         $this->publisher = $publisher;
     }
 
+    public function __toString(): string
+    {
+        return serialize($this);
+    }
+
     /**
      * @param string $name
      * @param mixed  $data
@@ -34,4 +39,5 @@ class Build
     {
         return new Build($name, $data, $publisher);
     }
+
 }
