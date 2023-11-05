@@ -35,13 +35,13 @@ class Build
         return new Build($name, $data, $publisher);
     }
 
-    public function serialize(): string
-    {
-        return serialize($this);
-    }
-
     public function __toString(): string
     {
         return $this->serialize();
+    }
+
+    public function serialize(): string
+    {
+        return serialize($this);
     }
 }

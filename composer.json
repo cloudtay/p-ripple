@@ -19,7 +19,8 @@
     "php": ">=8.2",
     "ext-sockets": "*",
     "ext-pcntl": "*",
-    "ext-posix": "*"
+    "ext-posix": "*",
+    "ext-pdo": "*"
   },
   "version": "0.0.6",
   "license": "MIT"

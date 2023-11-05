@@ -15,7 +15,7 @@ use Socket;
 /**
  *
  */
-abstract class NetWorker extends Worker
+class NetWorker extends Worker
 {
     /**
      * 客户端套接字列表
@@ -264,13 +264,19 @@ abstract class NetWorker extends Worker
      * @param Client $client
      * @return void
      */
-    abstract public function onConnect(Client $client): void;
+    public function onConnect(Client $client): void
+    {
+
+    }
 
     /**
      * @param Client $client
      * @return void
      */
-    abstract public function onHandshake(Client $client): void;
+    public function onHandshake(Client $client): void
+    {
+
+    }
 
     /**
      * 处理异常连接
@@ -298,7 +304,10 @@ abstract class NetWorker extends Worker
     /**
      * @return void
      */
-    abstract public function destroy(): void;
+    public function destroy(): void
+    {
+
+    }
 
     public function splitMessage(Client $client): string|false
     {
@@ -310,18 +319,27 @@ abstract class NetWorker extends Worker
      * @param Client $client
      * @return void
      */
-    abstract public function onMessage(string $context, Client $client): void;
+    public function onMessage(string $context, Client $client): void
+    {
+
+    }
 
     /**
      * @param Client $client
      * @return void
      */
-    abstract public function onClose(Client $client): void;
+    public function onClose(Client $client): void
+    {
+
+    }
 
     /**
      * @return void
      */
-    abstract public function heartbeat(): void;
+    public function heartbeat(): void
+    {
+
+    }
 
     /**
      * @return void

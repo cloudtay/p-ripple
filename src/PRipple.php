@@ -58,29 +58,6 @@ class PRipple
     private bool $isRunning = false;
 
     /**
-     * @return PRipple
-     */
-    public function initialize(): PRipple
-    {
-        error_reporting(E_ALL & ~E_WARNING);
-        ini_set('max_execution_time', 0);
-        define('UL', '_');
-        define('FS', DIRECTORY_SEPARATOR);
-        define('BS', '\\');
-        define('PP_START_TIMESTAMP', time());
-        define('PP_ROOT_PATH', __DIR__);
-        define('PP_RUNTIME_PATH', '/tmp');
-        define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
-        $bufferWorker = BufferWorker::new(BufferWorker::class);
-        $processManager = ProcessManager::new(ProcessManager::class)
-            ->bind('unix:///tmp/pripple_process_manager.sock')
-            ->protocol(CCL::class);
-        $timer = Timer::new(Timer::class);
-        $this->push($bufferWorker, $processManager, $timer);
-        return $this;
-    }
-
-    /**
      * 获取一个服务
      * @param string $name
      * @return Worker|null
@@ -141,6 +118,29 @@ class PRipple
     }
 
     /**
+     * @return PRipple
+     */
+    public function initialize(): PRipple
+    {
+        error_reporting(E_ALL & ~E_WARNING);
+        ini_set('max_execution_time', 0);
+        define('UL', '_');
+        define('FS', DIRECTORY_SEPARATOR);
+        define('BS', '\\');
+        define('PP_START_TIMESTAMP', time());
+        define('PP_ROOT_PATH', __DIR__);
+        define('PP_RUNTIME_PATH', '/tmp');
+        define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
+        $bufferWorker = BufferWorker::new(BufferWorker::class);
+        $processManager = ProcessManager::new(ProcessManager::class)
+            ->bind('unix:///tmp/pripple_process_manager.sock')
+            ->protocol(CCL::class);
+        $timer = Timer::new(Timer::class);
+        $this->push($bufferWorker, $processManager, $timer);
+        return $this;
+    }
+
+    /**
      * 插入服务
      * @param Worker ...$workers
      * @return PRipple
@@ -189,12 +189,12 @@ class PRipple
                 case 'socket.write':
                     $socketHash = spl_object_hash($event->data);
 //                    $event = Build::new($event->name, $event->data, PRipple::class);
-                if ($workerName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
+                    if ($workerName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
 //                        if ($response = $this->fibers[$workerName]?->resume($event)) {
 //                            PRipple::publishAsync($response);
 //                            break;
 //                        }
-                    $this->services[$workerName]->handleSocket($event->data);
+                        $this->services[$workerName]->handleSocket($event->data);
                     }
                     break;
                 case 'socket.subscribe':
@@ -283,6 +283,14 @@ class PRipple
     }
 
     /**
+     * @return void
+     */
+    private function adjustRate(): void
+    {
+        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
+    }
+
+    /**
      * @param Build $event
      * @return void
      */
@@ -290,14 +298,6 @@ class PRipple
     {
         PRipple::instance()->events[] = $event;
         PRipple::instance()->eventNumber++;
-    }
-
-    /**
-     * @return void
-     */
-    private function adjustRate(): void
-    {
-        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
     }
 
     /**

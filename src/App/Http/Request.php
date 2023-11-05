@@ -31,13 +31,13 @@ class Request extends TaskStd
     public array $query = array();
     public Client $client;
     public array $serverArray = array();
+    public mixed $cookieArray = array();
 
     /**
      * 异步事件订阅列表
      * @var Closure[] $asyncHandlers
      */
     private array $asyncHandlers = array();
-    private mixed $cookieArray = array();
 
     /**
      * @param RequestSingle $requestSingle
@@ -114,6 +114,10 @@ class Request extends TaskStd
         $this->serverArray['HTTP_X_FORWARDED_SERVER'] = $this->headerArray['X-Forwarded-Server'] ?? '';
         $this->serverArray['HTTP_X_FORWARDED_FOR'] = $this->headerArray['X-Forwarded-For'] ?? '';
         $this->serverArray['HTTP_X_FORWARDED_PROTO'] = $this->headerArray['X-Forwarded-Proto'] ?? '';
+        $this->serverArray = array_filter($this->serverArray, function ($item) {
+            return !empty($item);
+        });
+
         $this->hash = $requestSingle->hash;
         parent::__construct();
     }
@@ -130,18 +134,6 @@ class Request extends TaskStd
     }
 
     /**
-     * 处理异步事件
-     * @param Build $event
-     * @return void
-     */
-    protected function handleEvent(Build $event): void
-    {
-        if ($uploadHandler = $this->asyncHandlers[$event->name]) {
-            call_user_func_array($uploadHandler, [$event->data]);
-        }
-    }
-
-    /**
      * 声明等待异步事件
      * @return void
      * @throws Throwable
@@ -150,6 +142,18 @@ class Request extends TaskStd
     {
         foreach ($this->asyncHandlers as $action => $handler) {
             $this->handleEvent($this->publishAwait($action, null));
+        }
+    }
+
+    /**
+     * 处理异步事件
+     * @param Build $event
+     * @return void
+     */
+    protected function handleEvent(Build $event): void
+    {
+        if ($uploadHandler = $this->asyncHandlers[$event->name]) {
+            call_user_func_array($uploadHandler, [$event->data]);
         }
     }
 }

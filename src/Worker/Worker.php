@@ -132,6 +132,16 @@ abstract class Worker
     }
 
     /**
+     * 快捷创建
+     * @param string $name
+     * @return static
+     */
+    public static function new(string $name): static
+    {
+        return new static($name);
+    }
+
+    /**
      * 订阅一个事件
      * @param string $event
      * @return void
@@ -158,16 +168,6 @@ abstract class Worker
         } catch (Throwable $exception) {
             PRipple::printExpect($exception);
         }
-    }
-
-    /**
-     * 快捷创建
-     * @param string $name
-     * @return static
-     */
-    public static function new(string $name): static
-    {
-        return new static($name);
     }
 
     /**

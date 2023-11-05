@@ -93,6 +93,16 @@ class Http extends NetWorker
     }
 
     /**
+     * @param string $hash
+     * @return void
+     */
+    private function recover(string $hash): void
+    {
+        unset($this->workFibers[$hash]);
+        unset($this->requests[$hash]);
+    }
+
+    /**
      * @param Client $client
      * @return void
      */
@@ -143,16 +153,6 @@ class Http extends NetWorker
 //        } catch (Throwable $exception) {
 //            PRipple::printExpect($exception);
 //        }
-    }
-
-    /**
-     * @param string $hash
-     * @return void
-     */
-    private function recover(string $hash): void
-    {
-        unset($this->workFibers[$hash]);
-        unset($this->requests[$hash]);
     }
 
     /**
