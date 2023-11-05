@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker;
+namespace PRipple\Worker;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Protocol\TCPProtocol;
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
-use Cclilshy\PRipple\Worker\NetWorker\SocketType\SocketInet;
-use Cclilshy\PRipple\Worker\NetWorker\SocketType\SocketUnix;
 use Exception;
+use PRipple\PRipple;
+use PRipple\Protocol\TCPProtocol;
+use PRipple\Std\ProtocolStd;
+use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\SocketType\SocketInet;
+use PRipple\Worker\NetWorker\SocketType\SocketUnix;
 use Socket;
 
 /**

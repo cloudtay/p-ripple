@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\FileSystem\Std;
+namespace PRipple\FileSystem\Std;
 
 
 /**

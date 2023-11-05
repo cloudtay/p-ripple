@@ -1,13 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Protocol;
+namespace PRipple\Protocol;
 
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
 use Exception;
+use PRipple\Std\ProtocolStd;
+use PRipple\Worker\NetWorker\Client;
 use stdClass;
 
+/**
+ * 一个小而剪的报文切割器
+ */
 class CCL implements ProtocolStd
 {
     /**
@@ -38,7 +41,7 @@ class CCL implements ProtocolStd
      * 报文验证
      *
      * @param string $context
-     * @param \stdClass|null $Standard 附加参数
+     * @param stdClass|null $Standard 附加参数
      * @return string|false 验证结果
      */
     public function verify(string $context, stdClass|null $Standard = null): string|false

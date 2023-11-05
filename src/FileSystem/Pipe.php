@@ -2,13 +2,13 @@
 declare(strict_types=1);
 
 
-namespace Cclilshy\PRipple\FileSystem;
+namespace PRipple\FileSystem;
 
-use Cclilshy\PRipple\FileSystem\Std\FileStd;
+use PRipple\FileSystem\Std\FileStd;
 
 
 /**
- *
+ * 管道类
  */
 class Pipe implements FileStd
 {

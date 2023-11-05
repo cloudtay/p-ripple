@@ -1,13 +1,13 @@
 <?php
 include __DIR__ . '/vendor/autoload.php';
 
-use Cclilshy\PRipple\App\Http\Http;
-use Cclilshy\PRipple\App\Http\Request;
-use Cclilshy\PRipple\App\Http\Response;
-use Cclilshy\PRipple\App\ProcessManager\Process;
-use Cclilshy\PRipple\App\ProcessManager\ProcessManager;
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Protocol\CCL;
+use PRipple\App\Http\Http;
+use PRipple\App\Http\Request;
+use PRipple\App\Http\Response;
+use PRipple\App\ProcessManager\Process;
+use PRipple\App\ProcessManager\ProcessManager;
+use PRipple\PRipple;
+use PRipple\Protocol\CCL;
 
 $pripple = PRipple::instance();
 

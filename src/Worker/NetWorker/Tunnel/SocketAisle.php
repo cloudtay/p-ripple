@@ -1,18 +1,18 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker\NetWorker\Tunnel;
+namespace PRipple\Worker\NetWorker\Tunnel;
 
-use Cclilshy\PRipple\FileSystem\File;
-use Cclilshy\PRipple\FileSystem\FileException;
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Std\TunnelStd;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\NetWorker;
 use Exception;
+use PRipple\FileSystem\File;
+use PRipple\FileSystem\FileException;
+use PRipple\PRipple;
+use PRipple\Std\TunnelStd;
+use PRipple\Worker\Build;
+use PRipple\Worker\NetWorker;
 
 /**
- *
+ * 套接字类型通道
  */
 class SocketAisle implements TunnelStd
 {

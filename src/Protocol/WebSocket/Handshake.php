@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Protocol\WebSocket;
+namespace PRipple\Protocol\WebSocket;
 
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\Client;
 
 
 /**
- *
+ * Websocket握手处理器
  */
 class Handshake
 {

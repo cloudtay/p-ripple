@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker\NetWorker\SocketType;
+namespace PRipple\Worker\NetWorker\SocketType;
 
 use Exception;
 use Socket;
 
 /**
- *
+ * UNIX套接字
  */
 class SocketUnix
 {

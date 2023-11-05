@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
-use Cclilshy\PRipple\Std\TaskStd;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use Closure;
+use PRipple\Std\TaskStd;
+use PRipple\Worker\Build;
+use PRipple\Worker\NetWorker\Client;
 use Throwable;
 
-
 /**
- *
+ * 请求实体
  */
 class Request extends TaskStd
 {
@@ -32,9 +32,10 @@ class Request extends TaskStd
     public Client $client;
 
     /**
-     * @var callable $onUpload
+     * 异步事件订阅列表
+     * @var Closure[] $asyncHandlers
      */
-    private $asyncHandlers = array();
+    private array $asyncHandlers = array();
 
     /**
      * @param RequestSingle $requestSingle
@@ -69,16 +70,18 @@ class Request extends TaskStd
     }
 
     /**
+     * 订阅异步事件
      * @param string $action
-     * @param callable $callable
+     * @param Closure $callable
      * @return void
      */
-    public function async(string $action, callable $callable): void
+    public function async(string $action, Closure $callable): void
     {
         $this->asyncHandlers[$action] = $callable;
     }
 
     /**
+     * 处理异步事件
      * @param Build $event
      * @return void
      */
@@ -90,6 +93,7 @@ class Request extends TaskStd
     }
 
     /**
+     * 声明等待异步事件
      * @return void
      * @throws Throwable
      */

@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Worker\Build;
+use PRipple\PRipple;
+use PRipple\Worker\Build;
 use const FS;
 
 
 /**
- *
+ * Http上传解析器
  */
 class RequestUpload
 {
@@ -38,6 +38,7 @@ class RequestUpload
     }
 
     /**
+     * 上下文推入
      * @param string $context
      * @return void
      */
@@ -61,6 +62,7 @@ class RequestUpload
     }
 
     /**
+     * 解析文件信息
      * @return bool
      * @throws RequestSingleException
      */
@@ -99,6 +101,7 @@ class RequestUpload
     }
 
     /**
+     * 创建新文件
      * @return string
      */
     private function createNewFile(): string
@@ -109,6 +112,7 @@ class RequestUpload
     }
 
     /**
+     * 处理传输中
      * @return bool
      */
     private function processTransmitting(): bool

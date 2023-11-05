@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\Client;
 
 /**
- *
+ * Http流工厂
  */
 class RequestFactory
 {
@@ -15,29 +15,30 @@ class RequestFactory
     public const INCOMPLETE = 1;
 
     /**
+     * Http服务实体
      * @var Http $httpService
      */
     private Http $httpService;
 
     /**
+     * 半成品
      * @var RequestSingle[] $singles
      */
     private array $singles = [];
 
     /**
+     * 传输中的Request
      * @var RequestSingle[] $transfers
      */
     private array $transfers = [];
 
-    /**
-     * @param Http $httpService
-     */
     public function __construct(Http $httpService)
     {
         $this->httpService = $httpService;
     }
 
     /**
+     * 解析请求
      * @param string $context
      * @param Client $client
      * @return Request|null

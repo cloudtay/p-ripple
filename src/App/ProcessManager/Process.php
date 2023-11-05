@@ -1,15 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\ProcessManager;
+namespace PRipple\App\ProcessManager;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Protocol\CCL;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
-use Cclilshy\PRipple\Worker\NetWorker\SocketType\SocketUnix;
+use Closure;
 use Exception;
 use JetBrains\PhpStorm\NoReturn;
+use PRipple\PRipple;
+use PRipple\Protocol\CCL;
+use PRipple\Worker\Build;
+use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\SocketType\SocketUnix;
 
 class Process
 {
@@ -22,10 +23,10 @@ class Process
 
     /**
      * 创建子进程
-     * @param callable $callable
+     * @param Closure $callable
      * @return false|int
      */
-    public static function fork(callable $callable): false|int
+    public static function fork(Closure $callable): false|int
     {
         if (Process::$isMaster) {
             Process::$hasObserver = false;
@@ -67,6 +68,9 @@ class Process
         } else {
             Process::$childrenIds[] = $pid;
             Process::$guardCount++;
+            if (Process::$isMaster) {
+                ProcessManager::instance()->processObserverHashMap[$pid] = posix_getpid();
+            }
             return $pid;
         }
     }
@@ -105,6 +109,10 @@ class Process
         }
     }
 
+    /**
+     * 声明守护计数
+     * @return void
+     */
     public static function guarded(): void
     {
         if (Process::$isMaster) {
@@ -119,12 +127,22 @@ class Process
         Process::$guardCount = 0;
     }
 
-    private static function signal(int $processId, int $signNo): void
+    /**
+     * 发送信号
+     * @param int $processId
+     * @param int $signNo
+     * @return void
+     */
+    public static function signal(int $processId, int $signNo): void
     {
         posix_kill($processId, $signNo);
     }
 
-    #[NoReturn] private static function exit(): void
+    /**
+     * 退出进程
+     * @return void
+     */
+    #[NoReturn] public static function exit(): void
     {
         exit;
     }

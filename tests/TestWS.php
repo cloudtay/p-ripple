@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Tests;
+namespace PRipple\Tests;
 
-use Cclilshy\PRipple\Worker\NetWorker;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker;
+use PRipple\Worker\NetWorker\Client;
 
 /**
  *

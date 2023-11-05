@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\Client;
 
 
 /**
@@ -29,6 +29,7 @@ class RequestSingle
 
 
     /**
+     * RequestSingle constructor.
      * @param Client $client
      */
     public function __construct(Client $client)
@@ -145,6 +146,7 @@ class RequestSingle
     }
 
     /**
+     * 打包请求
      * @return Request
      */
     public function build(): Request

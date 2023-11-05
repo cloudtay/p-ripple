@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\ProcessManager;
+namespace PRipple\App\ProcessManager;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\NetWorker;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
-use Cclilshy\PRipple\Worker\Worker;
+use PRipple\PRipple;
+use PRipple\Std\ProtocolStd;
+use PRipple\Worker\Build;
+use PRipple\Worker\NetWorker;
+use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\Worker;
 
 class ProcessManager extends NetWorker
 {
@@ -19,26 +19,36 @@ class ProcessManager extends NetWorker
      * 映射:进程=>守护ID
      * @var array
      */
-    protected array $processObserverHashMap = [];
+    public array $processObserverHashMap = [];
 
     /**
      * 映射 守护ID=>守护映射
      * @var Client[]
      */
-    protected array $observerHashmap = [];
+    public array $observerHashmap = [];
 
     /**
      * @var array 守护计数
      */
-    protected array $observerCountMap = [];
+    public array $observerCountMap = [];
 
-    protected ProtocolStd $protocol;
+    /**
+     * CCL协议
+     * @var ProtocolStd
+     */
+    public ProtocolStd $protocol;
 
     public static function instance(): ProcessManager|Worker
     {
         return PRipple::worker(ProcessManager::class);
     }
 
+    /**
+     * 发送信号
+     * @param int $processId
+     * @param int $signalNo
+     * @return void
+     */
     public function signal(int $processId, int $signalNo): void
     {
         if ($observerId = $this->processObserverHashMap[$processId]) {
@@ -46,9 +56,16 @@ class ProcessManager extends NetWorker
         }
     }
 
-    protected function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
+    /**
+     * 发送指令
+     * @param int $observerProcessId
+     * @param string $command
+     * @param mixed ...$arguments
+     * @return void
+     */
+    public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
     {
-        if ($observerProcessId === Process::$observerProcessId) {
+        if ($observerProcessId === posix_getpid()) {
             call_user_func([Process::class, $command], ...$arguments);
         } elseif ($client = $this->observerHashmap[$observerProcessId]) {
             $this->protocol->send($client, Build::new('process.observer.command', [
@@ -58,22 +75,30 @@ class ProcessManager extends NetWorker
         }
     }
 
-    protected function initialize(): void
+    /**
+     * 初始化
+     * @return void
+     */
+    public function initialize(): void
     {
         unlink(ProcessManager::UNIX_PATH);
         unlink(ProcessManager::LOCK_PATH);
         parent::initialize();
     }
 
-    protected function onConnect(Client $client): void
+    /**
+     * @param Client $client
+     * @return void
+     */
+    public function onConnect(Client $client): void
     {
     }
 
-    protected function destroy(): void
+    public function destroy(): void
     {
     }
 
-    protected function onMessage(string $context, Client $client): void
+    public function onMessage(string $context, Client $client): void
     {
         /**
          * @var Build $build
@@ -102,7 +127,7 @@ class ProcessManager extends NetWorker
         }
     }
 
-    protected function guardCounter(int $observerProcessId, int $num): void
+    public function guardCounter(int $observerProcessId, int $num): void
     {
         if (!isset($this->observerCountMap[$observerProcessId])) {
             $this->observerCountMap[$observerProcessId] = 0;
@@ -113,12 +138,12 @@ class ProcessManager extends NetWorker
         }
     }
 
-    protected function splitMessage(Client $client): string|false
+    public function splitMessage(Client $client): string|false
     {
         return $this->protocol->cut($client);
     }
 
-    protected function onClose(Client $client): void
+    public function onClose(Client $client): void
     {
         switch ($client->getName()) {
             case 'process.fork':
@@ -134,11 +159,11 @@ class ProcessManager extends NetWorker
         }
     }
 
-    protected function heartbeat(): void
+    public function heartbeat(): void
     {
     }
 
-    protected function onHandshake(Client $client): void
+    public function onHandshake(Client $client): void
     {
     }
 }

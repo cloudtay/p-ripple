@@ -1,24 +1,23 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple;
+namespace PRipple;
 
-use Cclilshy\PRipple\App\ProcessManager\ProcessManager;
-use Cclilshy\PRipple\Help\StrFunctions;
-use Cclilshy\PRipple\Protocol\CCL;
-use Cclilshy\PRipple\Worker\BufferWorker;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\Worker;
 use Error;
 use Exception;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
+use PRipple\App\ProcessManager\ProcessManager;
+use PRipple\App\Timer\Timer;
+use PRipple\Protocol\CCL;
+use PRipple\Worker\BufferWorker;
+use PRipple\Worker\Build;
+use PRipple\Worker\Worker;
 use Throwable;
 
-
 /**
- *
+ * loop
  */
 class PRipple
 {
@@ -56,16 +55,12 @@ class PRipple
     private int $rate = 1000000;
     private int $socketNumber = 0;
     private int $eventNumber = 0;
-
-    public function __construct()
-    {
-        $this->initialize();
-    }
+    private bool $isRunning = false;
 
     /**
-     * @return void
+     * @return PRipple
      */
-    private function initialize(): void
+    public function initialize(): PRipple
     {
         error_reporting(E_ALL & ~E_WARNING);
         ini_set('max_execution_time', 0);
@@ -76,6 +71,13 @@ class PRipple
         define('PP_ROOT_PATH', __DIR__);
         define('PP_RUNTIME_PATH', '/tmp');
         define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
+        $bufferWorker = BufferWorker::new(BufferWorker::class);
+        $processManager = ProcessManager::new(ProcessManager::class)
+            ->bind('unix:///tmp/pripple_process_manager.sock')
+            ->protocol(CCL::class);
+        $timer = Timer::new(Timer::class);
+        $this->push($bufferWorker, $processManager, $timer);
+        return $this;
     }
 
     /**
@@ -133,7 +135,6 @@ class PRipple
             file: {$exception->getFile()}
             line: {$exception->getLine()}
             message: {$exception->getMessage()}
-            
             EOF;
     }
 
@@ -166,12 +167,7 @@ class PRipple
      */
     #[NoReturn] public function launch(): void
     {
-        $bufferWorker = BufferWorker::new(BufferWorker::class);
-        $processManager = ProcessManager::new(ProcessManager::class)
-            ->bind('unix:///tmp/pripple_process_manager.sock')
-            ->protocol(CCL::class);
-
-        $this->push($bufferWorker, $processManager);
+        $this->isRunning = true;
         $this->loop();
     }
 
@@ -227,6 +223,11 @@ class PRipple
                     break;
                 case 'kernel.rate.set':
                     $this->rate = $event->data;
+                    return;
+                case 'temp.fiber':
+                    if ($response = $event->data->start()) {
+                        PRipple::publishAsync($response);
+                    }
                     break;
                 default:
                     $this->distribute($event);

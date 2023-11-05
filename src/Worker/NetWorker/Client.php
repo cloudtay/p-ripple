@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker\NetWorker;
+namespace PRipple\Worker\NetWorker;
 
 use AllowDynamicProperties;
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Worker\NetWorker\Tunnel\SocketAisle;
+use PRipple\Std\ProtocolStd;
+use PRipple\Worker\NetWorker\Tunnel\SocketAisle;
 use stdClass;
 
 /**
- *
+ * 客户端
  */
 #[AllowDynamicProperties] class Client extends SocketAisle
 {

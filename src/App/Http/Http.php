@@ -1,48 +1,52 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Worker\Build;
-use Cclilshy\PRipple\Worker\NetWorker;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use Closure;
 use Fiber;
 use Generator;
+use PRipple\PRipple;
+use PRipple\Worker\Build;
+use PRipple\Worker\NetWorker;
+use PRipple\Worker\NetWorker\Client;
 use Throwable;
 
-
 /**
- *
+ * Http服务类
  */
 class Http extends NetWorker
 {
     /**
+     * Http流工厂
      * @var RequestFactory $requestFactory
      */
     private RequestFactory $requestFactory;
 
     /**
-     * @var Fiber[] $fibers
+     * 工作Fiber
+     * @var Fiber[] $workFibers
      */
-    private array $fibers = [];
+    private array $workFibers = [];
 
     /**
-     * @var callable $requestHandler
+     * 请求处理器
+     * @var Closure $requestHandler
      */
-    private mixed $requestHandler;
+    private Closure $requestHandler;
 
     /**
-     * @var Request[]
+     * 请求队列
+     * @var Request[] $requests
      */
     private array $requests = [];
 
     /**
      * 定义请求处理
-     * @param callable $requestHandler
+     * @param Closure $requestHandler
      * @return void
      */
-    public function defineRequestHandler(callable $requestHandler): void
+    public function defineRequestHandler(Closure $requestHandler): void
     {
         $this->requestHandler = $requestHandler;
     }
@@ -64,11 +68,11 @@ class Http extends NetWorker
     protected function heartbeat(): void
     {
 //        while ($request = array_shift($this->requests)) {
-//            $this->fibers[$request->hash] = new Fiber(function () use ($request) {
+//            $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
 //                call_user_func($this->requestHandler, $request);
 //            });
 //            try {
-//                if (!$response = $this->fibers[$request->hash]->start()) {
+//                if (!$response = $this->workFibers[$request->hash]->start()) {
 //                    $this->recover($request->hash);
 //                } else {
 //                    $this->publishAsync($response);
@@ -111,7 +115,7 @@ class Http extends NetWorker
     public function onRequest(Request $request): void
     {
         $this->requests[$request->hash] = $request;
-        $this->fibers[$request->hash] = new Fiber(function () use ($request) {
+        $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
             /**
              * @var Generator $requesting
              */
@@ -121,7 +125,7 @@ class Http extends NetWorker
             }
         });
         try {
-            if (!$response = $this->fibers[$request->hash]->start()) {
+            if (!$response = $this->workFibers[$request->hash]->start()) {
                 $this->recover($request->hash);
             } else {
                 $this->publishAsync($response);
@@ -137,7 +141,7 @@ class Http extends NetWorker
      */
     private function recover(string $hash): void
     {
-        unset($this->fibers[$hash]);
+        unset($this->workFibers[$hash]);
         unset($this->requests[$hash]);
     }
 
@@ -167,9 +171,9 @@ class Http extends NetWorker
     protected function handleEvent(Build $event): void
     {
         $hash = $event->publisher;
-        if (isset($this->fibers[$hash])) {
+        if (isset($this->workFibers[$hash])) {
             try {
-                if (!$response = $this->fibers[$hash]->resume($event)) {
+                if (!$response = $this->workFibers[$hash]->resume($event)) {
                     $this->recover($hash);
                 } else {
                     $this->publishAsync($response);

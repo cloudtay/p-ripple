@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\FileSystem;
+namespace PRipple\FileSystem;
 
 
 /**
- *
+ * Pipeline
  */
 class Fifo
 {

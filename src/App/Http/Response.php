@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\App\Http;
+namespace PRipple\App\Http;
 
 
 /**
@@ -14,11 +14,11 @@ class Response
     public string $body;
 
     /**
-     * @param $statusCode
-     * @param $headers
-     * @param $body
+     * @param int $statusCode
+     * @param array $headers
+     * @param string $body
      */
-    public function __construct($statusCode, $headers, $body)
+    public function __construct(int $statusCode, array $headers, string $body)
     {
         $this->statusCode = $statusCode;
         $this->headers = $headers;
@@ -38,5 +38,16 @@ class Response
         $context .= "\r\n";
         $context .= $this->body;
         return $context;
+    }
+
+    /**
+     * @param int $statusCode
+     * @param array $headers
+     * @param string $body
+     * @return Response
+     */
+    public static function new(int $statusCode, array $headers, string $body): Response
+    {
+        return new self($statusCode, $headers, $body);
     }
 }

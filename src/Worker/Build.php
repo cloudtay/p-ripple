@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker;
+namespace PRipple\Worker;
 
 /**
- *
+ * 事件构建器
  */
 class Build
 {
@@ -35,9 +35,13 @@ class Build
         return new Build($name, $data, $publisher);
     }
 
-    public function __toString(): string
+    public function serialize(): string
     {
         return serialize($this);
     }
 
+    public function __toString(): string
+    {
+        return $this->serialize();
+    }
 }

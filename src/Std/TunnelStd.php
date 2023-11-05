@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Std;
+namespace PRipple\Std;
 
 /**
- *
+ * 通道标准
  */
 interface TunnelStd
 {

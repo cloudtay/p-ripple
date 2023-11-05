@@ -1,14 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker;
+namespace PRipple\Worker;
 
-use Cclilshy\PRipple\Worker\NetWorker\Tunnel\SocketAisle;
+use PRipple\Worker\NetWorker\Tunnel\SocketAisle;
 use Socket;
 
-
 /**
- *
+ * 缓冲区工作器
  */
 class BufferWorker extends Worker
 {

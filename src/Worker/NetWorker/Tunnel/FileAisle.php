@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker\NetWorker\Tunnel;
+namespace PRipple\Worker\NetWorker\Tunnel;
 
-use Cclilshy\PRipple\FileSystem\File;
-use Cclilshy\PRipple\Std\TunnelStd;
+use PRipple\FileSystem\File;
+use PRipple\Std\TunnelStd;
 
 /**
- *
+ * 文件类型通道
  */
 class FileAisle implements TunnelStd
 {

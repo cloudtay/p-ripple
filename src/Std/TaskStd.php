@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Std;
+namespace PRipple\Std;
 
-use Cclilshy\PRipple\PRipple;
-use Cclilshy\PRipple\Worker\Build;
 use Fiber;
+use PRipple\PRipple;
+use PRipple\Worker\Build;
 use Throwable;
 
 /**
- *
+ * 任务标准
  */
 abstract class TaskStd
 {

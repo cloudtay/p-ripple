@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Protocol;
+namespace PRipple\Protocol;
 
-use Cclilshy\PRipple\Protocol\WebSocket\Handshake;
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Std\TunnelStd;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
 use Exception;
+use PRipple\Protocol\WebSocket\Handshake;
+use PRipple\Std\ProtocolStd;
+use PRipple\Std\TunnelStd;
+use PRipple\Worker\NetWorker\Client;
 use stdClass;
 
 /**
- *
+ * Websocket协议
  */
 class WebSocket implements ProtocolStd
 {

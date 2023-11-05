@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Worker;
+namespace PRipple\Worker;
 
-use Cclilshy\PRipple\PRipple;
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
+use PRipple\PRipple;
 use Socket;
 use Throwable;
 
@@ -112,12 +112,16 @@ abstract class Worker
 
     /**
      * 等待驱动
+     * @param Build|null $event
      * @return void
      */
-    protected function publishAwait(): void
+    protected function publishAwait(Build|null $event = null): void
     {
         try {
-            if ($response = Fiber::suspend(Build::new('suspend', null, $this->name))) {
+            if (!$event) {
+                $event = Build::new('suspend', null, $this->name);
+            }
+            if ($response = Fiber::suspend($event)) {
                 $this->builds[] = $response;
             }
         } catch (Throwable $exception) {

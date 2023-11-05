@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Protocol;
+namespace PRipple\Protocol;
 
-use Cclilshy\PRipple\Std\ProtocolStd;
-use Cclilshy\PRipple\Std\TunnelStd;
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Std\ProtocolStd;
+use PRipple\Std\TunnelStd;
+use PRipple\Worker\NetWorker\Client;
 use stdClass;
 
 /**
- *
+ * TCP协议
  */
 class TCPProtocol implements ProtocolStd
 {

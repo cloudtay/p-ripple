@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Cclilshy\PRipple\Std;
+namespace PRipple\Std;
 
-use Cclilshy\PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetWorker\Client;
 use stdClass;
 
 /**
- *
+ * 协议标准
  */
 interface ProtocolStd
 {
