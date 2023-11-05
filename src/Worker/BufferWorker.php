@@ -19,7 +19,7 @@ class BufferWorker extends Worker
     /**
      * @return void
      */
-    protected function initialize(): void
+    public function initialize(): void
     {
         $this->subscribe('socket.buffer');
         $this->subscribe('socket.unBuffer');
@@ -28,7 +28,7 @@ class BufferWorker extends Worker
     /**
      * @return void
      */
-    protected function heartbeat(): void
+    public function heartbeat(): void
     {
         foreach ($this->buffers as $buffer) {
             while ($buffer->write('') > 0) {
@@ -40,7 +40,7 @@ class BufferWorker extends Worker
      * @param Build $event
      * @return void
      */
-    protected function handleEvent(Build $event): void
+    public function handleEvent(Build $event): void
     {
         switch ($event->name) {
             case 'socket.buffer':
@@ -58,7 +58,7 @@ class BufferWorker extends Worker
      * @param Socket $socket
      * @return void
      */
-    protected function handleSocket(Socket $socket): void
+    public function handleSocket(Socket $socket): void
     {
         // TODO: Implement handleSocket() method.
     }
@@ -66,7 +66,7 @@ class BufferWorker extends Worker
     /**
      * @return void
      */
-    protected function destroy(): void
+    public function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
@@ -75,7 +75,7 @@ class BufferWorker extends Worker
      * @param Socket $socket
      * @return void
      */
-    protected function expectSocket(Socket $socket): void
+    public function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.
     }

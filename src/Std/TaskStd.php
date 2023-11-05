@@ -19,7 +19,6 @@ abstract class TaskStd
     public function __construct()
     {
         $this->hash = PRipple::instance()->uniqueHash();
-        $this->fiber = Fiber::getCurrent();
     }
 
     /**

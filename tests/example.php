@@ -33,7 +33,6 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
             $body = 'File transfer is in progress, please do not close the page...'
         );
-
         $request->async(Request::EVENT_UPLOAD, function (array $info) use ($ws, $tcp) {
             foreach ($ws->getClients() as $client) {
                 $client->send('file upload completed:' . json_encode($info) . PHP_EOL);

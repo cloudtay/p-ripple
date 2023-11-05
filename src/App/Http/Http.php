@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace PRipple\App\Http;
 
 use Closure;
+use Exception;
 use Fiber;
-use Generator;
 use PRipple\PRipple;
 use PRipple\Worker\Build;
 use PRipple\Worker\NetWorker;
@@ -55,7 +55,7 @@ class Http extends NetWorker
      * 创建请求工厂
      * @return void
      */
-    protected function initialize(): void
+    public function initialize(): void
     {
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->requestFactory = new RequestFactory($this);
@@ -65,29 +65,38 @@ class Http extends NetWorker
     /**
      * @return void
      */
-    protected function heartbeat(): void
+    public function heartbeat(): void
     {
-//        while ($request = array_shift($this->requests)) {
-//            $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
-//                call_user_func($this->requestHandler, $request);
-//            });
-//            try {
-//                if (!$response = $this->workFibers[$request->hash]->start()) {
-//                    $this->recover($request->hash);
-//                } else {
-//                    $this->publishAsync($response);
-//                }
-//            } catch (Throwable $exception) {
-//                PRipple::self::printExpect($exception);
-//            }
-//        }
+        while ($request = array_shift($this->requests)) {
+            $this->workFibers[$request->hash] = new Fiber(function () use ($request): void {
+                $requesting = call_user_func($this->requestHandler, $request);
+                foreach ($requesting as $response) {
+                    try {
+                        $request->client->send($response->__toString());
+                    } catch (Exception $exception) {
+//                        PRipple::printExpect($exception);
+                        return;
+                    }
+                }
+            });
+            try {
+                if (!$response = $this->workFibers[$request->hash]->start()) {
+                    $this->recover($request->hash);
+                } else {
+                    $this->publishAsync($response);
+                }
+            } catch (Throwable $exception) {
+                PRipple::printExpect($exception);
+            }
+        }
+        $this->todo = false;
     }
 
     /**
      * @param Client $client
      * @return void
      */
-    protected function onConnect(Client $client): void
+    public function onConnect(Client $client): void
     {
         $client->setNoBlock();
     }
@@ -97,7 +106,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onMessage(string $context, Client $client): void
+    public function onMessage(string $context, Client $client): void
     {
         try {
             if (($request = $this->requestFactory->revolve($context, $client)) instanceof Request) {
@@ -115,24 +124,25 @@ class Http extends NetWorker
     public function onRequest(Request $request): void
     {
         $this->requests[$request->hash] = $request;
-        $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
-            /**
-             * @var Generator $requesting
-             */
-            $requesting = call_user_func($this->requestHandler, $request);
-            foreach ($requesting as $response) {
-                $request->client->send($response->__toString());
-            }
-        });
-        try {
-            if (!$response = $this->workFibers[$request->hash]->start()) {
-                $this->recover($request->hash);
-            } else {
-                $this->publishAsync($response);
-            }
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-        }
+        $this->todo = true;
+//        $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
+//            /**
+//             * @var Generator $requesting
+//             */
+//            $requesting = call_user_func($this->requestHandler, $request);
+//            foreach ($requesting as $response) {
+//                $request->client->send($response->__toString());
+//            }
+//        });
+//        try {
+//            if (!$response = $this->workFibers[$request->hash]->start()) {
+//                $this->recover($request->hash);
+//            } else {
+//                $this->publishAsync($response);
+//            }
+//        } catch (Throwable $exception) {
+//            PRipple::printExpect($exception);
+//        }
     }
 
     /**
@@ -150,7 +160,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onClose(Client $client): void
+    public function onClose(Client $client): void
     {
 //        echo 'close:' . $client->getHash() . PHP_EOL;
     }
@@ -158,7 +168,7 @@ class Http extends NetWorker
     /**
      * @return void
      */
-    protected function destroy(): void
+    public function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
@@ -168,7 +178,7 @@ class Http extends NetWorker
      * @param Build $event
      * @return void
      */
-    protected function handleEvent(Build $event): void
+    public function handleEvent(Build $event): void
     {
         $hash = $event->publisher;
         if (isset($this->workFibers[$hash])) {
@@ -189,7 +199,7 @@ class Http extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    public function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

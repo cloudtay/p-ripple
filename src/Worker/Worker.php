@@ -24,13 +24,15 @@ abstract class Worker
      * 事件列表
      * @var Build[] $builds
      */
-    protected array $builds = [];
+    public array $builds = [];
+
+    public bool $todo = false;
 
     /**
      * 构造函数
      * @param string $name
      */
-    protected function __construct(string $name)
+    public function __construct(string $name)
     {
         $this->name = $name;
     }
@@ -55,7 +57,7 @@ abstract class Worker
      * 初始化
      * @return void
      */
-    abstract protected function initialize(): void;
+    abstract public function initialize(): void;
 
     /**
      * 处理返回
@@ -88,34 +90,34 @@ abstract class Worker
      * @param Socket $socket
      * @return void
      */
-    abstract protected function handleSocket(Socket $socket): void;
+    abstract public function handleSocket(Socket $socket): void;
 
     /**
      * 处理异常套接字
      * @param Socket $socket
      * @return void
      */
-    abstract protected function expectSocket(Socket $socket): void;
+    abstract public function expectSocket(Socket $socket): void;
 
     /**
      * 心跳
      * @return void
      */
-    abstract protected function heartbeat(): void;
+    abstract public function heartbeat(): void;
 
     /**
      * 处理事件
      * @param Build $event
      * @return void
      */
-    abstract protected function handleEvent(Build $event): void;
+    abstract public function handleEvent(Build $event): void;
 
     /**
      * 等待驱动
      * @param Build|null $event
      * @return void
      */
-    protected function publishAwait(Build|null $event = null): void
+    public function publishAwait(Build|null $event = null): void
     {
         try {
             if (!$event) {
@@ -134,7 +136,7 @@ abstract class Worker
      * @param string $event
      * @return void
      */
-    protected function subscribe(string $event): void
+    public function subscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
@@ -148,7 +150,7 @@ abstract class Worker
      * @param Build $event
      * @return void
      */
-    protected function publishAsync(Build $event): void
+    public function publishAsync(Build $event): void
     {
         try {
             PRipple::publishAsync($event);
@@ -174,7 +176,7 @@ abstract class Worker
      * @return void
      * @throws Throwable
      */
-    protected function unsubscribe(string $event): void
+    public function unsubscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new('event.unsubscribe', $event, $this->name));
@@ -188,7 +190,7 @@ abstract class Worker
      * @param Socket $socket
      * @return void
      */
-    protected function subscribeSocket(Socket $socket): void
+    public function subscribeSocket(Socket $socket): void
     {
         try {
             socket_set_nonblock($socket);
@@ -203,7 +205,7 @@ abstract class Worker
      * @param Socket $socket
      * @return void
      */
-    protected function unsubscribeSocket(Socket $socket): void
+    public function unsubscribeSocket(Socket $socket): void
     {
         try {
             $this->publishAsync(Build::new('socket.unsubscribe', $socket, $this->name));
@@ -216,5 +218,5 @@ abstract class Worker
      * 释放资源
      * @return void
      */
-    abstract protected function destroy(): void;
+    abstract public function destroy(): void;
 }

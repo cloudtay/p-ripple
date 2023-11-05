@@ -15,7 +15,7 @@ class TestTCP extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onConnect(Client $client): void
+    public function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
     }
@@ -23,15 +23,18 @@ class TestTCP extends NetWorker
     /**
      * @return void
      */
-    protected function heartbeat(): void
+    public function heartbeat(): void
     {
         // TODO: Implement heartbeat() method.
+        foreach ($this->getClients() as $client) {
+            $client->send('ping' . PHP_EOL);
+        }
     }
 
     /**
      * @return void
      */
-    protected function destroy(): void
+    public function destroy(): void
     {
         // TODO: Implement destroy() method.
     }
@@ -41,7 +44,7 @@ class TestTCP extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onMessage(string $context, Client $client): void
+    public function onMessage(string $context, Client $client): void
     {
         // TODO: Implement onMessage() method.
     }
@@ -50,7 +53,7 @@ class TestTCP extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onClose(Client $client): void
+    public function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
     }
@@ -59,7 +62,7 @@ class TestTCP extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    public function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

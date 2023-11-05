@@ -43,7 +43,7 @@ class TestWS extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onMessage(string $context, Client $client): void
+    public function onMessage(string $context, Client $client): void
     {
         // TODO: Implement onMessage() method.
     }
@@ -52,7 +52,7 @@ class TestWS extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onClose(Client $client): void
+    public function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
     }
@@ -61,7 +61,7 @@ class TestWS extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    public function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

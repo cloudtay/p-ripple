@@ -41,6 +41,7 @@ class Timer extends Worker
         $this->subscribe('timer.event');
         $this->subscribe('timer.loop');
         $this->subscribe('timer.sleep');
+        $this->todo = true;
     }
 
     /**
@@ -65,7 +66,7 @@ class Timer extends Worker
                         try {
                             $event->data['data']->resume();
                         } catch (Throwable $exception) {
-                            PRipple::printExpect($exception);
+//                            PRipple::printExpect($exception);
                         }
                         break;
                 }
@@ -140,17 +141,17 @@ class Timer extends Worker
         ], Timer::class));
     }
 
-    protected function handleSocket(Socket $socket): void
+    public function handleSocket(Socket $socket): void
     {
         // TODO: Implement handleSocket() method.
     }
 
-    protected function expectSocket(Socket $socket): void
+    public function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.
     }
 
-    protected function handleBuild(Build $event): void
+    public function handleBuild(Build $event): void
     {
         // TODO: Implement handleBuild() method.
     }

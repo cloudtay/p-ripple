@@ -91,7 +91,7 @@ class test_file_server extends NetWorker
      * @param Client $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    public function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

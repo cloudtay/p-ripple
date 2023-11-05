@@ -136,6 +136,8 @@ class PRipple
             line: {$exception->getLine()}
             message: {$exception->getMessage()}
             EOF;
+//        var_dump(debug_backtrace());
+//        exit;
     }
 
     /**
@@ -186,12 +188,13 @@ class PRipple
                 case 'socket.read':
                 case 'socket.write':
                     $socketHash = spl_object_hash($event->data);
-                $event = Build::new($event->name, $event->data, PRipple::class);
-                    if ($clientName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
-                        if ($response = $this->fibers[$clientName]?->resume($event)) {
-                            PRipple::publishAsync($response);
-                            break;
-                        }
+//                    $event = Build::new($event->name, $event->data, PRipple::class);
+                if ($workerName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
+//                        if ($response = $this->fibers[$workerName]?->resume($event)) {
+//                            PRipple::publishAsync($response);
+//                            break;
+//                        }
+                    $this->services[$workerName]->handleSocket($event->data);
                     }
                     break;
                 case 'socket.subscribe':
@@ -218,8 +221,12 @@ class PRipple
                                 PRipple::publishAsync($response);
                             }
                         }
+                        gc_collect_cycles();
+                    } else {
+                        if ($response = $this->fibers[$event->publisher]->resume($event)) {
+                            PRipple::publishAsync($response);
+                        }
                     }
-                    gc_collect_cycles();
                     break;
                 case 'kernel.rate.set':
                     $this->rate = $event->data;
@@ -262,10 +269,16 @@ class PRipple
                     foreach ($writeSockets as $socket) {
                         yield Build::new('socket.write', $socket, PRipple::class);
                     }
+                    foreach ($this->services as $worker) {
+                        if ($worker->todo) {
+                            yield Build::new('heartbeat', null, $worker->name);
+                        }
+                    }
                 } else {
                     yield Build::new('heartbeat', null, PRipple::class);
                 }
             }
+
         }
     }
 

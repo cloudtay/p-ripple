@@ -43,7 +43,7 @@ abstract class NetWorker extends Worker
      * 协议
      * @var ProtocolStd
      */
-    protected ProtocolStd $protocol;
+    public ProtocolStd $protocol;
     /**
      * @var string[]
      */
@@ -191,7 +191,7 @@ abstract class NetWorker extends Worker
      * @param Build $event
      * @return void
      */
-    protected function handleEvent(Build $event): void
+    public function handleEvent(Build $event): void
     {
         // TODO: Implement handleEvent() method.
     }
@@ -201,7 +201,7 @@ abstract class NetWorker extends Worker
      * @param Socket $socket
      * @return void
      */
-    protected function handleSocket(Socket $socket): void
+    public function handleSocket(Socket $socket): void
     {
         if (in_array($socket, array_values($this->bindAddressHashMap), true)) {
             $this->accept($socket);
@@ -221,7 +221,6 @@ abstract class NetWorker extends Worker
                 return;
             }
         }
-
         if ($content = $this->splitMessage($client)) {
             $this->onMessage($content, $client);
         } else {
@@ -265,13 +264,13 @@ abstract class NetWorker extends Worker
      * @param Client $client
      * @return void
      */
-    abstract protected function onConnect(Client $client): void;
+    abstract public function onConnect(Client $client): void;
 
     /**
      * @param Client $client
      * @return void
      */
-    abstract protected function onHandshake(Client $client): void;
+    abstract public function onHandshake(Client $client): void;
 
     /**
      * 处理异常连接
@@ -299,9 +298,9 @@ abstract class NetWorker extends Worker
     /**
      * @return void
      */
-    abstract protected function destroy(): void;
+    abstract public function destroy(): void;
 
-    protected function splitMessage(Client $client): string|false
+    public function splitMessage(Client $client): string|false
     {
         return $client->getPlaintext();
     }
@@ -311,23 +310,23 @@ abstract class NetWorker extends Worker
      * @param Client $client
      * @return void
      */
-    abstract protected function onMessage(string $context, Client $client): void;
+    abstract public function onMessage(string $context, Client $client): void;
 
     /**
      * @param Client $client
      * @return void
      */
-    abstract protected function onClose(Client $client): void;
+    abstract public function onClose(Client $client): void;
 
     /**
      * @return void
      */
-    abstract protected function heartbeat(): void;
+    abstract public function heartbeat(): void;
 
     /**
      * @return void
      */
-    protected function initialize(): void
+    public function initialize(): void
     {
         $this->listen();
     }
