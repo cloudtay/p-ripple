@@ -11,7 +11,7 @@ use PRipple\Protocol\WebSocket;
 
 include __DIR__ . '/vendor/autoload.php';
 
-$pRipple = PRipple::instance()->initialize();
+$pRipple = PRipple::instance();
 
 $options = [SO_REUSEPORT => true];
 $http = Http::new('http_worker_name')
@@ -25,7 +25,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
         yield Response::new(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = file_get_contents(__DIR__ . '/example.html')
+            $body = 'hello world'
         );
     } elseif ($request->upload) {
         yield Response::new(

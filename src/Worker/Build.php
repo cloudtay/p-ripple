@@ -30,9 +30,9 @@ class Build
      * @param mixed $publisher
      * @return Build
      */
-    public static function new(string $name, mixed $data, mixed $publisher): Build
+    public static function new(string $name, mixed $data, mixed $publisher): static
     {
-        return new Build($name, $data, $publisher);
+        return new static($name, $data, $publisher);
     }
 
     public function __toString(): string

@@ -10,7 +10,6 @@ use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\App\Timer\Timer;
-use PRipple\Protocol\CCL;
 use PRipple\Worker\BufferWorker;
 use PRipple\Worker\Build;
 use PRipple\Worker\Worker;
@@ -21,6 +20,18 @@ use Throwable;
  */
 class PRipple
 {
+    /**
+     * 是否启动
+     * @var bool $construct
+     */
+    private static bool $construct = false;
+
+    /**
+     * 双口单向待载入的事件队列
+     * @var Build[] $loadOnStartup
+     */
+    private static array $loadOnStartup = [];
+
     /**
      * 单例
      * @var PRipple $instance
@@ -46,16 +57,25 @@ class PRipple
      * @var array
      */
     private array $socketSubscribeHashMap = [];
+
     /**
      * 服务列表
      * @var Worker[]
      */
-    private array $services = [];
+    private array $workers = [];
     private int $index = 0;
     private int $rate = 1000000;
     private int $socketNumber = 0;
     private int $eventNumber = 0;
-    private bool $isRunning = false;
+
+    /**
+     * 构造函数
+     */
+    public function __construct()
+    {
+        $this->initialize();
+        PRipple::$construct = true;
+    }
 
     /**
      * 获取一个服务
@@ -64,7 +84,7 @@ class PRipple
      */
     public static function worker(string $name): Worker|null
     {
-        return PRipple::instance()->services[$name] ?? null;
+        return PRipple::instance()->workers[$name] ?? null;
     }
 
     /**
@@ -83,7 +103,7 @@ class PRipple
      * @param Build $event
      * @return mixed
      */
-    public static function publishSync(Build $event): mixed
+    public static function publishAwait(Build $event): mixed
     {
         try {
             return Fiber::suspend($event);
@@ -93,28 +113,21 @@ class PRipple
         }
     }
 
-    /**
-     * @return Build|false
-     */
-    public static function suspend(): mixed
-    {
-        try {
-            return Fiber::suspend(Build::new('suspend', null, PRipple::class));
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-            return false;
-        }
-    }
-
     public static function printExpect(Error|Exception $exception): void
     {
-        echo <<<EOF
-            file: {$exception->getFile()}
-            line: {$exception->getLine()}
-            message: {$exception->getMessage()}
-            EOF;
-//        var_dump(debug_backtrace());
-//        exit;
+        echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
+        echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
+        echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
+        echo "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n";
+        echo "\033[0;32mStack trace:\033[0m\n";
+        $trace = $exception->getTraceAsString();
+        $traceLines = explode("\n", $trace);
+        foreach ($traceLines as $line) {
+            echo "\033[0;32m" . $line . "\033[0m\n";
+        }
+        if ($previous = $exception->getPrevious()) {
+            echo "\033[0;36mPrevious exception:\033[0m\n";
+        }
     }
 
     /**
@@ -132,9 +145,7 @@ class PRipple
         define('PP_RUNTIME_PATH', '/tmp');
         define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
         $bufferWorker = BufferWorker::new(BufferWorker::class);
-        $processManager = ProcessManager::new(ProcessManager::class)
-            ->bind('unix:///tmp/pripple_process_manager.sock')
-            ->protocol(CCL::class);
+        $processManager = ProcessManager::new(ProcessManager::class);
         $timer = Timer::new(Timer::class);
         $this->push($bufferWorker, $processManager, $timer);
         return $this;
@@ -151,7 +162,7 @@ class PRipple
             $this->fibers[$worker->name] = new Fiber(function () use ($worker) {
                 $worker->launch();
             });
-            $this->services[$worker->name] = $worker;
+            $this->workers[$worker->name] = $worker;
             try {
                 if ($response = $this->fibers[$worker->name]->start()) {
                     PRipple::publishAsync($response);
@@ -169,7 +180,11 @@ class PRipple
      */
     #[NoReturn] public function launch(): void
     {
-        $this->isRunning = true;
+        while ($event = array_pop(PRipple::$loadOnStartup)) {
+            array_unshift($this->events, $event);
+            $this->events[] = $event;
+            $this->eventNumber++;
+        }
         $this->loop();
     }
 
@@ -188,13 +203,8 @@ class PRipple
                 case 'socket.read':
                 case 'socket.write':
                     $socketHash = spl_object_hash($event->data);
-//                    $event = Build::new($event->name, $event->data, PRipple::class);
                     if ($workerName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
-//                        if ($response = $this->fibers[$workerName]?->resume($event)) {
-//                            PRipple::publishAsync($response);
-//                            break;
-//                        }
-                        $this->services[$workerName]->handleSocket($event->data);
+                        $this->workers[$workerName]->handleSocket($event->data);
                     }
                     break;
                 case 'socket.subscribe':
@@ -213,9 +223,22 @@ class PRipple
                 case 'event.unsubscribe':
                     unset($this->socketSubscribeHashMap[$event->data]);
                     break;
+                case 'kernel.rate.set':
+                    $this->rate = $event->data;
+                    return;
+                case 'temp.fiber':
+                    try {
+                        if ($response = $event->data->start()) {
+                            PRipple::publishAsync($response);
+                        }
+                    } catch (Throwable $exception) {
+                        PRipple::printExpect($exception);
+                    }
+                    break;
                 case 'heartbeat':
                     $this->adjustRate();
                     if ($event->publisher === PRipple::class) {
+                        // TODO: 全局心跳[空闲时]
                         foreach ($this->fibers as $fiber) {
                             if ($response = $fiber->resume($event)) {
                                 PRipple::publishAsync($response);
@@ -223,17 +246,10 @@ class PRipple
                         }
                         gc_collect_cycles();
                     } else {
+                        // TODO: 定向心跳[声明活跃]
                         if ($response = $this->fibers[$event->publisher]->resume($event)) {
                             PRipple::publishAsync($response);
                         }
-                    }
-                    break;
-                case 'kernel.rate.set':
-                    $this->rate = $event->data;
-                    return;
-                case 'temp.fiber':
-                    if ($response = $event->data->start()) {
-                        PRipple::publishAsync($response);
                     }
                     break;
                 default:
@@ -243,7 +259,7 @@ class PRipple
     }
 
     /**
-     * 生成任务
+     * 生成事件
      * @return Generator
      */
     #[NoReturn] private function generator(): Generator
@@ -269,7 +285,7 @@ class PRipple
                     foreach ($writeSockets as $socket) {
                         yield Build::new('socket.write', $socket, PRipple::class);
                     }
-                    foreach ($this->services as $worker) {
+                    foreach ($this->workers as $worker) {
                         if ($worker->todo) {
                             yield Build::new('heartbeat', null, $worker->name);
                         }
@@ -283,6 +299,7 @@ class PRipple
     }
 
     /**
+     * 调整频率
      * @return void
      */
     private function adjustRate(): void
@@ -291,13 +308,18 @@ class PRipple
     }
 
     /**
+     * 异步发布事件
      * @param Build $event
      * @return void
      */
     public static function publishAsync(Build $event): void
     {
-        PRipple::instance()->events[] = $event;
-        PRipple::instance()->eventNumber++;
+        if (PRipple::$construct) {
+            PRipple::instance()->events[] = $event;
+            PRipple::instance()->eventNumber++;
+        } else {
+            PRipple::$loadOnStartup[] = $event;
+        }
     }
 
     /**

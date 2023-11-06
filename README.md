@@ -1,10 +1,10 @@
-### 安装
+### install
 
 ```bash
 composer require cclilshy/p-ripple
 ```
 
-### 它是什么?
+### what is it?
 
 ```php
 <?php
@@ -19,12 +19,12 @@ use function Cclilshy\PRipple\loop;
 $master = PRipple::instance()->initialize();
 
 async(function () {
-    delay(3); #延时3秒执行
+    delay(3); #Delay execution for 3 seconds
     echo 'hello,world' . PHP_EOL;
 });
 
 async(function () {
-    delay(3); #延时3秒执行
+    delay(3); #Delay execution for 3 seconds
     echo 'hello,world' . PHP_EOL;
 });
 
@@ -39,10 +39,10 @@ async(function () {
     });
 });
 
-# 如果你知道的话,你可以在任何地方向任何进程发送信号
+# You can send a signal to any process anywhere if you know
 // signal($someProcessId, SIGTERM);
 
-# 创建一个异步循环
+# Create an async loop
 loop(1, function () {
     echo 'loop' . PHP_EOL;
 });
@@ -51,9 +51,9 @@ $master->launch();
 
 ```
 
-### 能做什么?
+### how to use it?
 
-> 以下提供了例子代码及部署流程以演示它作为服务时如何工作
+> The following provides sample code and deployment process to demonstrate how it works as a service
 
 ```bash
 vim main.php
@@ -93,16 +93,16 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
         yield Response::new(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = '文件传输正在进行中，请勿关闭页面...'
+            $body = 'File transfer is in progress, please do not close the page...'
         );
 
         $request->async(Request::EVENT_UPLOAD, function (array $info) use ($ws, $tcp) {
             foreach ($ws->getClients() as $client) {
-                $client->send('文件上传完成:' . json_encode($info) . PHP_EOL);
+                $client->send('fileUploadCompleted:' . json_encode($info) . PHP_EOL);
             }
 
             foreach ($tcp->getClients() as $client) {
-                $client->send('文件上传完成:' . json_encode($info) . PHP_EOL);
+                $client->send('fileUploadCompleted:' . json_encode($info) . PHP_EOL);
             }
         });
         $request->await();
@@ -118,7 +118,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
 $pRipple->push($http, $ws, $tcp)->launch();
 ```
 
-#### 创建模板文件
+#### Create template file
 
 ```bash
 vim example.html
@@ -142,13 +142,13 @@ vim example.html
 </html>
 ```
 
-#### 启动
+#### start
 
 ```bash
 php main.php
 ```
 
-#### 查看效果
+#### show
 
 > `http://127.0.0.1:3008`
 

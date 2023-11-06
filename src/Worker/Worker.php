@@ -48,7 +48,6 @@ abstract class Worker
             while ($build = array_shift($this->builds)) {
                 $this->consumption($build);
             }
-//            $this->heartbeat();
             $this->publishAwait();
         }
     }

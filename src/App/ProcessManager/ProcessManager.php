@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace PRipple\App\ProcessManager;
 
 use PRipple\PRipple;
+use PRipple\Protocol\CCL;
 use PRipple\Std\ProtocolStd;
 use PRipple\Worker\Build;
 use PRipple\Worker\NetWorker;
@@ -12,8 +13,8 @@ use PRipple\Worker\Worker;
 
 class ProcessManager extends NetWorker
 {
-    public const UNIX_PATH = '/tmp/pripple_process_manager.sock';
-    public const LOCK_PATH = '/tmp/pripple_process_manager.lock';
+    public const UNIX_PATH = '/tmp/p_ripple_process_manager.sock';
+    public const LOCK_PATH = '/tmp/p_ripple_process_manager.lock';
 
     /**
      * 映射:进程=>守护ID
@@ -83,7 +84,10 @@ class ProcessManager extends NetWorker
     {
         unlink(ProcessManager::UNIX_PATH);
         unlink(ProcessManager::LOCK_PATH);
+        $this->bind('unix://' . ProcessManager::UNIX_PATH);
+        $this->protocol(CCL::class);
         parent::initialize();
+        \PRipple\App\Facade\Process::setInstance($this);
     }
 
     /**

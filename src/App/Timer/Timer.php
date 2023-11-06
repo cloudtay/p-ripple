@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace PRipple\App\Timer;
 
 use Closure;
+use Exception;
 use Fiber;
+use PRipple\App\PDOProxy\Exception\PDOProxyException;
 use PRipple\PRipple;
 use PRipple\Worker\Build;
 use PRipple\Worker\Worker;
@@ -42,6 +44,7 @@ class Timer extends Worker
         $this->subscribe('timer.loop');
         $this->subscribe('timer.sleep');
         $this->todo = true;
+        \PRipple\App\Facade\Timer::setInstance($this);
     }
 
     /**
@@ -65,8 +68,8 @@ class Timer extends Worker
                     case 'timer.sleep':
                         try {
                             $event->data['data']->resume();
-                        } catch (Throwable $exception) {
-//                            PRipple::printExpect($exception);
+                        } catch (Throwable|Exception|PDOProxyException $exception) {
+                            PRipple::printExpect($exception);
                         }
                         break;
                 }

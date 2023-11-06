@@ -9,7 +9,7 @@ use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\PRipple;
 use PRipple\Protocol\CCL;
 
-$pripple = PRipple::instance();
+$pRipple = PRipple::instance();
 
 $processManager = ProcessManager::new('ProcessManager')
     ->bind('unix://' . ProcessManager::UNIX_PATH)
@@ -33,4 +33,4 @@ $http->defineRequestHandler(function (Request $request) {
     });
 });
 
-$pripple->push($processManager, $http)->launch();
+$pRipple->push($processManager, $http)->launch();

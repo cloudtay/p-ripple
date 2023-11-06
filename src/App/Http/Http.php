@@ -60,6 +60,7 @@ class Http extends NetWorker
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->requestFactory = new RequestFactory($this);
         parent::initialize();
+        \PRipple\App\Facade\Http::setInstance($this);
     }
 
     /**
