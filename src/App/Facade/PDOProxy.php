@@ -7,8 +7,9 @@ use PRipple\Std\Facade;
 use PRipple\Worker\Worker;
 
 /**
- * @method static void query(string $query, array|null $bindings = [], array|null $bindParams = [])
+ * @method static mixed query(string $query, array|null $bindings = [], array|null $bindParams = [])
  * @method static void transaction(callable $callback)
+ * @method static int|false addProxy(int $num, array $config)
  */
 class PDOProxy extends Facade
 {

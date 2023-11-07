@@ -66,8 +66,10 @@ class PDOProxyWorker extends NetWorker
          */
         $event = unserialize($context);
         if ($fiber = $this->fibers[$event->publisher] ?? null) {
-            if (!$fiber->resume($event->data)) {
+            if (!$response = $fiber->resume($event->data)) {
                 unset($this->fibers[$event->publisher]);
+            } elseif (!in_array($response->name, $this->subscribes)) {
+                $this->publishAsync($response);
             }
         }
     }
@@ -204,7 +206,11 @@ class PDOProxyWorker extends NetWorker
         $result = 0;
         foreach (range(1, $num) as $_) {
             $pid = Process::fork(function () use ($config) {
-                PDOProxy::launch($config['dns'], $config['username'], $config['password'], $config['options']);
+                \PRipple\App\PDOProxy\PDOProxy::launch(
+                    $config['dns'],
+                    $config['username'],
+                    $config['password'],
+                    $config['options']);
             });
             if ($pid) {
                 $this->proxyProcessIds[] = $pid;

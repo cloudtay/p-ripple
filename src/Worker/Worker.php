@@ -26,6 +26,8 @@ abstract class Worker
      */
     public array $builds = [];
 
+    public array $subscribes = [];
+
     public bool $todo = false;
 
     /**
@@ -149,6 +151,7 @@ abstract class Worker
     {
         try {
             $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
+            $this->subscribes[] = $event;
         } catch (Throwable $exception) {
             PRipple::printExpect($exception);
         }
@@ -179,6 +182,10 @@ abstract class Worker
     {
         try {
             $this->publishAsync(Build::new('event.unsubscribe', $event, $this->name));
+            $index = array_search($event, $this->subscribes);
+            if ($index !== false) {
+                unset($this->subscribes[$index]);
+            }
         } catch (Throwable $exception) {
             PRipple::printExpect($exception);
         }

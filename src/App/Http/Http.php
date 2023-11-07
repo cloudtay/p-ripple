@@ -69,22 +69,29 @@ class Http extends NetWorker
     public function heartbeat(): void
     {
         while ($request = array_shift($this->requests)) {
-            $this->workFibers[$request->hash] = new Fiber(function () use ($request): void {
+            $fiber = new Fiber(function () use ($request) {
                 $requesting = call_user_func($this->requestHandler, $request);
                 foreach ($requesting as $response) {
                     try {
-                        $request->client->send($response->__toString());
+                        if ($response instanceof Response) {
+                            $request->client->send($response->__toString());
+                        }
                     } catch (Exception $exception) {
 //                        PRipple::printExpect($exception);
                         return;
                     }
                 }
             });
+
             try {
-                if (!$response = $this->workFibers[$request->hash]->start()) {
-                    $this->recover($request->hash);
+                if ($response = $fiber->start()) {
+                    if (in_array($response->name, $this->subscribes)) {
+                        $this->workFibers[$request->hash] = $fiber;
+                    } else {
+                        $this->publishAsync($response);
+                    }
                 } else {
-                    $this->publishAsync($response);
+                    $this->recover($request->hash);
                 }
             } catch (Throwable $exception) {
                 PRipple::printExpect($exception);
@@ -186,12 +193,11 @@ class Http extends NetWorker
             try {
                 if (!$response = $this->workFibers[$hash]->resume($event)) {
                     $this->recover($hash);
-                } else {
+                } elseif (!in_array($response->name, $this->subscribes)) {
                     $this->publishAsync($response);
                 }
             } catch (Throwable $exception) {
                 PRipple::printExpect($exception);
-                $this->recover($hash);
             }
         }
     }

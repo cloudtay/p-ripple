@@ -42,19 +42,6 @@ class PDOProxy
     }
 
     /**
-     * 连接服务
-     * @return void
-     */
-    private function connectServer(): void
-    {
-        try {
-            $this->server = new Client(SocketUnix::connect(PDOProxyWorker::UNIX_PATH), SocketUnix::class);
-        } catch (Exception $exception) {
-            PRipple::printExpect($exception);
-        }
-    }
-
-    /**
      * @param string $dns
      * @param string $username
      * @param string $password
@@ -70,6 +57,19 @@ class PDOProxy
         } catch (Exception $exception) {
             //TODO: 开发时意料之外的所有异常直接关闭进程,由管理器重建代理
             exit;
+        }
+    }
+
+    /**
+     * 连接服务
+     * @return void
+     */
+    private function connectServer(): void
+    {
+        try {
+            $this->server = new Client(SocketUnix::connect(PDOProxyWorker::UNIX_PATH), SocketUnix::class);
+        } catch (Exception $exception) {
+            PRipple::printExpect($exception);
         }
     }
 

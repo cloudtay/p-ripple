@@ -117,9 +117,8 @@ class Request extends TaskStd
         $this->serverArray = array_filter($this->serverArray, function ($item) {
             return !empty($item);
         });
-
-        $this->hash = $requestSingle->hash;
         parent::__construct();
+        $this->hash = $requestSingle->hash;
     }
 
     /**
@@ -141,7 +140,8 @@ class Request extends TaskStd
     public function await(): void
     {
         foreach ($this->asyncHandlers as $action => $handler) {
-            $this->handleEvent($this->publishAwait($action, null));
+            $event = $this->publishAwait($action, null);
+            $this->handleEvent($event);
         }
     }
 
@@ -152,8 +152,8 @@ class Request extends TaskStd
      */
     protected function handleEvent(Build $event): void
     {
-        if ($uploadHandler = $this->asyncHandlers[$event->name]) {
-            call_user_func_array($uploadHandler, [$event->data]);
+        if ($handler = $this->asyncHandlers[$event->name]) {
+            call_user_func_array($handler, [$event->data]);
         }
     }
 }

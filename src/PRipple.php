@@ -8,6 +8,7 @@ use Exception;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
+use PRipple\App\PDOProxy\PDOProxyWorker;
 use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\App\Timer\Timer;
 use PRipple\Worker\BufferWorker;
@@ -78,59 +79,6 @@ class PRipple
     }
 
     /**
-     * 获取一个服务
-     * @param string $name
-     * @return Worker|null
-     */
-    public static function worker(string $name): Worker|null
-    {
-        return PRipple::instance()->workers[$name] ?? null;
-    }
-
-    /**
-     * 获取单例
-     * @return PRipple
-     */
-    public static function instance(): PRipple
-    {
-        if (!isset(PRipple::$instance)) {
-            PRipple::$instance = new PRipple();
-        }
-        return PRipple::$instance;
-    }
-
-    /**
-     * @param Build $event
-     * @return mixed
-     */
-    public static function publishAwait(Build $event): mixed
-    {
-        try {
-            return Fiber::suspend($event);
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-            return false;
-        }
-    }
-
-    public static function printExpect(Error|Exception $exception): void
-    {
-        echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
-        echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
-        echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
-        echo "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n";
-        echo "\033[0;32mStack trace:\033[0m\n";
-        $trace = $exception->getTraceAsString();
-        $traceLines = explode("\n", $trace);
-        foreach ($traceLines as $line) {
-            echo "\033[0;32m" . $line . "\033[0m\n";
-        }
-        if ($previous = $exception->getPrevious()) {
-            echo "\033[0;36mPrevious exception:\033[0m\n";
-        }
-    }
-
-    /**
      * @return PRipple
      */
     public function initialize(): PRipple
@@ -147,7 +95,8 @@ class PRipple
         $bufferWorker = BufferWorker::new(BufferWorker::class);
         $processManager = ProcessManager::new(ProcessManager::class);
         $timer = Timer::new(Timer::class);
-        $this->push($bufferWorker, $processManager, $timer);
+        $pdoProxyManager = PDOProxyWorker::new(PDOProxyWorker::class);
+        $this->push($bufferWorker, $processManager, $timer, $pdoProxyManager);
         return $this;
     }
 
@@ -294,17 +243,7 @@ class PRipple
                     yield Build::new('heartbeat', null, PRipple::class);
                 }
             }
-
         }
-    }
-
-    /**
-     * 调整频率
-     * @return void
-     */
-    private function adjustRate(): void
-    {
-        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
     }
 
     /**
@@ -323,6 +262,44 @@ class PRipple
     }
 
     /**
+     * 获取单例
+     * @return PRipple
+     */
+    public static function instance(): PRipple
+    {
+        if (!isset(PRipple::$instance)) {
+            PRipple::$instance = new PRipple();
+        }
+        return PRipple::$instance;
+    }
+
+    public static function printExpect(Error|Exception $exception): void
+    {
+        echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
+        echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
+        echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
+        echo "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n";
+        echo "\033[0;32mStack trace:\033[0m\n";
+        $trace = $exception->getTraceAsString();
+        $traceLines = explode("\n", $trace);
+        foreach ($traceLines as $line) {
+            echo "\033[0;32m" . $line . "\033[0m\n";
+        }
+        if ($previous = $exception->getPrevious()) {
+            echo "\033[0;36mPrevious exception:\033[0m\n";
+        }
+    }
+
+    /**
+     * 调整频率
+     * @return void
+     */
+    private function adjustRate(): void
+    {
+        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
+    }
+
+    /**
      * 派发事件
      * @param Build $event
      * @return void
@@ -331,6 +308,30 @@ class PRipple
     {
         if ($subscriber = $this->socketSubscribeHashMap[$event->name] ?? null) {
             $this->fibers[$subscriber]->resume($event);
+        }
+    }
+
+    /**
+     * 获取一个服务
+     * @param string $name
+     * @return Worker|null
+     */
+    public static function worker(string $name): Worker|null
+    {
+        return PRipple::instance()->workers[$name] ?? null;
+    }
+
+    /**
+     * @param Build $event
+     * @return mixed
+     */
+    public static function publishAwait(Build $event): mixed
+    {
+        try {
+            return Fiber::suspend($event);
+        } catch (Throwable $exception) {
+            PRipple::printExpect($exception);
+            return false;
         }
     }
 

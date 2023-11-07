@@ -67,7 +67,11 @@ class Timer extends Worker
                         break;
                     case 'timer.sleep':
                         try {
-                            $event->data['data']->resume();
+                            if ($response = $event->data['data']->resume()) {
+                                if (!in_array($response->name, $this->subscribes)) {
+                                    $this->publishAsync($response);
+                                }
+                            }
                         } catch (Throwable|Exception|PDOProxyException $exception) {
                             PRipple::printExpect($exception);
                         }
@@ -138,10 +142,17 @@ class Timer extends Worker
      */
     public function sleep(int $second): void
     {
-        $this->publishAwait(Build::new('timer.sleep', [
+        $event = Build::new('timer.sleep', [
             'time' => $second,
             'data' => Fiber::getCurrent()
-        ], Timer::class));
+        ], Timer::class);
+        $timerData = $event->data;
+        $duration = $timerData['time'];
+        $this->taskQueue->insert([
+            'expire' => time() + $duration,
+            'event' => $event
+        ], -time() - $duration);
+        $this->publishAwait();
     }
 
     public function handleSocket(Socket $socket): void

@@ -29,7 +29,7 @@ abstract class TaskStd
      */
     public function publishAwait(string $eventName, mixed $eventData): mixed
     {
-        return Fiber::suspend(Build::new($eventName, $eventData, "task:{$this->hash}"));
+        return Fiber::suspend(Build::new($eventName, $eventData, $this->hash));
     }
 
     /**
@@ -40,7 +40,7 @@ abstract class TaskStd
      */
     public function publishAsync(string $eventName, mixed $eventData): void
     {
-        if ($response = Fiber::suspend(Build::new($eventName, $eventData, "task:{$this->hash}"))) {
+        if ($response = Fiber::suspend(Build::new($eventName, $eventData, $this->hash))) {
             $this->handleEvent($response);
         }
     }
