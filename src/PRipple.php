@@ -13,7 +13,7 @@ use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\App\Timer\Timer;
 use PRipple\Worker\BufferWorker;
 use PRipple\Worker\Build;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 use Throwable;
 
 /**
@@ -21,6 +21,19 @@ use Throwable;
  */
 class PRipple
 {
+    public const VERSION = '0.1';
+    public const EVENT_SUSPEND = 'suspend';
+    public const EVENT_SOCKET_EXPECT = 'socket.expect';
+    public const EVENT_SOCKET_READ = 'socket.read';
+    public const EVENT_SOCKET_WRITE = 'socket.write';
+    public const EVENT_SOCKET_SUBSCRIBE = 'socket.subscribe';
+    public const EVENT_SOCKET_UNSUBSCRIBE = 'socket.unsubscribe';
+    public const EVENT_EVENT_SUBSCRIBE = 'event.subscribe';
+    public const EVENT_EVENT_UNSUBSCRIBE = 'event.unsubscribe';
+    public const EVENT_HEARTBEAT = 'heartbeat';
+    public const EVENT_TEMP_FIBER = 'temp.fiber';
+    public const EVENT_KERNEL_RATE_SET = 'kernel.rate.set';
+
     /**
      * 是否启动
      * @var bool $construct
@@ -38,6 +51,7 @@ class PRipple
      * @var PRipple $instance
      */
     private static PRipple $instance;
+    public int $rate = 1000000;
     /**
      * 协程列表
      * @var array
@@ -58,22 +72,23 @@ class PRipple
      * @var array
      */
     private array $socketSubscribeHashMap = [];
-
     /**
      * 服务列表
-     * @var Worker[]
+     * @var WorkerInterface[]
      */
     private array $workers = [];
     private int $index = 0;
-    private int $rate = 1000000;
     private int $socketNumber = 0;
     private int $eventNumber = 0;
+    private static array $configureArguments;
 
     /**
      * 构造函数
      */
-    public function __construct()
+    public function __construct(array $argument)
     {
+        PRipple::$configureArguments = $argument;
+        PRipple::$instance = $this;
         $this->initialize();
         PRipple::$construct = true;
     }
@@ -83,15 +98,6 @@ class PRipple
      */
     public function initialize(): PRipple
     {
-        error_reporting(E_ALL & ~E_WARNING);
-        ini_set('max_execution_time', 0);
-        define('UL', '_');
-        define('FS', DIRECTORY_SEPARATOR);
-        define('BS', '\\');
-        define('PP_START_TIMESTAMP', time());
-        define('PP_ROOT_PATH', __DIR__);
-        define('PP_RUNTIME_PATH', '/tmp');
-        define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
         $bufferWorker = BufferWorker::new(BufferWorker::class);
         $processManager = ProcessManager::new(ProcessManager::class);
         $timer = Timer::new(Timer::class);
@@ -102,10 +108,10 @@ class PRipple
 
     /**
      * 插入服务
-     * @param Worker ...$workers
+     * @param WorkerInterface ...$workers
      * @return PRipple
      */
-    public function push(Worker ...$workers): PRipple
+    public function push(WorkerInterface ...$workers): PRipple
     {
         foreach ($workers as $worker) {
             $this->fibers[$worker->name] = new Fiber(function () use ($worker) {
@@ -113,6 +119,7 @@ class PRipple
             });
             $this->workers[$worker->name] = $worker;
             try {
+                PRipple::info("[{$worker->name}]");
                 if ($response = $this->fibers[$worker->name]->start()) {
                     PRipple::publishAsync($response);
                 }
@@ -133,7 +140,9 @@ class PRipple
             array_unshift($this->events, $event);
             $this->events[] = $event;
             $this->eventNumber++;
+            PRipple::info('[preloading]', $event->name);
         }
+        PRipple::info('[PRipple]', 'Started successfully...');
         $this->loop();
     }
 
@@ -148,43 +157,33 @@ class PRipple
          */
         foreach ($this->generator() as $event) {
             switch ($event->name) {
-                case 'socket.expect':
-                case 'socket.read':
-                case 'socket.write':
+                case PRipple::EVENT_SUSPEND:
+                    break;
+                case PRipple::EVENT_SOCKET_EXPECT:
+                case PRipple::EVENT_SOCKET_READ:
+                case PRipple::EVENT_SOCKET_WRITE:
                     $socketHash = spl_object_hash($event->data);
                     if ($workerName = $this->socketSubscribeHashMap[$socketHash] ?? null) {
                         $this->workers[$workerName]->handleSocket($event->data);
                     }
                     break;
-                case 'socket.subscribe':
+                case PRipple::EVENT_SOCKET_SUBSCRIBE:
                     $socketHash = spl_object_hash($event->data);
                     $this->socketSubscribeHashMap[$socketHash] = $event->publisher;
                     $this->sockets[$socketHash] = $event->data;
                     break;
-                case 'socket.unsubscribe':
+                case PRipple::EVENT_SOCKET_UNSUBSCRIBE:
                     $socketHash = spl_object_hash($event->data);
                     unset($this->socketSubscribeHashMap[$socketHash]);
                     unset($this->sockets[$socketHash]);
                     break;
-                case 'event.subscribe':
+                case PRipple::EVENT_EVENT_SUBSCRIBE:
                     $this->socketSubscribeHashMap[$event->data] = $event->publisher;
                     break;
-                case 'event.unsubscribe':
+                case PRipple::EVENT_EVENT_UNSUBSCRIBE:
                     unset($this->socketSubscribeHashMap[$event->data]);
                     break;
-                case 'kernel.rate.set':
-                    $this->rate = $event->data;
-                    return;
-                case 'temp.fiber':
-                    try {
-                        if ($response = $event->data->start()) {
-                            PRipple::publishAsync($response);
-                        }
-                    } catch (Throwable $exception) {
-                        PRipple::printExpect($exception);
-                    }
-                    break;
-                case 'heartbeat':
+                case PRipple::EVENT_HEARTBEAT:
                     $this->adjustRate();
                     if ($event->publisher === PRipple::class) {
                         // TODO: 全局心跳[空闲时]
@@ -201,6 +200,18 @@ class PRipple
                         }
                     }
                     break;
+                case PRipple::EVENT_TEMP_FIBER:
+                    try {
+                        if ($response = $event->data->start()) {
+                            PRipple::publishAsync($response);
+                        }
+                    } catch (Throwable $exception) {
+                        PRipple::printExpect($exception);
+                    }
+                    break;
+                case 'kernel.rate.set':
+                    $this->rate = $event->data;
+                    return;
                 default:
                     $this->distribute($event);
             }
@@ -247,6 +258,15 @@ class PRipple
     }
 
     /**
+     * 调整频率
+     * @return void
+     */
+    private function adjustRate(): void
+    {
+        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
+    }
+
+    /**
      * 异步发布事件
      * @param Build $event
      * @return void
@@ -268,11 +288,39 @@ class PRipple
     public static function instance(): PRipple
     {
         if (!isset(PRipple::$instance)) {
-            PRipple::$instance = new PRipple();
+            try {
+                throw new Exception('PRipple not initialized');
+            } catch (Exception $e) {
+                PRipple::printExpect($e);
+                exit;
+            }
         }
         return PRipple::$instance;
     }
 
+    /**
+     * @param array $arguments
+     * @return PRipple
+     */
+    public static function configure(array $arguments): PRipple
+    {
+        $instance = new PRipple($arguments);
+        error_reporting(E_ALL & ~E_WARNING);
+        ini_set('max_execution_time', 0);
+        define('UL', '_');
+        define('FS', DIRECTORY_SEPARATOR);
+        define('BS', '\\');
+        define('PP_START_TIMESTAMP', time());
+        define('PP_ROOT_PATH', __DIR__);
+        define('PP_RUNTIME_PATH', PRipple::getArgument('RUNTIME_PATH'));
+        define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
+        return $instance;
+    }
+
+    /**
+     * @param Error|Exception $exception
+     * @return void
+     */
     public static function printExpect(Error|Exception $exception): void
     {
         echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
@@ -285,18 +333,9 @@ class PRipple
         foreach ($traceLines as $line) {
             echo "\033[0;32m" . $line . "\033[0m\n";
         }
-        if ($previous = $exception->getPrevious()) {
-            echo "\033[0;36mPrevious exception:\033[0m\n";
-        }
-    }
-
-    /**
-     * 调整频率
-     * @return void
-     */
-    private function adjustRate(): void
-    {
-        $this->rate = max(1000000 - ($this->eventNumber + $this->socketNumber) * 100, 0);
+//        if ($previous = $exception->getPrevious()) {
+//            echo "\033[0;36mPrevious exception:\033[0m\n";
+//        }
     }
 
     /**
@@ -307,16 +346,27 @@ class PRipple
     private function distribute(Build $event): void
     {
         if ($subscriber = $this->socketSubscribeHashMap[$event->name] ?? null) {
-            $this->fibers[$subscriber]->resume($event);
+            if ($event = $this->fibers[$subscriber]->resume($event)) {
+                PRipple::publishAsync($event);
+            }
         }
+    }
+
+    public static function info(string $title, string ...$contents): void
+    {
+        echo "\033[1;32m" . $title . "\033[0m";
+        foreach ($contents as $content) {
+            echo "\033[1;33m" . $content . "\033[0m";
+        }
+        echo PHP_EOL;
     }
 
     /**
      * 获取一个服务
      * @param string $name
-     * @return Worker|null
+     * @return WorkerInterface|null
      */
-    public static function worker(string $name): Worker|null
+    public static function worker(string $name): WorkerInterface|null
     {
         return PRipple::instance()->workers[$name] ?? null;
     }
@@ -342,5 +392,23 @@ class PRipple
     public function uniqueHash(): string
     {
         return md5(strval($this->index++));
+    }
+
+    /**
+     * 获取安装参数
+     * @param string $name
+     * @return array
+     */
+    public static function getArgument(string $name): mixed
+    {
+        if (!$value = PRipple::$configureArguments[$name] ?? null) {
+            try {
+                throw new Exception("Argument {$name} not found");
+            } catch (Exception $e) {
+                PRipple::printExpect($e);
+                exit;
+            }
+        }
+        return $value;
     }
 }

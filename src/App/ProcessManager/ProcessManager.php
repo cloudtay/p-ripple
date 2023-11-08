@@ -3,18 +3,19 @@ declare(strict_types=1);
 
 namespace PRipple\App\ProcessManager;
 
+use PRipple\App\Facade\Process;
 use PRipple\PRipple;
 use PRipple\Protocol\CCL;
 use PRipple\Std\ProtocolStd;
 use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\Worker;
+use PRipple\Worker\NetworkWorkerInterface;
+use PRipple\Worker\WorkerInterface;
 
-class ProcessManager extends NetWorker
+class ProcessManager extends NetworkWorkerInterface
 {
-    public const UNIX_PATH = '/tmp/p_ripple_process_manager.sock';
-    public const LOCK_PATH = '/tmp/p_ripple_process_manager.lock';
+    public static string $UNIX_PATH;
+    public static string $LOCK_PATH;
 
     /**
      * 映射:进程=>守护ID
@@ -39,7 +40,7 @@ class ProcessManager extends NetWorker
      */
     public ProtocolStd $protocol;
 
-    public static function instance(): ProcessManager|Worker
+    public static function instance(): ProcessManager|WorkerInterface
     {
         return PRipple::worker(ProcessManager::class);
     }
@@ -67,7 +68,7 @@ class ProcessManager extends NetWorker
     public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
     {
         if ($observerProcessId === posix_getpid()) {
-            call_user_func([Process::class, $command], ...$arguments);
+            call_user_func([ProcessContainer::class, $command], ...$arguments);
         } elseif ($client = $this->observerHashmap[$observerProcessId]) {
             $this->protocol->send($client, Build::new('process.observer.command', [
                 'action' => $command,
@@ -82,26 +83,22 @@ class ProcessManager extends NetWorker
      */
     public function initialize(): void
     {
-        unlink(ProcessManager::UNIX_PATH);
-        unlink(ProcessManager::LOCK_PATH);
-        $this->bind('unix://' . ProcessManager::UNIX_PATH);
+        ProcessManager::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.sock';
+        ProcessManager::$LOCK_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.lock';
+
+        file_exists(ProcessManager::$UNIX_PATH) && unlink(ProcessManager::$UNIX_PATH);
+        file_exists(ProcessManager::$LOCK_PATH) && unlink(ProcessManager::$LOCK_PATH);
+        $this->bind('unix://' . ProcessManager::$UNIX_PATH);
         $this->protocol(CCL::class);
         parent::initialize();
-        \PRipple\App\Facade\Process::setInstance($this);
+        Process::setInstance($this);
     }
 
     /**
+     * @param string $context
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
-    {
-    }
-
-    public function destroy(): void
-    {
-    }
-
     public function onMessage(string $context, Client $client): void
     {
         /**
@@ -115,22 +112,29 @@ class ProcessManager extends NetWorker
                 $this->processObserverHashMap[$processId] = $observerProcessId;
                 $client->setIdentity($processId);
                 $client->setName('process.fork');
+                PRipple::info('[Process]', 'new process:', $processId . '=>' . $observerProcessId);
                 break;
             case 'process.observer':
                 $processId = intval($build->data['processId']);
                 $this->observerHashmap[$processId] = $client;
                 $client->setIdentity($processId);
                 $client->setName('process.observer');
+                PRipple::info('[Process]', 'new observer:', strval($processId));
                 break;
             case 'process.observer.count':
                 $this->guardCounter(intval(
                     $build->data['observerProcessId']),
-                    intval($build->data['guardCount']
-                    ));
+                    intval($build->data['guardCount'])
+                );
                 break;
         }
     }
 
+    /**
+     * @param int $observerProcessId
+     * @param int $num
+     * @return void
+     */
     public function guardCounter(int $observerProcessId, int $num): void
     {
         if (!isset($this->observerCountMap[$observerProcessId])) {
@@ -142,11 +146,19 @@ class ProcessManager extends NetWorker
         }
     }
 
+    /**
+     * @param Client $client
+     * @return string|false
+     */
     public function splitMessage(Client $client): string|false
     {
         return $this->protocol->cut($client);
     }
 
+    /**
+     * @param Client $client
+     * @return void
+     */
     public function onClose(Client $client): void
     {
         switch ($client->getName()) {
@@ -163,11 +175,10 @@ class ProcessManager extends NetWorker
         }
     }
 
-    public function heartbeat(): void
-    {
-    }
-
-    public function onHandshake(Client $client): void
+    /**
+     * @return void
+     */
+    public function destroy(): void
     {
     }
 }

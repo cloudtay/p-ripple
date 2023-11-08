@@ -2,8 +2,9 @@
 
 namespace PRipple\App\Facade;
 
+use PRipple\App\Http\HttpWorker;
 use PRipple\Std\Facade;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 
 class Http extends Facade
 {
@@ -14,12 +15,12 @@ class Http extends Facade
         return call_user_func_array([Http::$instance, $name], $arguments);
     }
 
-    public static function getInstance(): \PRipple\App\Http\Http
+    public static function getInstance(): HttpWorker
     {
         return Http::$instance;
     }
 
-    public static function setInstance(Worker $worker): \PRipple\App\Http\Http
+    public static function setInstance(WorkerInterface $worker): HttpWorker
     {
         Http::$instance = $worker;
         return Http::$instance;

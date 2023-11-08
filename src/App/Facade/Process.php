@@ -2,9 +2,10 @@
 
 namespace PRipple\App\Facade;
 
+use PRipple\App\ProcessManager\ProcessContainer;
 use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\Std\Facade;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 
 /**
  * @method static void signal(int $processId, int $signal)
@@ -17,7 +18,7 @@ class Process extends Facade
     public static function __callStatic(string $name, array $arguments): mixed
     {
         if ($name === 'fork') {
-            return call_user_func_array([\PRipple\App\ProcessManager\Process::class, $name], $arguments);
+            return call_user_func_array([ProcessContainer::class, $name], $arguments);
         }
         return call_user_func_array([Process::$instance, $name], $arguments);
     }
@@ -27,7 +28,7 @@ class Process extends Facade
         return Process::$instance;
     }
 
-    public static function setInstance(Worker $worker): ProcessManager
+    public static function setInstance(WorkerInterface $worker): ProcessManager
     {
         Process::$instance = $worker;
         return Process::$instance;

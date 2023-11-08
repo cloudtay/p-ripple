@@ -2,7 +2,7 @@
 
 namespace PRipple\Std;
 
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 
 abstract class Facade
 {
@@ -10,7 +10,7 @@ abstract class Facade
 
     abstract public static function getInstance(): mixed;
 
-    abstract public static function setInstance(Worker $worker): mixed;
+    abstract public static function setInstance(WorkerInterface $worker): mixed;
 
     abstract public static function __callStatic(string $name, array $arguments): mixed;
 }

@@ -11,7 +11,7 @@ use PRipple\Protocol\CCL;
 use PRipple\Worker\NetWorker\Client;
 use PRipple\Worker\NetWorker\SocketType\SocketUnix;
 
-class PDOProxy
+class PDOProxyContainer
 {
     private string $dns;
     private string $username;
@@ -50,7 +50,7 @@ class PDOProxy
      */
     #[NoReturn] public static function launch(string $dns, string $username, string $password, array $options): void
     {
-        $pdoProxy = new PDOProxy($dns, $username, $password, $options);
+        $pdoProxy = new PDOProxyContainer($dns, $username, $password, $options);
         $pdoProxy->connectServer();
         try {
             $pdoProxy->loop();
@@ -67,7 +67,7 @@ class PDOProxy
     private function connectServer(): void
     {
         try {
-            $this->server = new Client(SocketUnix::connect(PDOProxyWorker::UNIX_PATH), SocketUnix::class);
+            $this->server = new Client(SocketUnix::connect(PDOProxyWorker::$UNIX_PATH), SocketUnix::class);
         } catch (Exception $exception) {
             PRipple::printExpect($exception);
         }

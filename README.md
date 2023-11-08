@@ -6,7 +6,7 @@ composer require cclilshy/p-ripple
 
 ### example
 
-> The following provides sample code and deployment process to demonstrate how it works as a service
+> The following provides a sample code and deployment process to demonstrate how it works as a service
 
 ```bash
 vim main.php
@@ -28,11 +28,15 @@ use function Cclilshy\PRipple\delay;
 
 include __DIR__ . '/vendor/autoload.php';
 
-$kernel = PRipple::instance();
+$kernel = PRipple::configure([
+    'RUNTIME_PATH' => __DIR__,
+    'HTTP_UPLOAD_PATH' => __DIR__,
+]);
+
 $options = [SO_REUSEPORT => true];
 
-# PDO代理池新增一个代理(详见文档:PDO代理),支持普通查询/事务查询
-PDOProxy::addProxy(1, [
+# PDO代理池新增4个代理(详见文档:PDO代理),支持普通查询/事务查询
+PDOProxy::addProxy(4, [
     'dns' => 'mysql:host=127.0.0.1;dbname=ad',
     'username' => 'root',
     'password' => '123456',

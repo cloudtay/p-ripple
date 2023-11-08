@@ -4,7 +4,7 @@ namespace Cclilshy\PRipple;
 
 use Closure;
 use Fiber;
-use PRipple\App\ProcessManager\Process;
+use PRipple\App\ProcessManager\ProcessContainer;
 use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\App\Timer\Timer;
 use PRipple\PRipple;
@@ -60,11 +60,12 @@ function signal(int $processId, int $signalNo): void
  */
 function fork(Closure $closure): bool|int
 {
-    return Process::fork($closure);
+    return ProcessContainer::fork($closure);
 }
 
 
 /**
+ * 异步执行
  * @param Closure $callable
  * @return void
  */

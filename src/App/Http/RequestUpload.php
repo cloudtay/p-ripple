@@ -106,7 +106,7 @@ class RequestUpload
      */
     private function createNewFile(): string
     {
-        $this->currentTransferFilePath = '/tmp/' . FS . md5(strval(microtime(true)));
+        $this->currentTransferFilePath = HttpWorker::$uploadPath . FS . md5(strval(microtime(true)));
         $this->currentTransferFile = fopen($this->currentTransferFilePath, 'wb+');
         return $this->currentTransferFilePath;
     }

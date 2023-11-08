@@ -6,16 +6,17 @@ namespace PRipple\App\Http;
 use Closure;
 use Exception;
 use Fiber;
+use PRipple\App\Facade\Http;
 use PRipple\PRipple;
 use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetworkWorkerInterface;
 use Throwable;
 
 /**
  * Http服务类
  */
-class Http extends NetWorker
+class HttpWorker extends NetworkWorkerInterface
 {
     /**
      * Http流工厂
@@ -42,6 +43,11 @@ class Http extends NetWorker
     private array $requests = [];
 
     /**
+     * @var string
+     */
+    public static string $uploadPath;
+
+    /**
      * 定义请求处理
      * @param Closure $requestHandler
      * @return void
@@ -60,7 +66,8 @@ class Http extends NetWorker
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->requestFactory = new RequestFactory($this);
         parent::initialize();
-        \PRipple\App\Facade\Http::setInstance($this);
+        HttpWorker::$uploadPath = PRipple::getArgument('HTTP_UPLOAD_PATH');
+        Http::setInstance($this);
     }
 
     /**
@@ -74,10 +81,10 @@ class Http extends NetWorker
                 foreach ($requesting as $response) {
                     try {
                         if ($response instanceof Response) {
-                            $request->client->send($response->__toString());
+                            !$request->client->deprecated && $request->client->send($response->__toString());
                         }
                     } catch (Exception $exception) {
-//                        PRipple::printExpect($exception);
+                        PRipple::printExpect($exception);
                         return;
                     }
                 }
@@ -143,24 +150,6 @@ class Http extends NetWorker
     {
         $this->requests[$request->hash] = $request;
         $this->todo = true;
-//        $this->workFibers[$request->hash] = new Fiber(function () use ($request) {
-//            /**
-//             * @var Generator $requesting
-//             */
-//            $requesting = call_user_func($this->requestHandler, $request);
-//            foreach ($requesting as $response) {
-//                $request->client->send($response->__toString());
-//            }
-//        });
-//        try {
-//            if (!$response = $this->workFibers[$request->hash]->start()) {
-//                $this->recover($request->hash);
-//            } else {
-//                $this->publishAsync($response);
-//            }
-//        } catch (Throwable $exception) {
-//            PRipple::printExpect($exception);
-//        }
     }
 
     /**
@@ -191,23 +180,12 @@ class Http extends NetWorker
         $hash = $event->publisher;
         if (isset($this->workFibers[$hash])) {
             try {
-                if (!$response = $this->workFibers[$hash]->resume($event)) {
+                if (!$this->resume($this->workFibers[$hash], $event)) {
                     $this->recover($hash);
-                } elseif (!in_array($response->name, $this->subscribes)) {
-                    $this->publishAsync($response);
                 }
             } catch (Throwable $exception) {
                 PRipple::printExpect($exception);
             }
         }
-    }
-
-    /**
-     * @param Client $client
-     * @return void
-     */
-    public function onHandshake(Client $client): void
-    {
-        // TODO: Implement onHandshake() method.
     }
 }

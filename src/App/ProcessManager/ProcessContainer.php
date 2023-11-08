@@ -12,7 +12,7 @@ use PRipple\Worker\Build;
 use PRipple\Worker\NetWorker\Client;
 use PRipple\Worker\NetWorker\SocketType\SocketUnix;
 
-class Process
+class ProcessContainer
 {
     public static array $childrenIds = [];
     public static bool $isMaster = true;
@@ -28,37 +28,37 @@ class Process
      */
     public static function fork(Closure $callable): false|int
     {
-        if (Process::$isMaster) {
-            Process::$hasObserver = false;
-            Process::$observerProcessId = posix_getpid();
-        } elseif (!Process::$hasObserver) {
-            if (!Process::$observerProcessId = Process::startObserver()) {
+        if (ProcessContainer::$isMaster) {
+            ProcessContainer::$hasObserver = false;
+            ProcessContainer::$observerProcessId = posix_getpid();
+        } elseif (!ProcessContainer::$hasObserver) {
+            if (!ProcessContainer::$observerProcessId = ProcessContainer::startObserver()) {
                 return false;
             }
             try {
-                Process::$managerTunnel = new Client(SocketUnix::connect(ProcessManager::UNIX_PATH), SocketUnix::class);
+                ProcessContainer::$managerTunnel = new Client(SocketUnix::connect(ProcessManager::$UNIX_PATH), SocketUnix::class);
             } catch (Exception $exception) {
                 PRipple::printExpect($exception);
                 return false;
             }
-            Process::$hasObserver = true;
+            ProcessContainer::$hasObserver = true;
         }
         $pid = pcntl_fork();
         if ($pid === -1) {
             return false;
         } elseif ($pid === 0) {
-            Process::$isMaster = false;
-            Process::$childrenIds = [];
-            Process::$hasObserver = false;
-            Process::$guardCount = 0;
+            ProcessContainer::$isMaster = false;
+            ProcessContainer::$childrenIds = [];
+            ProcessContainer::$hasObserver = false;
+            ProcessContainer::$guardCount = 0;
             try {
-                if ($socket = SocketUnix::connect(ProcessManager::UNIX_PATH)) {
+                if ($socket = SocketUnix::connect(ProcessManager::$UNIX_PATH)) {
                     $aisle = new Client($socket, SocketUnix::class);
                     $ccl = new CCL;
                     $ccl->send($aisle, Build::new('process.fork', [
-                        'observerProcessId' => Process::$observerProcessId,
+                        'observerProcessId' => ProcessContainer::$observerProcessId,
                         'processId' => posix_getpid(),
-                    ], Process::class)->__toString());
+                    ], ProcessContainer::class)->__toString());
                     $callable();
                 }
             } catch (Exception $exception) {
@@ -66,9 +66,9 @@ class Process
             }
             exit;
         } else {
-            Process::$childrenIds[] = $pid;
-            Process::$guardCount++;
-            if (Process::$isMaster) {
+            ProcessContainer::$childrenIds[] = $pid;
+            ProcessContainer::$guardCount++;
+            if (ProcessContainer::$isMaster) {
                 ProcessManager::instance()->processObserverHashMap[$pid] = posix_getpid();
             }
             return $pid;
@@ -86,16 +86,16 @@ class Process
             return false;
         } elseif ($pid === 0) {
             try {
-                if ($socket = SocketUnix::connect(ProcessManager::UNIX_PATH)) {
+                if ($socket = SocketUnix::connect(ProcessManager::$UNIX_PATH)) {
                     $aisle = new Client($socket, SocketUnix::class);
                     $ccl = new CCL;
                     $ccl->send($aisle, Build::new('process.observer', [
                         'processId' => posix_getpid(),
-                    ], Process::class)->__toString());
+                    ], ProcessContainer::class)->__toString());
                     while (true) {
                         if ($build = $ccl->cut($aisle)) {
                             $build = unserialize($build);
-                            call_user_func_array([Process::class, $build->data['action']], $build->data['arguments']);
+                            call_user_func_array([ProcessContainer::class, $build->data['action']], $build->data['arguments']);
                         }
                     }
                 }
@@ -104,7 +104,7 @@ class Process
             }
             exit;
         } else {
-            Process::$childrenIds[] = $pid;
+            ProcessContainer::$childrenIds[] = $pid;
             return $pid;
         }
     }
@@ -115,16 +115,16 @@ class Process
      */
     public static function guarded(): void
     {
-        if (Process::$isMaster) {
+        if (ProcessContainer::$isMaster) {
             return;
         }
         $ccl = new CCL;
-        $ccl->send(Process::$managerTunnel, Build::new('process.observer.count', [
-            'observerProcessId' => Process::$observerProcessId,
-            'guardCount' => Process::$guardCount,
-        ], Process::class)->__toString());
-        Process::$hasObserver = false;
-        Process::$guardCount = 0;
+        $ccl->send(ProcessContainer::$managerTunnel, Build::new('process.observer.count', [
+            'observerProcessId' => ProcessContainer::$observerProcessId,
+            'guardCount' => ProcessContainer::$guardCount,
+        ], ProcessContainer::class)->__toString());
+        ProcessContainer::$hasObserver = false;
+        ProcessContainer::$guardCount = 0;
     }
 
     /**

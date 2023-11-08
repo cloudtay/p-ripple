@@ -9,7 +9,7 @@ use Socket;
 /**
  * 缓冲区工作器
  */
-class BufferWorker extends Worker
+class BufferWorker extends WorkerInterface
 {
     /**
      * @var SocketAisle[] $buffers
@@ -31,7 +31,8 @@ class BufferWorker extends Worker
     public function heartbeat(): void
     {
         foreach ($this->buffers as $buffer) {
-            while ($buffer->write('') > 0) {
+            while ($buffer->openCache && $length = $buffer->write('')) {
+//                echo '缓冲释放' . $length . PHP_EOL;
             }
         }
     }

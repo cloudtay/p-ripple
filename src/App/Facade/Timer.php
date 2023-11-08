@@ -4,7 +4,7 @@ namespace PRipple\App\Facade;
 
 use PRipple\Std\Facade;
 use PRipple\Worker\Build;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 
 /**
  * @method static void sleep(int $seconds)
@@ -25,7 +25,7 @@ class Timer extends Facade
         return Timer::$instance;
     }
 
-    public static function setInstance(Worker $worker): \PRipple\App\Timer\Timer
+    public static function setInstance(WorkerInterface $worker): \PRipple\App\Timer\Timer
     {
         Timer::$instance = $worker;
         return Timer::$instance;

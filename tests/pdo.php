@@ -1,41 +1,46 @@
 <?php
 
 use PRipple\App\Facade\PDOProxy;
-use PRipple\App\Facade\Timer;
-use PRipple\App\PDOProxy\PDOProxyWorker;
-use PRipple\App\PDOProxy\PDOTransaction;
+use PRipple\App\Facade\Process;
 use PRipple\PRipple;
 use function Cclilshy\PRipple\async;
+use function Cclilshy\PRipple\delay;
+use function Cclilshy\PRipple\fork;
 
 include __DIR__ . '/vendor/autoload.php';
 
-$pRipple = PRipple::instance();
-$pdoProxyManager = PDOProxyWorker::new(PDOProxyWorker::class);
+$kernel = PRipple::configure([
+    'RUNTIME_PATH' => __DIR__,
+    'HTTP_UPLOAD_PATH' => __DIR__,
+]);
 
-Timer::loop(1, function () {
-    echo 'is running' . PHP_EOL;
+PDOProxy::addProxy(10, [
+    'dns' => 'mysql:host=127.0.0.1;dbname=lav',
+    'username' => 'root',
+    'password' => '123456',
+    'options' => []
+]);
+
+
+async(function () use (&$pid) {
+    delay(10);
+    echo 'test pid :' . $pid . PHP_EOL;
+    Process::signal($pid, SIGTERM);
 });
 
-async(function () use ($pdoProxyManager) {
-    Timer::sleep(3);
-    PDOProxy::transaction(function (PDOTransaction $PDOTransaction) {
-        var_dump($PDOTransaction->query('select * from example where id = ?', [1], [PDO::PARAM_INT]));
-        var_dump($PDOTransaction->query('update example set value = "bb" where id = ?', [1], [PDO::PARAM_INT]));
-        var_dump($PDOTransaction->query('select * from example where id = ?', [1], [PDO::PARAM_INT]));
-        $PDOTransaction->rollBack();
+$pid = 0;
+
+async(function () use (&$pid) {
+    delay(1);
+    $pid = fork(function () {
+        $count = 0;
+        while (true) {
+            $count++;
+            PDOProxy::query('select * from user where id = ?', [17]);
+            echo "第{$count}次查询. \n";
+        }
     });
-
-    PDOProxy::query('select * from example where id = ?', [1], [PDO::PARAM_INT]);
 });
 
-async(function () use ($pdoProxyManager) {
-    $options = [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
-    $pdoProxyManager->addProxy(2, [
-        'dns' => 'mysql:host=127.0.0.1;dbname=test',
-        'username' => 'root',
-        'password' => '123456',
-        'options' => $options
-    ]);
-});
+$kernel->launch();
 
-$pRipple->push($pdoProxyManager)->launch();

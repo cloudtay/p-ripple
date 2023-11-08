@@ -3,13 +3,13 @@ declare(strict_types=1);
 
 namespace PRipple\Tests;
 
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetworkWorkerInterface;
 
 /**
  *
  */
-class TestTCP extends NetWorker
+class TestTCP extends NetworkWorkerInterface
 {
     /**
      * @param Client $client

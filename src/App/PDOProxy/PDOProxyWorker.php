@@ -13,14 +13,14 @@ use PRipple\App\PDOProxy\Exception\RollbackException;
 use PRipple\PRipple;
 use PRipple\Protocol\CCL;
 use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\Worker;
+use PRipple\Worker\NetworkWorkerInterface;
+use PRipple\Worker\WorkerInterface;
 use Throwable;
 
-class PDOProxyWorker extends NetWorker
+class PDOProxyWorker extends NetworkWorkerInterface
 {
-    public const UNIX_PATH = '/tmp/p_ripple_pdo_proxy.sock';
+    public static string $UNIX_PATH;
     public array $proxyProcessIds = [];
     public int $proxyProcessCount = 0;
     public array $fibers = [];
@@ -47,9 +47,9 @@ class PDOProxyWorker extends NetWorker
     }
 
     /**
-     * @return PDOProxyWorker|Worker
+     * @return PDOProxyWorker|WorkerInterface
      */
-    public static function instance(): PDOProxyWorker|Worker
+    public static function instance(): PDOProxyWorker|WorkerInterface
     {
         return PRipple::worker(PDOProxyWorker::class);
     }
@@ -66,12 +66,14 @@ class PDOProxyWorker extends NetWorker
          */
         $event = unserialize($context);
         if ($fiber = $this->fibers[$event->publisher] ?? null) {
-            if (!$response = $fiber->resume($event->data)) {
-                unset($this->fibers[$event->publisher]);
-            } elseif (!in_array($response->name, $this->subscribes)) {
-                $this->publishAsync($response);
-            }
+//            if (!$response = $fiber->resume($event->data)) {
+//                unset($this->fibers[$event->publisher]);
+//            } elseif (!in_array($response->name, $this->subscribes)) {
+//                $this->publishAsync($response);
+//            }
+            $this->resume($fiber, $event->data);
         }
+        $this->connections[$client->getName()]->count--;
     }
 
     /**
@@ -88,8 +90,9 @@ class PDOProxyWorker extends NetWorker
      */
     public function initialize(): void
     {
-        unlink(PDOProxyWorker::UNIX_PATH);
-        $this->bind('unix://' . PDOProxyWorker::UNIX_PATH);
+        PDOProxyWorker::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_pdo_proxy.sock';
+        file_exists(PDOProxyWorker::$UNIX_PATH) && unlink(PDOProxyWorker::$UNIX_PATH);
+        $this->bind('unix://' . PDOProxyWorker::$UNIX_PATH);
         $this->protocol(CCL::class);
         parent::initialize();
         PDOProxy::setInstance($this);
@@ -139,13 +142,19 @@ class PDOProxyWorker extends NetWorker
             return $this->bindMap[$hash] ?? false;
         }
 
-        //TODO: 获取空闲连接
-        foreach ($this->connections as $connection) {
-            if ($connection->transaction === false) {
-                return $connection;
-            }
+        $freeConnections = array_filter($this->connections, function ($connection) {
+            return $connection->transaction === false;
+        });
+
+        if (empty($freeConnections)) {
+            return false;
         }
-        return false;
+
+        $counts = array_column($freeConnections, 'count');
+        $connectionsByCount = array_combine($counts, $freeConnections);
+        $connection = $connectionsByCount[min($counts)];
+        $connection->count++;
+        return $connection;
     }
 
     /**
@@ -206,11 +215,12 @@ class PDOProxyWorker extends NetWorker
         $result = 0;
         foreach (range(1, $num) as $_) {
             $pid = Process::fork(function () use ($config) {
-                \PRipple\App\PDOProxy\PDOProxy::launch(
+                PDOProxyContainer::launch(
                     $config['dns'],
                     $config['username'],
                     $config['password'],
-                    $config['options']);
+                    $config['options']
+                );
             });
             if ($pid) {
                 $this->proxyProcessIds[] = $pid;
@@ -230,7 +240,6 @@ class PDOProxyWorker extends NetWorker
                         $connection->query($queue->publisher, $queue->query, $queue->bindings, $queue->bindParams);
                         break;
                     default:
-
                 }
             } else {
                 array_unshift($this->queue, $queue);

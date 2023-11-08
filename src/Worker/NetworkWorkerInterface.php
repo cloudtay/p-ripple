@@ -15,7 +15,7 @@ use Socket;
 /**
  *
  */
-class NetWorker extends Worker
+class NetworkWorkerInterface extends WorkerInterface
 {
     /**
      * 客户端套接字列表
@@ -37,7 +37,7 @@ class NetWorker extends Worker
      * @var string
      */
     public string $socketType;
-    public string $name = NetWorker::class;
+    public string $name = NetworkWorkerInterface::class;
 
     /**
      * 协议
@@ -55,7 +55,7 @@ class NetWorker extends Worker
      * @param string $name
      * @param string $protocol
      */
-    public function __construct(string $name = NetWorker::class, string $protocol = TCPProtocol::class)
+    public function __construct(string $name = NetworkWorkerInterface::class, string $protocol = TCPProtocol::class)
     {
         parent::__construct($name);
         $this->protocol = new $protocol();
@@ -110,7 +110,7 @@ class NetWorker extends Worker
      */
     public function getClientBySocket(mixed $clientSocket): Client|null
     {
-        $name = NetWorker::getNameBySocket($clientSocket);
+        $name = NetworkWorkerInterface::getNameBySocket($clientSocket);
         return $this->getClientByName($name);
     }
 
@@ -226,6 +226,7 @@ class NetWorker extends Worker
         } else {
             $this->onClose($client);
             $this->removeClient($client);
+            $client->deprecated = true;
         }
     }
 
@@ -236,6 +237,10 @@ class NetWorker extends Worker
     {
         try {
             if ($socket = socket_accept($listenSocket)) {
+                socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+                if ($this->socketType === SocketInet::class) {
+                    socket_set_option($socket, SOL_TCP, TCP_NODELAY, 1);
+                }
                 $this->addSocket($socket);
                 return true;
             }
@@ -252,9 +257,10 @@ class NetWorker extends Worker
      */
     public function addSocket(Socket $socket): void
     {
-        $name = NetWorker::getNameBySocket($socket);
+        $name = NetworkWorkerInterface::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clients[$name] = new Client($socket, $this->socketType);
+        $this->clients[$name]->setNoBlock();
         $this->onConnect($this->clients[$name]);
         $this->subscribeSocket($socket);
     }
@@ -357,6 +363,7 @@ class NetWorker extends Worker
     {
         try {
             while ($addressFull = array_shift($this->bindAddressList)) {
+                PRipple::info("    |_ ", $addressFull);
                 $type = match (true) {
                     str_contains($addressFull, 'unix://') => SocketUnix::class,
                     str_contains($addressFull, 'tcp://') => SocketInet::class,

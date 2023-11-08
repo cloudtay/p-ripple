@@ -8,6 +8,7 @@ use PRipple\Worker\NetWorker\Client;
 class PDOProxyConnection
 {
     public bool $transaction = false;
+    public int $count = 0;
     protected Client $client;
     protected CCL $ccl;
 

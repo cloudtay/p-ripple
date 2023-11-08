@@ -12,7 +12,7 @@ use Throwable;
 /**
  *
  */
-abstract class Worker
+abstract class WorkerInterface
 {
     /**
      * 客户端名称
@@ -218,6 +218,28 @@ abstract class Worker
         } catch (Throwable $exception) {
             PRipple::printExpect($exception);
         }
+    }
+
+    /**
+     * @param Fiber $fiber
+     * @param mixed|null $data
+     * @return bool
+     */
+    public function resume(Fiber $fiber, mixed $data = null): bool
+    {
+        try {
+            if ($event = $fiber->resume($data)) {
+                if (in_array($event->name, $this->subscribes)) {
+                    $this->builds[] = $event;
+                } else {
+                    $this->publishAsync($event);
+                }
+                return true;
+            }
+        } catch (Throwable $exception) {
+            PRipple::printExpect($exception);
+        }
+        return false;
     }
 
     /**

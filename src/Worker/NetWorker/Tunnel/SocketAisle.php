@@ -9,14 +9,16 @@ use PRipple\FileSystem\FileException;
 use PRipple\PRipple;
 use PRipple\Std\TunnelStd;
 use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker;
+use PRipple\Worker\NetworkWorkerInterface;
 
 /**
  * 套接字类型通道
  */
 class SocketAisle implements TunnelStd
 {
+    // 弃用的连接
     public const EXT = '.tunnel';
+    public bool $deprecated = false;
     // 用户地址
     public bool $openCache = false;
     // 在管理器中的键名
@@ -64,7 +66,7 @@ class SocketAisle implements TunnelStd
         socket_getsockname($socket, $address, $port);
         $this->address = $address;
         $this->port = $port ?? 0;
-        $this->hash = NetWorker::getNameBySocket($socket);
+        $this->hash = NetworkWorkerInterface::getNameBySocket($socket);
         $this->socket = $socket;
         $this->name = '';
         $this->sendBufferSize = socket_get_option($socket, SOL_SOCKET, SO_SNDBUF);
@@ -307,7 +309,6 @@ class SocketAisle implements TunnelStd
                 $this->cacheFile = FileAisle::create($cacheFile);
                 $this->openCache = true;
                 PRipple::publishAsync(Build::new('socket.buffer', $this, SocketAisle::class));
-
             } else {
                 throw new FileException("Unable to create socket cache buffer file, please check directory permissions: " . $this->cacheFilePath);
             }
@@ -388,12 +389,7 @@ class SocketAisle implements TunnelStd
                 }
             }
 
-        } catch (FileException $exception) {
-//            PRipple::printExpect($exception);
-            return false;
-        }
 
-        try {
             // 处理请求文本
             $list = str_split($context, $this->sendBufferSize);
             while ($item = array_shift($list)) {
@@ -412,7 +408,7 @@ class SocketAisle implements TunnelStd
             }
             return $handledLengthCount;
         } catch (Exception $exception) {
-//            PRipple::printExpect($exception);
+            PRipple::printExpect($exception);
             return false;
         }
     }

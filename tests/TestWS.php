@@ -3,13 +3,13 @@ declare(strict_types=1);
 
 namespace PRipple\Tests;
 
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetworkWorkerInterface;
 
 /**
  *
  */
-class TestWS extends NetWorker
+class TestWS extends NetworkWorkerInterface
 {
     /**
      * @return void

@@ -9,7 +9,7 @@ use Fiber;
 use PRipple\App\PDOProxy\Exception\PDOProxyException;
 use PRipple\PRipple;
 use PRipple\Worker\Build;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 use Socket;
 use SplPriorityQueue;
 use Throwable;
@@ -17,8 +17,11 @@ use Throwable;
 /**
  * 计时器服务
  */
-class Timer extends Worker
+class Timer extends WorkerInterface
 {
+    public const EVENT_TIMER_EVENT = 'timer.event';
+    public const EVENT_TIMER_LOOP = 'timer.loop';
+    public const EVENT_TIMER_SLEEP = 'timer.sleep';
     /**
      * 任务队列
      * @var SplPriorityQueue $taskQueue
@@ -26,9 +29,9 @@ class Timer extends Worker
     private SplPriorityQueue $taskQueue;
 
     /**
-     * @return Timer|Worker
+     * @return Timer|WorkerInterface
      */
-    public static function instance(): Timer|Worker
+    public static function instance(): Timer|WorkerInterface
     {
         return PRipple::worker(Timer::class);
     }
@@ -40,12 +43,13 @@ class Timer extends Worker
     public function initialize(): void
     {
         $this->taskQueue = new SplPriorityQueue();
-        $this->subscribe('timer.event');
-        $this->subscribe('timer.loop');
-        $this->subscribe('timer.sleep');
+        $this->subscribe(Timer::EVENT_TIMER_EVENT);
+        $this->subscribe(Timer::EVENT_TIMER_LOOP);
+        $this->subscribe(Timer::EVENT_TIMER_SLEEP);
         $this->todo = true;
         \PRipple\App\Facade\Timer::setInstance($this);
     }
+
 
     /**
      * 心跳
@@ -58,21 +62,22 @@ class Timer extends Worker
             $task = $this->taskQueue->top();
             if ($task['expire'] <= $now && $event = $task['event']) {
                 switch ($event->name) {
-                    case 'timer.event':
+                    case Timer::EVENT_TIMER_EVENT:
                         $this->publishAsync($event->data['data']);
                         break;
-                    case 'timer.loop':
+                    case Timer::EVENT_TIMER_LOOP:
                         call_user_func($event->data['data']);
                         $this->loop($event->data['time'], $event->data['data']);
                         break;
-                    case 'timer.sleep':
+                    case Timer::EVENT_TIMER_SLEEP:
                         try {
-                            if ($response = $event->data['data']->resume()) {
-                                if (!in_array($response->name, $this->subscribes)) {
-                                    $this->publishAsync($response);
-                                }
-                            }
-                        } catch (Throwable|Exception|PDOProxyException $exception) {
+//                            if ($response = $event->data['data']->resume()) {
+//                                if (!in_array($response->name, $this->subscribes)) {
+//                                    $this->publishAsync($response);
+//                                }
+//                            }
+                            $this->resume($event->data['data']);
+                        } catch (Throwable|Exception $exception) {
                             PRipple::printExpect($exception);
                         }
                         break;
@@ -92,7 +97,7 @@ class Timer extends Worker
      */
     public function loop(int $second, Closure $callable): void
     {
-        $this->publishAsync(Build::new('timer.loop', [
+        $this->publishAsync(Build::new(Timer::EVENT_TIMER_LOOP, [
             'time' => $second,
             'data' => $callable
         ], Timer::class));
@@ -129,7 +134,7 @@ class Timer extends Worker
      */
     public function event(int $second, Build $event): void
     {
-        $this->publishAsync(Build::new('timer.event', [
+        $this->publishAsync(Build::new(Timer::EVENT_TIMER_EVENT, [
             'time' => $second,
             'data' => $event
         ], Timer::class));
@@ -142,7 +147,7 @@ class Timer extends Worker
      */
     public function sleep(int $second): void
     {
-        $event = Build::new('timer.sleep', [
+        $event = Build::new(Timer::EVENT_TIMER_SLEEP, [
             'time' => $second,
             'data' => Fiber::getCurrent()
         ], Timer::class);

@@ -4,15 +4,15 @@ declare(strict_types=1);
 namespace PRipple\Tests;
 
 use PRipple\PRipple;
-use PRipple\Worker\NetWorker;
 use PRipple\Worker\NetWorker\Client;
+use PRipple\Worker\NetworkWorkerInterface;
 
 include __DIR__ . '/vendor/autoload.php';
 
 /**
  *
  */
-class test_file_server extends NetWorker
+class test_file_server extends NetworkWorkerInterface
 {
     /**
      * execute after the service starts
@@ -47,14 +47,19 @@ class test_file_server extends NetWorker
      */
     public function onConnect(Client $client): void
     {
-        $client->setNoBlock();
+//        $client->setNoBlock();
         $filePath = '/tmp/test_file';
-        echo PHP_EOL . 'test file md5:' . md5_file($filePath) . PHP_EOL;
+
         $file = fopen($filePath, 'r');
         while (!feof($file)) {
-            $client->write(fread($file, 1024));
+            var_dump($client->write(fread($file, 1024)));
         }
         fclose($file);
+
+//        PRipple::worker(BufferWorker::class)->heartbeat();
+
+        echo PHP_EOL . 'test file md5:' . md5_file($filePath) . PHP_EOL;
+        echo 'test file size: ' . filesize($filePath) . PHP_EOL;
         echo PHP_EOL . 'test file send done.' . PHP_EOL;
     }
 
@@ -97,6 +102,12 @@ class test_file_server extends NetWorker
     }
 }
 
+$kernel = PRipple::configure([
+    'RUNTIME_PATH' => __DIR__,
+    'HTTP_UPLOAD_PATH' => __DIR__,
+]);
+
 $server = test_file_server::new('test_file_server')->bind('tcp://127.0.0.1:3002', [SO_REUSEADDR => true]);
+
 PRipple::instance()->push($server);
 PRipple::instance()->launch();

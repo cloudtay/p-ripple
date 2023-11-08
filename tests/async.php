@@ -4,38 +4,28 @@ include __DIR__ . '/vendor/autoload.php';
 use PRipple\PRipple;
 use function Cclilshy\PRipple\async;
 use function Cclilshy\PRipple\delay;
-use function Cclilshy\PRipple\fork;
-use function Cclilshy\PRipple\loop;
 
-$master = PRipple::instance()->initialize();
+$kernel = PRipple::configure([
+    'RUNTIME_PATH' => __DIR__,
+    'HTTP_UPLOAD_PATH' => __DIR__,
+]);
 
-async(function () {
-    delay(3); #延时3秒执行
-    echo 'hello,world' . PHP_EOL;
-});
+$num = 0;
 
 async(function () {
-    delay(3); #延时3秒执行
-    echo 'hello,world' . PHP_EOL;
-});
+    $num = 0;
 
-async(function () {
-    fork(function () {
-        fork(function () {
-            $someProcessId = fork(function () {
-                echo 'child process' . PHP_EOL;
-            });
-            echo "someProcessId: {$someProcessId} " . PHP_EOL;
-        });
+    async(function () use (&$num) {
+        delay(2);
+        $num = 1;
+        echo '888';
     });
+
+    echo 'lad';
+    echo $num . PHP_EOL;
+    delay(3);
+    echo $num . PHP_EOL;
 });
 
-# 如果你知道的话,你可以在任何地方向任何进程发送信号
-// signal($someProcessId, SIGTERM);
 
-# 创建一个异步循环
-loop(1, function () {
-    echo 'loop' . PHP_EOL;
-});
-
-$master->launch();
+$kernel->launch();

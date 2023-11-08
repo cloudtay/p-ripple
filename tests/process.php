@@ -1,20 +1,23 @@
 <?php
 include __DIR__ . '/vendor/autoload.php';
 
-use PRipple\App\Http\Http;
+use PRipple\App\Http\HttpWorker;
 use PRipple\App\Http\Request;
 use PRipple\App\Http\Response;
-use PRipple\App\ProcessManager\Process;
+use PRipple\App\ProcessManager\ProcessContainer;
 use PRipple\App\ProcessManager\ProcessManager;
 use PRipple\PRipple;
 use PRipple\Protocol\CCL;
 
-$pRipple = PRipple::instance();
+$pRipple = $kernel = PRipple::configure([
+    'RUNTIME_PATH' => __DIR__,
+    'HTTP_UPLOAD_PATH' => __DIR__,
+]);
 
 $processManager = ProcessManager::new('ProcessManager')
-    ->bind('unix://' . ProcessManager::UNIX_PATH)
+    ->bind('unix://' . ProcessManager::$UNIX_PATH)
     ->protocol(CCL::class);
-$http = Http::new('http_worker_name')->bind('tcp://0.0.0.0:8001', [SO_REUSEPORT => true]);
+$http = HttpWorker::new('http_worker_name')->bind('tcp://0.0.0.0:8001', [SO_REUSEPORT => true]);
 $http->defineRequestHandler(function (Request $request) {
     $response = new Response(
         $statusCode = 200,
@@ -22,14 +25,14 @@ $http->defineRequestHandler(function (Request $request) {
         $body = 'hello,world'
     );
     $request->client->send($response);
-    Process::fork(function () {
-        Process::fork(function () {
+    ProcessContainer::fork(function () {
+        ProcessContainer::fork(function () {
             echo 'child process' . PHP_EOL;
         });
-        Process::fork(function () {
+        ProcessContainer::fork(function () {
             echo 'child process' . PHP_EOL;
         });
-        Process::guarded();
+        ProcessContainer::guarded();
     });
 });
 

@@ -4,7 +4,7 @@ namespace PRipple\App\Facade;
 
 use PRipple\App\PDOProxy\PDOProxyWorker;
 use PRipple\Std\Facade;
-use PRipple\Worker\Worker;
+use PRipple\Worker\WorkerInterface;
 
 /**
  * @method static mixed query(string $query, array|null $bindings = [], array|null $bindParams = [])
@@ -25,7 +25,7 @@ class PDOProxy extends Facade
         return PDOProxy::$instance;
     }
 
-    public static function setInstance(Worker $worker): PDOProxyWorker
+    public static function setInstance(WorkerInterface $worker): PDOProxyWorker
     {
         PDOProxy::$instance = $worker;
         return PDOProxy::$instance;

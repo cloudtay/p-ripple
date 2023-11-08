@@ -16,9 +16,9 @@ class RequestFactory
 
     /**
      * Http服务实体
-     * @var Http $httpService
+     * @var HttpWorker $httpService
      */
-    private Http $httpService;
+    private HttpWorker $httpService;
 
     /**
      * 半成品
@@ -32,7 +32,7 @@ class RequestFactory
      */
     private array $transfers = [];
 
-    public function __construct(Http $httpService)
+    public function __construct(HttpWorker $httpService)
     {
         $this->httpService = $httpService;
     }
