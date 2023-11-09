@@ -227,6 +227,7 @@ class PRipple
                             PRipple::publishAsync($response);
                         }
                     } catch (Throwable $exception) {
+                        echo '不获成功i';
                         $event->data->throw($exception);
                         PRipple::printExpect($exception);
                     }

@@ -268,6 +268,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
      * @param array|null $bindValues
      * @param array|null $bindParams
      * @return mixed
+     * @throws PDOProxyException
      * @throws Throwable
      */
     public function query(string $query, array|null $bindValues = [], array|null $bindParams = []): mixed
@@ -287,12 +288,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
             $this->queue[] = PDOBuild::query($queueHash, $query, $bindValues, $bindParams);
             $this->todo = true;
         }
-        try {
-            //TODO: 等待查询结果
-            return $this->waitResponse();
-        } catch (PDOProxyException $exception) {
-            PRipple::printExpect($exception);
-            return false;
-        }
+        //TODO: 等待查询结果
+        return $this->waitResponse();
     }
 }
