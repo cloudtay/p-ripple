@@ -1,9 +1,11 @@
 <?php
 
-namespace PRipple\App\PDOProxy;
+namespace App\PDOProxy;
 
-use PRipple\Protocol\CCL;
-use PRipple\Worker\NetWorker\Client;
+use FileSystem\FileException;
+use Protocol\CCL;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 class PDOProxyConnection
 {
@@ -21,8 +23,10 @@ class PDOProxyConnection
     /**
      * @param string $hash
      * @return void
+     * @throws FileException
+     * @throws SocketAisleException
      */
-    public function beginTransaction(string $hash): void
+    public function pushBeginTransaction(string $hash): void
     {
         $this->ccl->send($this->client, PDOBuild::beginTransaction($hash)->serialize());
     }
@@ -33,8 +37,10 @@ class PDOProxyConnection
      * @param array|null $bindValues
      * @param array|null $bindParams
      * @return void
+     * @throws FileException
+     * @throws SocketAisleException
      */
-    public function query(string $hash, string $query, array|null $bindValues = [], array|null $bindParams = []): void
+    public function pushQuery(string $hash, string $query, array|null $bindValues = [], array|null $bindParams = []): void
     {
         $this->ccl->send($this->client, PDOBuild::query($hash, $query, $bindValues, $bindParams)->serialize());
     }
@@ -42,8 +48,10 @@ class PDOProxyConnection
     /**
      * @param string $hash
      * @return void
+     * @throws FileException
+     * @throws SocketAisleException
      */
-    public function commit(string $hash): void
+    public function pushCommit(string $hash): void
     {
         $this->ccl->send($this->client, PDOBuild::commit($hash)->serialize());
     }
@@ -51,8 +59,10 @@ class PDOProxyConnection
     /**
      * @param string $hash
      * @return void
+     * @throws FileException
+     * @throws SocketAisleException
      */
-    public function rollBack(string $hash): void
+    public function pushRollBack(string $hash): void
     {
         $this->ccl->send($this->client, PDOBuild::rollBack($hash)->serialize());
     }

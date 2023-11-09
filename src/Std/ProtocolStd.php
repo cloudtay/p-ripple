@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Std;
+namespace Std;
 
-use PRipple\Worker\NetWorker\Client;
 use stdClass;
+use Worker\NetWorker\Client;
 
 /**
  * 协议标准
@@ -37,9 +37,9 @@ interface ProtocolStd
     /**
      * 报文切片
      * @param Client $tunnel 任意通道
-     * @return string|false 切片结果
+     * @return string|false|null 切片结果
      */
-    public function cut(Client $tunnel): string|false;
+    public function cut(Client $tunnel): string|null|false;
 
     /**
      * 抛弃脏数据，调整通道指针
@@ -50,10 +50,10 @@ interface ProtocolStd
 
     /**
      * 解析报文
-     * @param string $context
-     * @return string
+     * @param Client $tunnel
+     * @return string|false|null
      */
-    public function parse(string $context): string;
+    public function parse(Client $tunnel): string|null|false;
 
     /**
      * 握手

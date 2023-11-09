@@ -1,13 +1,12 @@
 <?php
 include __DIR__ . '/vendor/autoload.php';
 
-use PRipple\App\Http\HttpWorker;
-use PRipple\App\Http\Request;
-use PRipple\App\Http\Response;
-use PRipple\App\ProcessManager\ProcessContainer;
-use PRipple\App\ProcessManager\ProcessManager;
-use PRipple\PRipple;
-use PRipple\Protocol\CCL;
+use App\Http\HttpWorker;
+use App\Http\Request;
+use App\Http\Response;
+use App\ProcessManager\ProcessContainer;
+use App\ProcessManager\ProcessManager;
+use Protocol\CCL;
 
 $pRipple = $kernel = PRipple::configure([
     'RUNTIME_PATH' => __DIR__,

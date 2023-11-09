@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\Http;
+namespace App\Http;
 
+use App\Facade\Http;
 use Closure;
-use Exception;
 use Fiber;
-use PRipple\App\Facade\Http;
-use PRipple\PRipple;
-use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetworkWorkerInterface;
+use PRipple;
 use Throwable;
+use Worker\Build;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetworkWorkerInterface;
 
 /**
  * Http服务类
@@ -46,6 +46,7 @@ class HttpWorker extends NetworkWorkerInterface
      * @var string
      */
     public static string $uploadPath;
+    private Closure $exceptionHandler;
 
     /**
      * 定义请求处理
@@ -55,6 +56,15 @@ class HttpWorker extends NetworkWorkerInterface
     public function defineRequestHandler(Closure $requestHandler): void
     {
         $this->requestHandler = $requestHandler;
+    }
+
+    /**
+     * @param Closure $exceptionHandler
+     * @return void
+     */
+    public function defineExceptionHandler(Closure $exceptionHandler): void
+    {
+        $this->exceptionHandler = $exceptionHandler;
     }
 
     /**
@@ -77,30 +87,35 @@ class HttpWorker extends NetworkWorkerInterface
     {
         while ($request = array_shift($this->requests)) {
             $fiber = new Fiber(function () use ($request) {
-                $requesting = call_user_func($this->requestHandler, $request);
-                foreach ($requesting as $response) {
-                    try {
+                try {
+                    $requesting = call_user_func($this->requestHandler, $request);
+                    foreach ($requesting as $response) {
                         if ($response instanceof Response) {
-                            !$request->client->deprecated && $request->client->send($response->__toString());
+                            try {
+                                $request->client->send($response->__toString());
+                            } catch (Throwable $exception) {
+                                return;
+                            }
                         }
-                    } catch (Exception $exception) {
-                        PRipple::printExpect($exception);
-                        return;
+                    }
+                } catch (Throwable $exception) {
+                    PRipple::printExpect($exception);
+                    if (isset($this->exceptionHandler)) {
+                        call_user_func($this->exceptionHandler, $exception, $request);
                     }
                 }
             });
 
             try {
-                if ($response = $fiber->start()) {
-                    if (in_array($response->name, $this->subscribes)) {
-                        $this->workFibers[$request->hash] = $fiber;
-                    } else {
-                        $this->publishAsync($response);
-                    }
+                if ($fiber->start()) {
+                    $this->workFibers[$request->hash] = $fiber;
                 } else {
                     $this->recover($request->hash);
                 }
             } catch (Throwable $exception) {
+                if (isset($this->exceptionHandler)) {
+                    call_user_func($this->exceptionHandler, $request, $exception);
+                }
                 PRipple::printExpect($exception);
             }
         }
@@ -138,7 +153,11 @@ class HttpWorker extends NetworkWorkerInterface
                 $this->onRequest($request);
             }
         } catch (RequestSingleException $exception) {
-            $client->send((new Response(400, [], $exception->getMessage()))->__toString());
+            try {
+                $client->send((new Response(400, [], $exception->getMessage()))->__toString());
+            } catch (SocketAisleException $exception) {
+                return;
+            }
         }
     }
 
@@ -149,6 +168,8 @@ class HttpWorker extends NetworkWorkerInterface
     public function onRequest(Request $request): void
     {
         $this->requests[$request->hash] = $request;
+        unset($this->workFibers[$request->client->getName()]);
+        $request->client->setName($request->hash);
         $this->todo = true;
     }
 
@@ -159,7 +180,7 @@ class HttpWorker extends NetworkWorkerInterface
      */
     public function onClose(Client $client): void
     {
-//        echo 'close:' . $client->getHash() . PHP_EOL;
+        $this->recover($client->getName());
     }
 
     /**
@@ -184,6 +205,7 @@ class HttpWorker extends NetworkWorkerInterface
                     $this->recover($hash);
                 }
             } catch (Throwable $exception) {
+                $this->recover($hash);
                 PRipple::printExpect($exception);
             }
         }

@@ -1,14 +1,14 @@
 <?php
 
-namespace Cclilshy\PRipple;
+namespace PRipple;
 
+use App\ProcessManager\ProcessContainer;
+use App\ProcessManager\ProcessManager;
+use App\Timer\Timer;
 use Closure;
 use Fiber;
-use PRipple\App\ProcessManager\ProcessContainer;
-use PRipple\App\ProcessManager\ProcessManager;
-use PRipple\App\Timer\Timer;
-use PRipple\PRipple;
-use PRipple\Worker\Build;
+use PRipple;
+use Worker\Build;
 
 /**
  * 延时

@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker;
+namespace Worker;
 
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
-use PRipple\PRipple;
+use PRipple;
 use Socket;
 use Throwable;
 
@@ -164,12 +164,7 @@ abstract class WorkerInterface
      */
     public function publishAsync(Build $event): void
     {
-        try {
-            PRipple::publishAsync($event);
-//            $this->builds[] = Fiber::suspend($event);
-        } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
-        }
+        PRipple::publishAsync($event);
     }
 
     /**
@@ -241,6 +236,20 @@ abstract class WorkerInterface
         }
         return false;
     }
+
+//    /**
+//     * @param Closure $callable
+//     * @return TaskStd
+//     */
+//    public static function generateTask(Closure $callable): TaskStd
+//    {
+//
+//    }
+//
+//    public static function getMyTask(): TaskStd
+//    {
+//
+//    }
 
     /**
      * 释放资源

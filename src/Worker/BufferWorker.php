@@ -1,10 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker;
+namespace Worker;
 
-use PRipple\Worker\NetWorker\Tunnel\SocketAisle;
+use FileSystem\FileException;
+use PRipple;
 use Socket;
+use Worker\NetWorker\Tunnel\SocketAisle;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
  * 缓冲区工作器
@@ -31,8 +34,14 @@ class BufferWorker extends WorkerInterface
     public function heartbeat(): void
     {
         foreach ($this->buffers as $buffer) {
-            while ($buffer->openCache && $length = $buffer->write('')) {
-//                echo '缓冲释放' . $length . PHP_EOL;
+            try {
+                while ($buffer->openCache && !$buffer->deprecated && $buffer->write('')) {
+                    //TODO: 有效缓冲区释放
+                }
+            } catch (FileException|SocketAisleException $exception) {
+                PRipple::printExpect($exception);
+                unset($this->buffers[$buffer->getHash()]);
+                return;
             }
         }
     }

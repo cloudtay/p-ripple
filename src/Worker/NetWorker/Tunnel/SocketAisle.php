@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker\NetWorker\Tunnel;
+namespace Worker\NetWorker\Tunnel;
 
 use Exception;
-use PRipple\FileSystem\File;
-use PRipple\FileSystem\FileException;
-use PRipple\PRipple;
-use PRipple\Std\TunnelStd;
-use PRipple\Worker\Build;
-use PRipple\Worker\NetworkWorkerInterface;
+use FileSystem\File;
+use FileSystem\FileException;
+use PRipple;
+use Std\TunnelStd;
+use Worker\Build;
+use Worker\NetworkWorkerInterface;
 
 /**
  * 套接字类型通道
@@ -333,6 +333,8 @@ class SocketAisle implements TunnelStd
      * @param string $context
      * @param bool $async
      * @return int|false
+     * @throws FileException
+     * @throws SocketAisleException
      */
     public function write(string $context, bool $async = true): int|false
     {
@@ -407,9 +409,10 @@ class SocketAisle implements TunnelStd
                 $this->closeCache();
             }
             return $handledLengthCount;
+        } catch (FileException $exception) {
+            throw $exception;
         } catch (Exception $exception) {
-            PRipple::printExpect($exception);
-            return false;
+            throw new SocketAisleException($exception->getMessage());
         }
     }
 

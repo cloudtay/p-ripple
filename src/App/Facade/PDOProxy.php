@@ -1,10 +1,10 @@
 <?php
 
-namespace PRipple\App\Facade;
+namespace App\Facade;
 
-use PRipple\App\PDOProxy\PDOProxyWorker;
-use PRipple\Std\Facade;
-use PRipple\Worker\WorkerInterface;
+use App\PDOProxy\PDOProxyWorker;
+use Std\Facade;
+use Worker\WorkerInterface;
 
 /**
  * @method static mixed query(string $query, array|null $bindings = [], array|null $bindParams = [])

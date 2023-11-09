@@ -1,11 +1,11 @@
 <?php
 
-namespace PRipple\App\Facade;
+namespace App\Facade;
 
-use PRipple\App\ProcessManager\ProcessContainer;
-use PRipple\App\ProcessManager\ProcessManager;
-use PRipple\Std\Facade;
-use PRipple\Worker\WorkerInterface;
+use App\ProcessManager\ProcessContainer;
+use App\ProcessManager\ProcessManager;
+use Std\Facade;
+use Worker\WorkerInterface;
 
 /**
  * @method static void signal(int $processId, int $signal)

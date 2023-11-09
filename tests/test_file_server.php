@@ -1,11 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Tests;
+namespace Tests;
 
-use PRipple\PRipple;
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetworkWorkerInterface;
+use FileSystem\FileException;
+use PRipple;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetworkWorkerInterface;
 
 include __DIR__ . '/vendor/autoload.php';
 
@@ -47,12 +49,13 @@ class test_file_server extends NetworkWorkerInterface
      */
     public function onConnect(Client $client): void
     {
-//        $client->setNoBlock();
         $filePath = '/tmp/test_file';
-
         $file = fopen($filePath, 'r');
         while (!feof($file)) {
-            var_dump($client->write(fread($file, 1024)));
+            try {
+                $client->write(fread($file, 1024));
+            } catch (FileException|SocketAisleException $e) {
+            }
         }
         fclose($file);
 

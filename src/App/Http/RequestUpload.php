@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\Http;
+namespace App\Http;
 
-use PRipple\PRipple;
-use PRipple\Worker\Build;
+use PRipple;
+use Worker\Build;
 use const FS;
 
 

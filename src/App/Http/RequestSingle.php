@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\Http;
+namespace App\Http;
 
-use PRipple\Worker\NetWorker\Client;
+use Worker\NetWorker\Client;
 
 
 /**

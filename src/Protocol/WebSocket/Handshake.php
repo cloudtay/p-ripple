@@ -1,9 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Protocol\WebSocket;
+namespace Protocol\WebSocket;
 
-use PRipple\Worker\NetWorker\Client;
+use FileSystem\FileException;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 
 /**
@@ -28,6 +30,8 @@ class Handshake
     /**
      * @param Client $client
      * @return bool|null
+     * @throws FileException
+     * @throws SocketAisleException
      */
     public static function accept(Client $client): bool|null
     {

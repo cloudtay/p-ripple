@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Std;
+namespace Std;
 
 /**
  * 通道标准

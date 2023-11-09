@@ -1,8 +1,8 @@
 <?php
 
-namespace PRipple\App\PDOProxy;
+namespace App\PDOProxy;
 
-use PRipple\Worker\Build;
+use Worker\Build;
 
 class PDOBuild extends Build
 {

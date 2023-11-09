@@ -1,11 +1,10 @@
 <?php
 
-use PRipple\App\Facade\PDOProxy;
-use PRipple\App\Facade\Process;
-use PRipple\PRipple;
-use function Cclilshy\PRipple\async;
-use function Cclilshy\PRipple\delay;
-use function Cclilshy\PRipple\fork;
+use App\Facade\PDOProxy;
+use App\Facade\Process;
+use function PRipple\async;
+use function PRipple\delay;
+use function PRipple\fork;
 
 include __DIR__ . '/vendor/autoload.php';
 

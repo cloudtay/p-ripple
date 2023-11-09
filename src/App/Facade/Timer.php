@@ -1,10 +1,10 @@
 <?php
 
-namespace PRipple\App\Facade;
+namespace App\Facade;
 
-use PRipple\Std\Facade;
-use PRipple\Worker\Build;
-use PRipple\Worker\WorkerInterface;
+use Std\Facade;
+use Worker\Build;
+use Worker\WorkerInterface;
 
 /**
  * @method static void sleep(int $seconds)
@@ -20,12 +20,12 @@ class Timer extends Facade
         return call_user_func_array([Timer::$instance, $name], $arguments);
     }
 
-    public static function getInstance(): \PRipple\App\Timer\Timer
+    public static function getInstance(): \App\Timer\Timer
     {
         return Timer::$instance;
     }
 
-    public static function setInstance(WorkerInterface $worker): \PRipple\App\Timer\Timer
+    public static function setInstance(WorkerInterface $worker): \App\Timer\Timer
     {
         Timer::$instance = $worker;
         return Timer::$instance;

@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\Http;
+namespace App\Http;
 
 use Closure;
-use PRipple\Std\TaskStd;
-use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker\Client;
+use Std\TaskStd;
 use Throwable;
+use Worker\Build;
+use Worker\NetWorker\Client;
 
 /**
  * 请求实体

@@ -1,16 +1,18 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\ProcessManager;
+namespace App\ProcessManager;
 
 use Closure;
 use Exception;
+use FileSystem\FileException;
 use JetBrains\PhpStorm\NoReturn;
-use PRipple\PRipple;
-use PRipple\Protocol\CCL;
-use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetWorker\SocketType\SocketUnix;
+use PRipple;
+use Protocol\CCL;
+use Worker\Build;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\SocketType\SocketUnix;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 class ProcessContainer
 {
@@ -47,6 +49,22 @@ class ProcessContainer
         if ($pid === -1) {
             return false;
         } elseif ($pid === 0) {
+            pcntl_async_signals(true);
+            pcntl_signal(SIGINT, function () {
+                exit;
+            });
+            pcntl_signal(SIGTERM, function () {
+                exit;
+            });
+            pcntl_signal(SIGQUIT, function () {
+                exit;
+            });
+            pcntl_signal(SIGUSR1, function () {
+                exit;
+            });
+            pcntl_signal(SIGUSR2, function () {
+                exit;
+            });
             ProcessContainer::$isMaster = false;
             ProcessContainer::$childrenIds = [];
             ProcessContainer::$hasObserver = false;
@@ -112,6 +130,8 @@ class ProcessContainer
     /**
      * 声明守护计数
      * @return void
+     * @throws FileException
+     * @throws SocketAisleException
      */
     public static function guarded(): void
     {
@@ -123,6 +143,7 @@ class ProcessContainer
             'observerProcessId' => ProcessContainer::$observerProcessId,
             'guardCount' => ProcessContainer::$guardCount,
         ], ProcessContainer::class)->__toString());
+
         ProcessContainer::$hasObserver = false;
         ProcessContainer::$guardCount = 0;
     }

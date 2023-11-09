@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker\NetWorker\Tunnel;
+namespace Worker\NetWorker\Tunnel;
 
-use PRipple\FileSystem\File;
-use PRipple\Std\TunnelStd;
+use FileSystem\File;
+use Std\TunnelStd;
 
 /**
  * 文件类型通道

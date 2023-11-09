@@ -1,18 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\Timer;
+namespace App\Timer;
 
 use Closure;
 use Exception;
 use Fiber;
-use PRipple\App\PDOProxy\Exception\PDOProxyException;
-use PRipple\PRipple;
-use PRipple\Worker\Build;
-use PRipple\Worker\WorkerInterface;
+use PRipple;
 use Socket;
 use SplPriorityQueue;
 use Throwable;
+use Worker\Build;
+use Worker\WorkerInterface;
 
 /**
  * 计时器服务
@@ -47,7 +46,7 @@ class Timer extends WorkerInterface
         $this->subscribe(Timer::EVENT_TIMER_LOOP);
         $this->subscribe(Timer::EVENT_TIMER_SLEEP);
         $this->todo = true;
-        \PRipple\App\Facade\Timer::setInstance($this);
+        \App\Facade\Timer::setInstance($this);
     }
 
 
@@ -71,11 +70,6 @@ class Timer extends WorkerInterface
                         break;
                     case Timer::EVENT_TIMER_SLEEP:
                         try {
-//                            if ($response = $event->data['data']->resume()) {
-//                                if (!in_array($response->name, $this->subscribes)) {
-//                                    $this->publishAsync($response);
-//                                }
-//                            }
                             $this->resume($event->data['data']);
                         } catch (Throwable|Exception $exception) {
                             PRipple::printExpect($exception);
@@ -165,13 +159,12 @@ class Timer extends WorkerInterface
         // TODO: Implement handleSocket() method.
     }
 
+    /**
+     * @param Socket $socket
+     * @return void
+     */
     public function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.
-    }
-
-    public function handleBuild(Build $event): void
-    {
-        // TODO: Implement handleBuild() method.
     }
 }

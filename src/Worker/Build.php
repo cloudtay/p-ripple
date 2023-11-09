@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker;
+namespace Worker;
 
 /**
  * 事件构建器

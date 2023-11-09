@@ -1,6 +1,6 @@
 <?php
 
-namespace PRipple\App\PDOProxy\Exception;
+namespace App\PDOProxy\Exception;
 
 use Exception;
 

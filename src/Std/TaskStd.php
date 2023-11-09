@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Std;
+namespace Std;
 
 use Fiber;
-use PRipple\PRipple;
-use PRipple\Worker\Build;
+use PRipple;
 use Throwable;
+use Worker\Build;
 
 /**
  * 任务标准

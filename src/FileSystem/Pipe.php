@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 
-namespace PRipple\FileSystem;
+namespace FileSystem;
 
-use PRipple\FileSystem\Std\FileStd;
+use FileSystem\Std\FileStd;
 
 
 /**

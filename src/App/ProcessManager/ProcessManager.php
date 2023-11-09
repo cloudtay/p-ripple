@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\App\ProcessManager;
+namespace App\ProcessManager;
 
-use PRipple\App\Facade\Process;
-use PRipple\PRipple;
-use PRipple\Protocol\CCL;
-use PRipple\Std\ProtocolStd;
-use PRipple\Worker\Build;
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetworkWorkerInterface;
-use PRipple\Worker\WorkerInterface;
+use App\Facade\Process;
+use PRipple;
+use Protocol\CCL;
+use Std\ProtocolStd;
+use Worker\Build;
+use Worker\NetWorker\Client;
+use Worker\NetworkWorkerInterface;
+use Worker\WorkerInterface;
 
 class ProcessManager extends NetworkWorkerInterface
 {
@@ -146,14 +146,17 @@ class ProcessManager extends NetworkWorkerInterface
         }
     }
 
-    /**
-     * @param Client $client
-     * @return string|false
-     */
-    public function splitMessage(Client $client): string|false
-    {
-        return $this->protocol->cut($client);
-    }
+//    /**
+//     * @param Client $client
+//     * @return string|false|null
+//     */
+//    public function splitMessage(Client $client): string|null|false
+//    {
+//        if ($result = $this->protocol->cut($client)) {
+//            $this->onMessage($result, $client);
+//        }
+//        return false;
+//    }
 
     /**
      * @param Client $client
@@ -180,5 +183,13 @@ class ProcessManager extends NetworkWorkerInterface
      */
     public function destroy(): void
     {
+        foreach ($this->processObserverHashMap as $processId => $observerProcessId) {
+            if ($observerProcessId !== posix_getpid()) {
+                $this->signal($processId, SIGUSR2);
+            }
+        }
+        foreach ($this->observerHashmap as $processId => $_) {
+            ProcessManager::commandToObserver($processId, 'exit');
+        }
     }
 }

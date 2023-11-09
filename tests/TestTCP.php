@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Tests;
+namespace Tests;
 
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetworkWorkerInterface;
 
 /**
  *
@@ -22,6 +23,7 @@ class TestTCP extends NetworkWorkerInterface
 
     /**
      * @return void
+     * @throws SocketAisleException
      */
     public function heartbeat(): void
     {

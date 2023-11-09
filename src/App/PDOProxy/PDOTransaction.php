@@ -1,9 +1,9 @@
 <?php
 
-namespace PRipple\App\PDOProxy;
+namespace App\PDOProxy;
 
-use PRipple\App\PDOProxy\Exception\RollbackException;
-use PRipple\PRipple;
+use App\PDOProxy\Exception\RollbackException;
+use PRipple;
 use Throwable;
 
 class PDOTransaction
@@ -29,7 +29,7 @@ class PDOTransaction
      */
     public function query(string $query, array $bindings, array $bindParams): mixed
     {
-        $this->proxyConnection->query($this->hash, $query, $bindings, $bindParams);
+        $this->proxyConnection->pushQuery($this->hash, $query, $bindings, $bindParams);
         return PDOProxyWorker::instance()->waitResponse();
     }
 
@@ -39,7 +39,7 @@ class PDOTransaction
      */
     public function _commit(): bool
     {
-        $this->proxyConnection->commit($this->hash);
+        $this->proxyConnection->pushCommit($this->hash);
         return PDOProxyWorker::instance()->waitResponse();
     }
 
@@ -49,7 +49,7 @@ class PDOTransaction
      */
     public function _rollBack(): bool
     {
-        $this->proxyConnection->rollBack($this->hash);
+        $this->proxyConnection->pushRollBack($this->hash);
         return PDOProxyWorker::instance()->waitResponse();
     }
 

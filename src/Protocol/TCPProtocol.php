@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Protocol;
+namespace Protocol;
 
-use PRipple\Std\ProtocolStd;
-use PRipple\Std\TunnelStd;
-use PRipple\Worker\NetWorker\Client;
+use Std\ProtocolStd;
+use Std\TunnelStd;
 use stdClass;
+use Worker\NetWorker\Client;
 
 /**
  * TCP协议
@@ -48,7 +48,10 @@ class TCPProtocol implements ProtocolStd
      */
     public function cut(TunnelStd $tunnel): string|false
     {
-        return $tunnel->read(0, $_);
+        if ($tunnel instanceof Client) {
+            return $tunnel->cleanCache();
+        }
+        return false;
     }
 
     /**
@@ -61,12 +64,12 @@ class TCPProtocol implements ProtocolStd
     }
 
     /**
-     * @param string $context
-     * @return string
+     * @param Client $tunnel
+     * @return string|false|null
      */
-    public function parse(string $context): string
+    public function parse(Client $tunnel): string|null|false
     {
-        return $context;
+        return $this->cut($tunnel);
     }
 
     /**

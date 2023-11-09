@@ -1,8 +1,8 @@
 <?php
 
-namespace PRipple\Std;
+namespace Std;
 
-use PRipple\Worker\WorkerInterface;
+use Worker\WorkerInterface;
 
 abstract class Facade
 {

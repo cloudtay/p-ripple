@@ -1,10 +1,10 @@
 <?php
 
-namespace PRipple\App\Facade;
+namespace App\Facade;
 
-use PRipple\App\Http\HttpWorker;
-use PRipple\Std\Facade;
-use PRipple\Worker\WorkerInterface;
+use App\Http\HttpWorker;
+use Std\Facade;
+use Worker\WorkerInterface;
 
 class Http extends Facade
 {

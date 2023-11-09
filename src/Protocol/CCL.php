@@ -1,15 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Protocol;
+namespace Protocol;
 
-use Exception;
-use PRipple\Std\ProtocolStd;
-use PRipple\Worker\NetWorker\Client;
+use FileSystem\FileException;
+use Std\ProtocolStd;
 use stdClass;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
- * 一个小而剪的报文切割器
+ * 一个小而简的报文切割器
  */
 class CCL implements ProtocolStd
 {
@@ -17,6 +18,8 @@ class CCL implements ProtocolStd
      * @param Client $tunnel
      * @param string $context
      * @return bool|int
+     * @throws FileException
+     * @throws SocketAisleException
      */
     public function send(Client $tunnel, string $context): bool|int
     {
@@ -50,32 +53,12 @@ class CCL implements ProtocolStd
     }
 
     /**
-     * @throws Exception
-     */
-    public function cutWithString($aisle, &$string): string|false
-    {
-        if ($context = CCL::cut($aisle)) {
-            if ($intPack = substr($context, 0, 64)) {
-                if ($pack = unpack('A64', $intPack)) {
-                    $string = $pack[1];
-                }
-            }
-            return $context;
-        }
-        return false;
-    }
-
-    /**
      * @param Client $tunnel
-     * @return string|false
-     * @throws Exception
+     * @return string|false|null
      */
-    public function cut(Client $tunnel): string|false
+    public function cut(Client $tunnel): string|null|false
     {
-        if (!$read = $tunnel->read(0, $_)) {
-            return false;
-        }
-        $buffer = $tunnel->cache($read);
+        $buffer = $tunnel->cache();
         if (strlen($buffer) < 4) {
             return false;
         }
@@ -96,10 +79,10 @@ class CCL implements ProtocolStd
         return false;
     }
 
-    public function parse(string $context): string
+    public function parse(Client $tunnel): string|null|false
     {
         // TODO: Implement parse() method.
-        return '';
+        return $this->cut($tunnel);
     }
 
     public function handshake(Client $client): bool|null

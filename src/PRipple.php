@@ -1,20 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple;
-
-use Error;
-use Exception;
-use Fiber;
-use Generator;
+use App\PDOProxy\PDOProxyWorker;
+use App\ProcessManager\ProcessManager;
+use App\Timer\Timer;
 use JetBrains\PhpStorm\NoReturn;
-use PRipple\App\PDOProxy\PDOProxyWorker;
-use PRipple\App\ProcessManager\ProcessManager;
-use PRipple\App\Timer\Timer;
-use PRipple\Worker\BufferWorker;
-use PRipple\Worker\Build;
-use PRipple\Worker\WorkerInterface;
-use Throwable;
+use Worker\BufferWorker;
+use Worker\Build;
+use Worker\WorkerInterface;
 
 /**
  * loop
@@ -98,6 +91,7 @@ class PRipple
      */
     public function initialize(): PRipple
     {
+        $this->registerSignalHandler();
         $bufferWorker = BufferWorker::new(BufferWorker::class);
         $processManager = ProcessManager::new(ProcessManager::class);
         $timer = Timer::new(Timer::class);
@@ -128,6 +122,33 @@ class PRipple
             }
         }
         return $this;
+    }
+
+    /**
+     * @return void
+     */
+    public function registerSignalHandler(): void
+    {
+        //只捕获常见终止信号,意料之外的错误开发者自行负责
+        pcntl_async_signals(true);
+        pcntl_signal(SIGINT, [$this, 'signalHandler']);
+        pcntl_signal(SIGTERM, [$this, 'signalHandler']);
+        pcntl_signal(SIGQUIT, [$this, 'signalHandler']);
+        pcntl_signal(SIGUSR1, [$this, 'signalHandler']);
+        pcntl_signal(SIGUSR2, [$this, 'signalHandler']);
+    }
+
+    /**
+     * @param int $signal
+     * @return void
+     */
+    #[NoReturn] public function signalHandler(int $signal): void
+    {
+        foreach ($this->workers as $worker) {
+            $worker->destroy();
+        }
+        PRipple::info('[PRipple]', 'Stopped successfully...');
+        exit;
     }
 
     /**
@@ -206,10 +227,11 @@ class PRipple
                             PRipple::publishAsync($response);
                         }
                     } catch (Throwable $exception) {
+                        $event->data->throw($exception);
                         PRipple::printExpect($exception);
                     }
                     break;
-                case 'kernel.rate.set':
+                case PRipple::EVENT_KERNEL_RATE_SET:
                     $this->rate = $event->data;
                     return;
                 default:

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker;
+namespace Worker;
 
 use Exception;
-use PRipple\PRipple;
-use PRipple\Protocol\TCPProtocol;
-use PRipple\Std\ProtocolStd;
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetWorker\SocketType\SocketInet;
-use PRipple\Worker\NetWorker\SocketType\SocketUnix;
+use PRipple;
+use Protocol\TCPProtocol;
 use Socket;
+use Std\ProtocolStd;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\SocketType\SocketInet;
+use Worker\NetWorker\SocketType\SocketUnix;
 
 /**
  *
@@ -221,13 +221,16 @@ class NetworkWorkerInterface extends WorkerInterface
                 return;
             }
         }
-        if ($content = $this->splitMessage($client)) {
-            $this->onMessage($content, $client);
-        } else {
+
+        if (!$context = $client->read(0, $_)) {
             $this->onClose($client);
             $this->removeClient($client);
             $client->deprecated = true;
+            return;
         }
+        $client->cache .= $context;
+        # 执行worker切割逻辑,string:成功|false:失败|null:未完成
+        $this->splitMessage($client);
     }
 
     /**
@@ -315,9 +318,13 @@ class NetworkWorkerInterface extends WorkerInterface
 
     }
 
-    public function splitMessage(Client $client): string|false
+    public function splitMessage(Client $client): string|null|false
     {
-        return $client->getPlaintext();
+        // 默认通过协议切割
+        if ($content = $client->getPlaintext()) {
+            $this->onMessage($content, $client);
+        }
+        return $content;
     }
 
     /**

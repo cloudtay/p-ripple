@@ -1,9 +1,8 @@
 <?php
 include __DIR__ . '/vendor/autoload.php';
 
-use PRipple\PRipple;
-use function Cclilshy\PRipple\async;
-use function Cclilshy\PRipple\delay;
+use function PRipple\async;
+use function PRipple\delay;
 
 $kernel = PRipple::configure([
     'RUNTIME_PATH' => __DIR__,
@@ -21,7 +20,6 @@ async(function () {
         echo '888';
     });
 
-    echo 'lad';
     echo $num . PHP_EOL;
     delay(3);
     echo $num . PHP_EOL;

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker\NetWorker\SocketType;
+namespace Worker\NetWorker\SocketType;
 
 use Exception;
 use Socket;
@@ -43,14 +43,22 @@ class SocketUnix
     /**
      * @param string $sockFile
      * @param int|null $bufferSize
+     * @param array|null $options
      * @return Socket|false
      * @throws Exception
      */
-    public static function connect(string $sockFile, int|null $bufferSize = 1024 * 1024): Socket|false
+    public static function connect(string $sockFile, int|null $bufferSize = 1024 * 1024, array|null $options = []): Socket|false
     {
         $sock = socket_create(AF_UNIX, SOCK_STREAM, 0);
         socket_set_option($sock, SOL_SOCKET, SO_SNDBUF, $bufferSize);
         socket_set_option($sock, SOL_SOCKET, SO_RCVBUF, $bufferSize);
+        foreach ($options as $option => $value) {
+            if ($option === 'nonblock') {
+                socket_set_nonblock($sock);
+            } else {
+                socket_set_option($sock, SOL_SOCKET, $option, $value);
+            }
+        }
         $_ = socket_connect($sock, $sockFile);
         if ($_) {
             return $sock;

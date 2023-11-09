@@ -1,14 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Protocol;
+namespace Protocol;
 
-use Exception;
-use PRipple\Protocol\WebSocket\Handshake;
-use PRipple\Std\ProtocolStd;
-use PRipple\Std\TunnelStd;
-use PRipple\Worker\NetWorker\Client;
+use FileSystem\FileException;
+use PRipple;
+use Protocol\WebSocket\Handshake;
+use Std\ProtocolStd;
+use Std\TunnelStd;
 use stdClass;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
  * Websocket协议
@@ -62,21 +64,23 @@ class WebSocket implements ProtocolStd
     /**
      * 报文切片
      * @param TunnelStd $tunnel ANY CHANNEL
-     * @return string|false SLICE RESULT
-     * @throws Exception
+     * @return string|false|null SLICE RESULT
      */
-    public function cut(TunnelStd $tunnel): string|false
+    public function cut(TunnelStd $tunnel): string|null|false
     {
-        $context = $tunnel->read(0, $resultLength);
-        return WebSocket::parse($context);
+        if ($tunnel instanceof Client) {
+            return WebSocket::parse($tunnel);
+        }
+        return false;
     }
 
     /**
-     * @param string $context
-     * @return string
+     * @param Client $tunnel
+     * @return string|false|null
      */
-    public function parse(string $context): string
+    public function parse(Client $tunnel): string|null|false
     {
+        $context = $tunnel->cache();
         $payload = '';
         $payloadLength = '';
         $mask = '';
@@ -85,7 +89,6 @@ class WebSocket implements ProtocolStd
         $fin = '';
         $dataLength = strlen($context);
         $index = 0;
-
         $byte = ord($context[$index++]);
         $fin = ($byte & 0x80) != 0;
         $opcode = $byte & 0x0F;
@@ -117,7 +120,7 @@ class WebSocket implements ProtocolStd
                 $payload[$i] = chr(ord($payload[$i]) ^ ord($maskingKey[$i % 4]));
             }
         }
-
+        $tunnel->cleanCache();
         return $payload;
     }
 
@@ -138,6 +141,12 @@ class WebSocket implements ProtocolStd
      */
     public function handshake(Client $client): bool|null
     {
-        return Handshake::accept($client);
+        try {
+            return Handshake::accept($client);
+        } catch (FileException|SocketAisleException $exception) {
+            PRipple::printExpect($exception);
+            return false;
+        }
+
     }
 }

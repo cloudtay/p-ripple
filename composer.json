@@ -2,8 +2,8 @@
   "name": "cclilshy/p-ripple",
   "autoload": {
     "psr-4": {
-      "PRipple\\": "src/",
-      "PRipple\\Tests\\": "tests/"
+      "": "src/",
+      "Tests\\": "tests/"
     },
     "files": [
       "src/functions.php"

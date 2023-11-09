@@ -1,8 +1,8 @@
 <?php
 
-namespace PRipple\App\PDOProxy\Exception;
+namespace App\PDOProxy\Exception;
 
-use PRipple\Worker\Build;
+use Worker\Build;
 
 class PDOProxyExceptionBuild extends Build
 {

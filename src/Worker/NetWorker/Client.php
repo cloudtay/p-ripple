@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Worker\NetWorker;
+namespace Worker\NetWorker;
 
 use AllowDynamicProperties;
-use PRipple\Std\ProtocolStd;
-use PRipple\Worker\NetWorker\Tunnel\SocketAisle;
+use FileSystem\FileException;
+use PRipple;
+use Std\ProtocolStd;
 use stdClass;
+use Worker\NetWorker\Tunnel\SocketAisle;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
  * 客户端
@@ -46,17 +49,12 @@ use stdClass;
     }
 
     /**
-     * @return string|false
+     * @return string|false|null
      */
-    public function getPlaintext(): string|false
+    public function getPlaintext(): string|null|false
     {
-        if ($context = $this->read(0, $resultLength)) {
-            if ($result = $this->protocol->parse($this->cache($context))) {
-                $this->cleanCache();
-            }
-            return $result;
-        }
-        return $context;
+        //协议切割遵循缓冲插入机制,协议必须回收缓冲区
+        return $this->protocol->parse($this);
     }
 
     /**
@@ -74,24 +72,32 @@ use stdClass;
 
     /**
      * 清空缓存区
-     * @return void
+     * @return string
      */
-    public function cleanCache(): void
+    public function cleanCache(): string
     {
+        $cache = $this->cache;
         $this->cache = '';
+        return $cache;
     }
 
     /**
      * 发送信息
      * @param string $context
      * @return bool|int
+     * @throws SocketAisleException
      */
     public function send(string $context): bool|int
     {
         if (isset($this->protocol)) {
             return $this->protocol->send($this, $context);
         } else {
-            return boolval($this->write($context));
+            try {
+                return boolval($this->write($context));
+            } catch (FileException $exception) {
+                PRipple::printExpect($exception);
+                return false;
+            }
         }
     }
 }

@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace PRipple\Tests;
+namespace Tests;
 
-use PRipple\Worker\NetWorker\Client;
-use PRipple\Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Client;
+use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetworkWorkerInterface;
 
 /**
  *
@@ -17,7 +18,10 @@ class TestWS extends NetworkWorkerInterface
     public function heartbeat(): void
     {
         foreach ($this->getClients() as $client) {
-            $client->send('hello');
+            try {
+                $client->send('hello');
+            } catch (SocketAisleException $e) {
+            }
         }
     }
 
