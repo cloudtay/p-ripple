@@ -12,7 +12,7 @@ use Std\TunnelStd;
 class FileAisle implements TunnelStd
 {
     public const EXT = '.temp';
-    private File $file;
+    public File $file;
 
     /**
      * @param mixed $file

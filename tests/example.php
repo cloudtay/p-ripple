@@ -9,7 +9,6 @@ use App\Http\Request;
 use App\Http\Response;
 use PRipple;
 use Protocol\WebSocket;
-use function PRipple\delay;
 
 include __DIR__ . '/vendor/autoload.php';
 
@@ -37,25 +36,27 @@ $http = HttpWorker::new('http_worker_name')
 # 声明HTTP请求处理器
 $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
     if ($request->method === 'GET') {
+        PDOProxy::query('select * from user where id = ?', [17]);
+
         # 直接返回该请求
         yield Response::new(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
-            $body = file_get_contents(__DIR__ . '/example.html')
+            $body = 'Hello World!'
         );
 
-        // 查询数据库
-        $result = PDOProxy::query('select * from user where id = ?', [17], []);
-
-        // 延时一秒后向所有客户端发送数据查询结果
-        delay(1);
-        foreach ($ws->getClients() as $client) {
-            $client->send('取得数据: ' . json_encode($result));
-        }
-
-        foreach ($tcp->getClients() as $client) {
-            $client->send('取得数据: ' . json_encode($result) . PHP_EOL);
-        }
+//        // 查询数据库
+//        $result = PDOProxy::query('select * from user where id = ?', [17], []);
+//
+//        // 延时一秒后向所有客户端发送数据查询结果
+//        delay(1);
+//        foreach ($ws->getClients() as $client) {
+//            $client->send('取得数据: ' . json_encode($result));
+//        }
+//
+//        foreach ($tcp->getClients() as $client) {
+//            $client->send('取得数据: ' . json_encode($result) . PHP_EOL);
+//        }
     } elseif ($request->upload) {
         // 在上传完成前响应客户请求
         yield Response::new(

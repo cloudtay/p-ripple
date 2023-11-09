@@ -12,6 +12,9 @@ use Worker\NetWorker\Client;
 use Worker\NetworkWorkerInterface;
 use Worker\WorkerInterface;
 
+/**
+ *
+ */
 class ProcessManager extends NetworkWorkerInterface
 {
     public static string $UNIX_PATH;
@@ -40,6 +43,9 @@ class ProcessManager extends NetworkWorkerInterface
      */
     public ProtocolStd $protocol;
 
+    /**
+     * @return ProcessManager|WorkerInterface
+     */
     public static function instance(): ProcessManager|WorkerInterface
     {
         return PRipple::worker(ProcessManager::class);

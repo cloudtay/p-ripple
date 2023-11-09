@@ -35,11 +35,17 @@ class Build
         return new static($name, $data, $publisher);
     }
 
+    /**
+     * @return string
+     */
     public function __toString(): string
     {
         return $this->serialize();
     }
 
+    /**
+     * @return string
+     */
     public function serialize(): string
     {
         return serialize($this);

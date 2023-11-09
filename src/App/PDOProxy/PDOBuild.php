@@ -1,9 +1,13 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy;
 
 use Worker\Build;
 
+/**
+ *
+ */
 class PDOBuild extends Build
 {
     public const EVENT_QUERY = 'pdo.proxy.query';

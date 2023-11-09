@@ -44,9 +44,9 @@ class SocketAisle implements TunnelStd
     // 发送丢包储存区
     protected int $receiveFlowCount = 0;
     // 文件缓冲区
-    protected string $sendBuffer = '';
+    public string $sendBuffer = '';
     // 文件缓冲区文件路径
-    protected FileAisle $cacheFile;
+    public FileAisle $cacheFile;
     // 文件缓冲长度
     protected string $cacheFilePath;
     // 缓存指针位置
@@ -407,6 +407,9 @@ class SocketAisle implements TunnelStd
 
             if ($this->openCache) {
                 $this->closeCache();
+                //调整指针
+
+
             }
             return $handledLengthCount;
         } catch (FileException $exception) {
@@ -468,6 +471,8 @@ class SocketAisle implements TunnelStd
     {
         $this->cacheFile->destroy();
         $this->openCache = false;
+        $this->cachePoint = 0;
+        $this->cacheLength = 0;
         PRipple::publishAsync(Build::new('socket.unBuffer', $this, SocketAisle::class));
 
     }

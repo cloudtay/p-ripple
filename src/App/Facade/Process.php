@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Facade;
 
@@ -15,6 +16,11 @@ class Process extends Facade
 {
     public static mixed $instance;
 
+    /**
+     * @param string $name
+     * @param array $arguments
+     * @return mixed
+     */
     public static function __callStatic(string $name, array $arguments): mixed
     {
         if ($name === 'fork') {
@@ -23,11 +29,18 @@ class Process extends Facade
         return call_user_func_array([Process::$instance, $name], $arguments);
     }
 
+    /**
+     * @return ProcessManager
+     */
     public static function getInstance(): ProcessManager
     {
         return Process::$instance;
     }
 
+    /**
+     * @param WorkerInterface $worker
+     * @return ProcessManager
+     */
     public static function setInstance(WorkerInterface $worker): ProcessManager
     {
         Process::$instance = $worker;

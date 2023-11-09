@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy;
 
@@ -6,6 +7,9 @@ use App\PDOProxy\Exception\RollbackException;
 use PRipple;
 use Throwable;
 
+/**
+ *
+ */
 class PDOTransaction
 {
     public string $hash;
@@ -14,6 +18,9 @@ class PDOTransaction
      */
     private PDOProxyConnection $proxyConnection;
 
+    /**
+     * @param PDOProxyConnection $proxyConnection
+     */
     public function __construct(PDOProxyConnection $proxyConnection)
     {
         $this->hash = PRipple::instance()->uniqueHash();

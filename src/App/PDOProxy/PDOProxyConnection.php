@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy;
 
@@ -7,17 +8,23 @@ use Protocol\CCL;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\Tunnel\SocketAisleException;
 
+/**
+ *
+ */
 class PDOProxyConnection
 {
     public bool $transaction = false;
     public int $count = 0;
-    protected Client $client;
+    public Client $client;
     protected CCL $ccl;
 
+    /**
+     * @param Client $client
+     */
     public function __construct(Client $client)
     {
         $this->client = $client;
-        $this->ccl = new CCL;
+        $this->ccl = new CCL();
     }
 
     /**

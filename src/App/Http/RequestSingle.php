@@ -105,11 +105,12 @@ class RequestSingle
             $this->version = $base[2];
             $this->method = $base[0];
             while ($line = strtok("\r\n")) {
-                $lineParam = explode(':', $line, 2);
-                if (count($lineParam) == 2) {
-                    $this->headers[trim($lineParam[0])] = trim($lineParam[1]);
+                $lineParam = explode(': ', $line, 2);
+                if (count($lineParam) >= 2) {
+                    $this->headers[$lineParam[0]] = $lineParam[1];
                 }
             }
+
             if ($this->method === 'GET') {
                 $this->statusCode = RequestFactory::COMPLETE;
                 return true;

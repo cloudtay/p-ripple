@@ -6,6 +6,7 @@ namespace App\Http;
 use App\Facade\Http;
 use Closure;
 use Fiber;
+use FileSystem\FileException;
 use PRipple;
 use Throwable;
 use Worker\Build;
@@ -91,18 +92,20 @@ class HttpWorker extends NetworkWorkerInterface
                     $requesting = call_user_func($this->requestHandler, $request);
                     foreach ($requesting as $response) {
                         if ($response instanceof Response) {
-                            try {
+                            if ($request->keepAlive) {
+                                $response->headers['Connection'] = 'Keep-Alive';
                                 $request->client->send($response->__toString());
-                            } catch (Throwable $exception) {
-                                return;
+                            } else {
+                                $request->client->send($response->__toString());
+                                $this->removeClient($request->client);
+                                $this->recover($request->hash);
                             }
                         }
                     }
+                } catch (SocketAisleException|FileException $exception) {
+                    $this->recover($request->hash);
                 } catch (Throwable $exception) {
-                    PRipple::printExpect($exception);
-                    if (isset($this->exceptionHandler)) {
-                        call_user_func($this->exceptionHandler, $exception, $request);
-                    }
+                    $this->handleException($exception, $request);
                 }
             });
 
@@ -113,10 +116,8 @@ class HttpWorker extends NetworkWorkerInterface
                     $this->recover($request->hash);
                 }
             } catch (Throwable $exception) {
-                if (isset($this->exceptionHandler)) {
-                    call_user_func($this->exceptionHandler, $request, $exception);
-                }
-                PRipple::printExpect($exception);
+                $this->handleException($exception, $request);
+                $this->recover($request->hash);
             }
         }
         $this->todo = false;
@@ -209,5 +210,21 @@ class HttpWorker extends NetworkWorkerInterface
                 PRipple::printExpect($exception);
             }
         }
+    }
+
+    /**
+     * @param Throwable $exception
+     * @param Request $request
+     * @return void
+     */
+    public function handleException(Throwable $exception, Request $request): void
+    {
+        if (isset($this->exceptionHandler)) {
+            call_user_func($this->exceptionHandler, $request, $exception);
+        } else {
+//            PRipple::printExpect($exception);
+        }
+        PRipple::printExpect($exception);
+        $this->recover($request->hash);
     }
 }

@@ -73,18 +73,30 @@ class CCL implements ProtocolStd
         return false;
     }
 
+    /**
+     * @param Client $tunnel
+     * @return string|false
+     */
     public function corrective(Client $tunnel): string|false
     {
         // TODO: Implement corrective() method.
         return false;
     }
 
+    /**
+     * @param Client $tunnel
+     * @return string|false|null
+     */
     public function parse(Client $tunnel): string|null|false
     {
         // TODO: Implement parse() method.
         return $this->cut($tunnel);
     }
 
+    /**
+     * @param Client $client
+     * @return bool|null
+     */
     public function handshake(Client $client): bool|null
     {
         // TODO: Implement handshake() method.

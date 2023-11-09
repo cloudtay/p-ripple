@@ -1,9 +1,13 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy\Exception;
 
 use Worker\Build;
 
+/**
+ *
+ */
 class PDOProxyExceptionBuild extends Build
 {
     public int $code;
@@ -13,6 +17,10 @@ class PDOProxyExceptionBuild extends Build
     public array|null $trace = null;
     public string|null $previous = null;
 
+    /**
+     * @param string $name
+     * @param mixed $data
+     */
     public function __construct(string $name, mixed $data)
     {
         $this->code = intval($data['code']);

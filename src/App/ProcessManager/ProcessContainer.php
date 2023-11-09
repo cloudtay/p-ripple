@@ -14,6 +14,9 @@ use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
 use Worker\NetWorker\Tunnel\SocketAisleException;
 
+/**
+ *
+ */
 class ProcessContainer
 {
     public static array $childrenIds = [];
@@ -72,7 +75,7 @@ class ProcessContainer
             try {
                 if ($socket = SocketUnix::connect(ProcessManager::$UNIX_PATH)) {
                     $aisle = new Client($socket, SocketUnix::class);
-                    $ccl = new CCL;
+                    $ccl = new CCL();
                     $ccl->send($aisle, Build::new('process.fork', [
                         'observerProcessId' => ProcessContainer::$observerProcessId,
                         'processId' => posix_getpid(),
@@ -106,7 +109,7 @@ class ProcessContainer
             try {
                 if ($socket = SocketUnix::connect(ProcessManager::$UNIX_PATH)) {
                     $aisle = new Client($socket, SocketUnix::class);
-                    $ccl = new CCL;
+                    $ccl = new CCL();
                     $ccl->send($aisle, Build::new('process.observer', [
                         'processId' => posix_getpid(),
                     ], ProcessContainer::class)->__toString());
@@ -138,7 +141,7 @@ class ProcessContainer
         if (ProcessContainer::$isMaster) {
             return;
         }
-        $ccl = new CCL;
+        $ccl = new CCL();
         $ccl->send(ProcessContainer::$managerTunnel, Build::new('process.observer.count', [
             'observerProcessId' => ProcessContainer::$observerProcessId,
             'guardCount' => ProcessContainer::$guardCount,

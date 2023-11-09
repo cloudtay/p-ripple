@@ -18,7 +18,7 @@ class File
     private int $point = 0;
     // Pointer position
 
-    private string $path;
+    public string $path;
 
     /**
      * @param string $path
@@ -104,7 +104,9 @@ class File
     public function adjustPoint(int $location, int|null $whence = SEEK_SET): int
     {
         $this->point = $location;
-        return fseek($this->file, $location, $whence);
+        $s = fseek($this->file, $location, $whence);
+        ftell($this->file);
+        return $s;
     }
 
     /**

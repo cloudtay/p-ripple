@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 use App\Facade\PDOProxy;
 use App\Facade\Process;

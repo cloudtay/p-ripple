@@ -229,7 +229,6 @@ class NetworkWorkerInterface extends WorkerInterface
             return;
         }
         $client->cache .= $context;
-        # 执行worker切割逻辑,string:成功|false:失败|null:未完成
         $this->splitMessage($client);
     }
 
@@ -318,13 +317,16 @@ class NetworkWorkerInterface extends WorkerInterface
 
     }
 
-    public function splitMessage(Client $client): string|null|false
+    /**
+     * @param Client $client
+     * @return void
+     */
+    public function splitMessage(Client $client): void
     {
         // 默认通过协议切割
-        if ($content = $client->getPlaintext()) {
+        while ($content = $client->getPlaintext()) {
             $this->onMessage($content, $client);
         }
-        return $content;
     }
 
     /**

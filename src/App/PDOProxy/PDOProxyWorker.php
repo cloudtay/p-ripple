@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy;
 
@@ -19,6 +20,9 @@ use Worker\NetWorker\Tunnel\SocketAisleException;
 use Worker\NetworkWorkerInterface;
 use Worker\WorkerInterface;
 
+/**
+ *
+ */
 class PDOProxyWorker extends NetworkWorkerInterface
 {
     public static string $UNIX_PATH;
@@ -71,7 +75,9 @@ class PDOProxyWorker extends NetworkWorkerInterface
         $event = unserialize($context);
         if ($fiber = $this->fibers[$event->publisher] ?? null) {
             $this->resume($fiber, $event->data);
+            unset($this->fibers[$event->publisher]);
         }
+
         $this->connections[$client->getName()]->count--;
     }
 
@@ -201,12 +207,21 @@ class PDOProxyWorker extends NetworkWorkerInterface
         return $response;
     }
 
+    /**
+     * @param Client $client
+     * @return void
+     */
     public function onClose(Client $client): void
     {
         $this->proxyProcessCount--;
         unset($this->connections[$client->getName()]);
     }
 
+    /**
+     * @param int $num
+     * @param array $config
+     * @return int
+     */
     public function addProxy(int $num, array $config): int
     {
         if ($num < 1) {

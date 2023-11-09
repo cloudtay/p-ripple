@@ -32,6 +32,9 @@ class RequestFactory
      */
     private array $transfers = [];
 
+    /**
+     * @param HttpWorker $httpService
+     */
     public function __construct(HttpWorker $httpService)
     {
         $this->httpService = $httpService;

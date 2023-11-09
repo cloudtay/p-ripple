@@ -227,7 +227,6 @@ class PRipple
                             PRipple::publishAsync($response);
                         }
                     } catch (Throwable $exception) {
-                        echo '不获成功i';
                         $event->data->throw($exception);
                         PRipple::printExpect($exception);
                     }
@@ -341,10 +340,10 @@ class PRipple
     }
 
     /**
-     * @param Error|Exception $exception
+     * @param Throwable $exception
      * @return void
      */
-    public static function printExpect(Error|Exception $exception): void
+    public static function printExpect(Throwable $exception): void
     {
         echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
         echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
@@ -359,6 +358,7 @@ class PRipple
 //        if ($previous = $exception->getPrevious()) {
 //            echo "\033[0;36mPrevious exception:\033[0m\n";
 //        }
+        echo PHP_EOL;
     }
 
     /**
@@ -375,6 +375,11 @@ class PRipple
         }
     }
 
+    /**
+     * @param string $title
+     * @param string ...$contents
+     * @return void
+     */
     public static function info(string $title, string ...$contents): void
     {
         echo "\033[1;32m" . $title . "\033[0m";

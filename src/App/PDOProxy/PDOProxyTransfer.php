@@ -1,16 +1,22 @@
 <?php
+declare(strict_types=1);
 
 namespace App\PDOProxy;
 
 use App\PDOProxy\Exception\PDOProxyExceptionBuild;
 use Exception;
+use FileSystem\FileException;
 use JetBrains\PhpStorm\NoReturn;
 use PDO;
 use PRipple;
 use Protocol\CCL;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
+use Worker\NetWorker\Tunnel\SocketAisleException;
 
+/**
+ *
+ */
 class PDOProxyTransfer
 {
     private string $dns;
@@ -23,13 +29,19 @@ class PDOProxyTransfer
     private Client $server;
     private CCL $ccl;
 
+    /**
+     * @param string $dns
+     * @param string $username
+     * @param string $password
+     * @param array $options
+     */
     private function __construct(string $dns, string $username, string $password, array $options)
     {
         $this->dns = $dns;
         $this->username = $username;
         $this->password = $password;
         $this->options = $options;
-        $this->ccl = new CCL;
+        $this->ccl = new CCL();
         $this->reconnectPdo();
     }
 
@@ -87,88 +99,99 @@ class PDOProxyTransfer
             if ($this->server->openCache) {
                 $writeSocketList = [$this->server->getSocket()];
             }
-            if (strlen($this->server->cache) > 0 || socket_select($readSocketList, $writeSocketList, $writeSocketList, 1)) {
-                foreach ($writeSocketList as $ignored) {
-                    while ($this->server->write('')) {
+            if (socket_select($readSocketList, $writeSocketList, $_ignore, 1)) {
+                foreach ($writeSocketList as $_writeSocketList) {
+                    while ($length = $this->server->write('')) {
                         //TODO:循环清空缓存
                     }
                 }
                 foreach ($readSocketList as $ignored) {
-                    $context = $this->server->read(0, $_);
-                    if ($context === false) {
+                    if (!$context = $this->server->read(0, $_)) {
                         exit;
                     }
                     $this->server->cache($context);
-                    if ($builder = $this->ccl->cut($this->server)) {
-                        $this->count++;
-                        /**
-                         * @var PDOBuild $event
-                         */
-                        $event = unserialize($builder);
-                        try {
-                            switch ($event->name) {
-                                case 'pdo.proxy.query':
-                                    $pdoStatement = $this->pdoConnection->prepare($event->query);
-                                    foreach ($event->bindings as $key => $value) {
-                                        $pdoStatement->bindValue(
-                                            is_string($key) ? $key : $key + 1,
-                                            $value,
-                                            match (true) {
-                                                is_int($value) => PDO::PARAM_INT,
-                                                is_resource($value) => PDO::PARAM_LOB,
-                                                default => PDO::PARAM_STR
-                                            },
-                                        );
-                                    }
-                                    foreach ($event->bindParams as $key => $value) {
-                                        $pdoStatement->bindParam(
-                                            is_string($key) ? $key : $key + 1,
-                                            $value,
-                                            match (true) {
-                                                is_int($value) => PDO::PARAM_INT,
-                                                is_resource($value) => PDO::PARAM_LOB,
-                                                default => PDO::PARAM_STR
-                                            },
-                                        );
-                                    }
-                                    if ($pdoStatement->execute()) {
-                                        $result = $pdoStatement->fetchAll();
-                                    } else {
-                                        $result = false;
-                                    }
-                                    break;
-                                case 'pdo.proxy.beginTransaction':
-                                    $result = $this->pdoConnection->beginTransaction();
-                                    break;
-                                case 'pdo.proxy.commit':
-                                    $result = $this->pdoConnection->commit();
-                                    break;
-                                case 'pdo.proxy.rollBack':
-                                    $result = $this->pdoConnection->rollBack();
-                                    break;
-                                default :
-                                    $result = false;
-                            }
-                            $event->data = $result;
-                            $this->ccl->send($this->server, $event->serialize());
-                            $this->count--;
-                        } catch (Exception $exception) {
-                            $pdoProxyException = new PDOProxyExceptionBuild(get_class($exception), [
-                                'message' => $exception->getMessage(),
-                                'code' => $exception->getCode(),
-                                'file' => $exception->getFile(),
-                                'line' => $exception->getLine(),
-                                'trace' => null,
-                                'previous' => null
-                            ]);
-                            $event->data = $pdoProxyException;
-                            $event->serialize();
-                            $this->ccl->send($this->server, $event->serialize());
-                            $this->count--;
-                        }
-                    }
                 }
             }
+            while ($builder = $this->ccl->cut($this->server)) {
+                $this->count++;
+                /**
+                 * @var PDOBuild $event
+                 */
+                $event = unserialize($builder);
+                $this->handleEvent($event);
+            }
+        }
+    }
+
+    /**
+     * @param PDOBuild $event
+     * @return void
+     * @throws FileException
+     * @throws SocketAisleException
+     */
+    private function handleEvent(PDOBuild $event): void
+    {
+        try {
+            switch ($event->name) {
+                case 'pdo.proxy.query':
+                    $pdoStatement = $this->pdoConnection->prepare($event->query);
+                    foreach ($event->bindings as $key => $value) {
+                        $pdoStatement->bindValue(
+                            is_string($key) ? $key : $key + 1,
+                            $value,
+                            match (true) {
+                                is_int($value) => PDO::PARAM_INT,
+                                is_resource($value) => PDO::PARAM_LOB,
+                                default => PDO::PARAM_STR
+                            },
+                        );
+                    }
+                    foreach ($event->bindParams as $key => $value) {
+                        $pdoStatement->bindParam(
+                            is_string($key) ? $key : $key + 1,
+                            $value,
+                            match (true) {
+                                is_int($value) => PDO::PARAM_INT,
+                                is_resource($value) => PDO::PARAM_LOB,
+                                default => PDO::PARAM_STR
+                            },
+                        );
+                    }
+                    if ($pdoStatement->execute()) {
+                        $result = $pdoStatement->fetchAll();
+                    } else {
+                        $result = false;
+                    }
+                    break;
+                case 'pdo.proxy.beginTransaction':
+                    $result = $this->pdoConnection->beginTransaction();
+                    break;
+                case 'pdo.proxy.commit':
+                    $result = $this->pdoConnection->commit();
+                    break;
+                case 'pdo.proxy.rollBack':
+                    $result = $this->pdoConnection->rollBack();
+                    break;
+                default :
+                    $result = false;
+            }
+            $event->data = $result;
+            $this->ccl->send($this->server, $event->serialize());
+            $this->count--;
+        } catch (Exception $exception) {
+            $pdoProxyException = new PDOProxyExceptionBuild(get_class($exception), [
+                'message' => $exception->getMessage(),
+                'code' => $exception->getCode(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => null,
+                'previous' => null
+            ]);
+            $event->data = $pdoProxyException;
+            $event->serialize();
+            $this->ccl->send($this->server, $event->serialize());
+
+            $this->count--;
         }
     }
 }

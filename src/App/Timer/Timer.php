@@ -154,6 +154,10 @@ class Timer extends WorkerInterface
         $this->publishAwait();
     }
 
+    /**
+     * @param Socket $socket
+     * @return void
+     */
     public function handleSocket(Socket $socket): void
     {
         // TODO: Implement handleSocket() method.
