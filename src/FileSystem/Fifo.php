@@ -10,8 +10,20 @@ namespace FileSystem;
 class Fifo
 {
     public const EXT = '.fifo';
+
+    /**
+     * @var mixed|false|resource
+     */
     private mixed $stream;
+
+    /**
+     * @var string
+     */
     private string $name;
+
+    /**
+     * @var string
+     */
     private string $path;
 
     /**

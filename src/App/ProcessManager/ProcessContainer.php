@@ -15,15 +15,39 @@ use Worker\NetWorker\SocketType\SocketUnix;
 use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
- *
+ * 进程载体
  */
 class ProcessContainer
 {
+
+    /**
+     * @var array
+     */
     public static array $childrenIds = [];
+
+    /**
+     * @var bool
+     */
     public static bool $isMaster = true;
+
+    /**
+     * @var bool
+     */
     public static bool $hasObserver = true;
+
+    /**
+     * @var int
+     */
     public static int $observerProcessId = 0;
+
+    /**
+     * @var int
+     */
     public static int $guardCount = 0;
+
+    /**
+     * @var Client
+     */
     public static Client $managerTunnel;
 
     /**

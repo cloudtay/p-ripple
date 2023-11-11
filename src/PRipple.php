@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 
-use App\PDOProxy\PDOProxyWorker;
+use App\PDOProxy\PDOProxy;
+use App\PDOProxy\PDOProxyPool;
 use App\ProcessManager\ProcessManager;
 use App\Timer\Timer;
 use JetBrains\PhpStorm\NoReturn;
@@ -44,9 +45,15 @@ class PRipple
      * @var PRipple $instance
      */
     private static PRipple $instance;
-    public int $rate = 1000000;
+
     /**
-     * 协程列表
+     * 处理速率
+     * @var int
+     */
+    private int $rate = 1000000;
+
+    /**
+     * 纤程列表
      * @var array
      */
     private array $fibers = [];
@@ -70,10 +77,30 @@ class PRipple
      * @var WorkerInterface[]
      */
     private array $workers = [];
-    private int $index = 0;
+
+    /**
+     * 套接字数量
+     * @var int $socketNumber
+     */
     private int $socketNumber = 0;
+
+    /**
+     * 事件数量
+     * @var int $eventNumber
+     */
     private int $eventNumber = 0;
+
+    /**
+     * 安装参数
+     * @var array $configureArguments
+     */
     private static array $configureArguments;
+
+    /**
+     * 唯一索引
+     * @var int $index
+     */
+    private static int $index = 0;
 
     /**
      * 构造函数
@@ -87,17 +114,16 @@ class PRipple
     }
 
     /**
-     * @return PRipple
+     * @return void
      */
-    public function initialize(): PRipple
+    private function initialize(): void
     {
         $this->registerSignalHandler();
+        $timer = Timer::new(Timer::class);
         $bufferWorker = BufferWorker::new(BufferWorker::class);
         $processManager = ProcessManager::new(ProcessManager::class);
-        $timer = Timer::new(Timer::class);
-        $pdoProxyManager = PDOProxyWorker::new(PDOProxyWorker::class);
-        $this->push($bufferWorker, $processManager, $timer, $pdoProxyManager);
-        return $this;
+        $pdoProxyPool = PDOProxyPool::new(PDOProxy::class);
+        $this->push($timer, $bufferWorker, $pdoProxyPool, $processManager);
     }
 
     /**
@@ -127,7 +153,7 @@ class PRipple
     /**
      * @return void
      */
-    public function registerSignalHandler(): void
+    private function registerSignalHandler(): void
     {
         //只捕获常见终止信号,意料之外的错误开发者自行负责
         pcntl_async_signals(true);
@@ -205,7 +231,6 @@ class PRipple
                     unset($this->socketSubscribeHashMap[$event->data]);
                     break;
                 case PRipple::EVENT_HEARTBEAT:
-                    $this->adjustRate();
                     if ($event->publisher === PRipple::class) {
                         // TODO: 全局心跳[空闲时]
                         foreach ($this->fibers as $fiber) {
@@ -213,7 +238,6 @@ class PRipple
                                 PRipple::publishAsync($response);
                             }
                         }
-                        gc_collect_cycles();
                     } else {
                         // TODO: 定向心跳[声明活跃]
                         if ($response = $this->fibers[$event->publisher]->resume($event)) {
@@ -259,23 +283,25 @@ class PRipple
                 $exceptSockets = $this->sockets;
                 if (socket_select($readSockets, $writeSockets, $exceptSockets, 0, $this->rate)) {
                     foreach ($exceptSockets as $socket) {
-                        yield Build::new('socket.expect', $socket, PRipple::class);
+                        yield Build::new(PRipple::EVENT_SOCKET_EXPECT, $socket, PRipple::class);
                     }
                     foreach ($readSockets as $socket) {
-                        yield Build::new('socket.read', $socket, PRipple::class);
+                        yield Build::new(PRipple::EVENT_SOCKET_READ, $socket, PRipple::class);
                     }
                     foreach ($writeSockets as $socket) {
-                        yield Build::new('socket.write', $socket, PRipple::class);
+                        yield Build::new(PRipple::EVENT_SOCKET_WRITE, $socket, PRipple::class);
                     }
-                    foreach ($this->workers as $worker) {
+                    array_map(function (WorkerInterface $worker) {
                         if ($worker->todo) {
-                            yield Build::new('heartbeat', null, $worker->name);
+                            $worker->heartbeat();
                         }
-                    }
+                    }, $this->workers);
                 } else {
-                    yield Build::new('heartbeat', null, PRipple::class);
+                    $this->heartbeat();
                 }
+                $this->adjustRate();
             }
+
         }
     }
 
@@ -417,9 +443,9 @@ class PRipple
      * 唯一HASH
      * @return string
      */
-    public function uniqueHash(): string
+    public static function uniqueHash(): string
     {
-        return md5(strval($this->index++));
+        return md5(strval(PRipple::$index++));
     }
 
     /**
@@ -438,5 +464,16 @@ class PRipple
             }
         }
         return $value;
+    }
+
+    /**
+     * @return void
+     */
+    private function heartbeat(): void
+    {
+        foreach ($this->workers as $worker) {
+            $worker->heartbeat();
+        }
+        gc_collect_cycles();
     }
 }

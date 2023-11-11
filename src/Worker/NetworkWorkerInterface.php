@@ -13,7 +13,7 @@ use Worker\NetWorker\SocketType\SocketInet;
 use Worker\NetWorker\SocketType\SocketUnix;
 
 /**
- *
+ * NetworkWorkerInterface
  */
 class NetworkWorkerInterface extends WorkerInterface
 {
@@ -22,33 +22,47 @@ class NetworkWorkerInterface extends WorkerInterface
      * @var array
      */
     public array $clientSockets = [];
+
     /**
      * 客户端列表
      * @var Client []
      */
     public array $clients;
+
     /**
      * 身份标识映射表
      * @var array
      */
     public array $identityHashMap;
+
     /**
      * 套接字类型
      * @var string
      */
-    public string $socketType;
-    public string $name = NetworkWorkerInterface::class;
+    protected string $socketType;
 
     /**
      * 协议
      * @var ProtocolStd
      */
-    public ProtocolStd $protocol;
+    protected ProtocolStd $protocol;
+
     /**
-     * @var string[]
+     * 绑定地址列表
+     * @var string[] $bindAddressList
      */
     private array $bindAddressList = [];
+
+    /**
+     * 绑定地址哈希表
+     * @var array $bindAddressHashMap
+     */
     private array $bindAddressHashMap = [];
+
+    /**
+     * 套接字选项
+     * @var array $socketServiceOptions
+     */
     private array $socketServiceOptions = [];
 
     /**
@@ -62,7 +76,7 @@ class NetworkWorkerInterface extends WorkerInterface
     }
 
     /**
-     * 设置套接字身份 当一个客户端被赋予身份后 将在ServerSocket对象中建立索引 可以快速查找
+     * 设置套接字身份
      * @param string $name
      * @param string $identity
      * @return bool
@@ -191,7 +205,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Build $event
      * @return void
      */
-    public function handleEvent(Build $event): void
+    protected function handleEvent(Build $event): void
     {
         // TODO: Implement handleEvent() method.
     }
@@ -223,10 +237,12 @@ class NetworkWorkerInterface extends WorkerInterface
         }
 
         if (!$context = $client->read(0, $_)) {
-            $this->onClose($client);
-            $this->removeClient($client);
-            $client->deprecated = true;
-            return;
+            if ($client->cache === '') {
+                $this->removeClient($client);
+                $this->onClose($client);
+                $client->deprecated = true;
+                return;
+            }
         }
         $client->cache .= $context;
         $this->splitMessage($client);
@@ -235,7 +251,7 @@ class NetworkWorkerInterface extends WorkerInterface
     /**
      * 同意一个连接
      */
-    public function accept(Socket $listenSocket): bool
+    protected function accept(Socket $listenSocket): bool
     {
         try {
             if ($socket = socket_accept($listenSocket)) {
@@ -257,7 +273,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Socket $socket
      * @return void
      */
-    public function addSocket(Socket $socket): void
+    protected function addSocket(Socket $socket): void
     {
         $name = NetworkWorkerInterface::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
@@ -272,7 +288,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
 
     }
@@ -281,9 +297,8 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onHandshake(Client $client): void
+    protected function onHandshake(Client $client): void
     {
-
     }
 
     /**
@@ -321,9 +336,8 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Client $client
      * @return void
      */
-    public function splitMessage(Client $client): void
+    protected function splitMessage(Client $client): void
     {
-        // 默认通过协议切割
         while ($content = $client->getPlaintext()) {
             $this->onMessage($content, $client);
         }
@@ -334,7 +348,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
 
     }
@@ -343,7 +357,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
 
     }
@@ -359,7 +373,7 @@ class NetworkWorkerInterface extends WorkerInterface
     /**
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
         $this->listen();
     }
@@ -368,7 +382,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * 创建监听
      * @return void
      */
-    public function listen(): void
+    protected function listen(): void
     {
         try {
             while ($addressFull = array_shift($this->bindAddressList)) {

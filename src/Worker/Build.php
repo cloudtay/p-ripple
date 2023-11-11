@@ -4,12 +4,23 @@ declare(strict_types=1);
 namespace Worker;
 
 /**
- * 事件构建器
+ * 事件包实体
  */
 class Build
 {
+    /**
+     * @var string $name
+     */
     public string $name;
+
+    /**
+     * @var mixed $data
+     */
     public mixed $data;
+
+    /**
+     * @var mixed $publisher
+     */
     public mixed $publisher;
 
     /**

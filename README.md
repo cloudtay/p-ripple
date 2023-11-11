@@ -18,13 +18,12 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use App\Facade\PDOProxy;
+use App\Facade\PDOPool;
 use App\Http\HttpWorker;
 use App\Http\Request;
 use App\Http\Response;
 use PRipple;
 use Protocol\WebSocket;
-use function PRipple\delay;
 
 include __DIR__ . '/vendor/autoload.php';
 
@@ -34,6 +33,17 @@ $kernel = PRipple::configure([
 ]);
 
 $options = [SO_REUSEPORT => true];
+
+# PDO代理池新增一个代理(详见文档:PDO代理),支持普通查询/事务查询
+$default = PDOPool::add('default', [
+    'dns' => 'mysql:host=127.0.0.1;dbname=iot',
+    'username' => 'root',
+    'password' => 'Wp!LTf/*g(eon/wM',
+    'options' => []
+]);
+
+# 激活3个代理, 后台自动维护连接池
+$default->activate(3);
 
 # 创建一个WebSocket服务
 $ws = TestWS::new('ws_worker_name')
@@ -52,7 +62,7 @@ $http = HttpWorker::new('http_worker_name')
 # 声明HTTP请求处理器
 $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
     if ($request->method === 'GET') {
-        # 直接返回该请求
+        // 直接响应请求
         yield Response::new(
             $statusCode = 200,
             $headers = ['Content-Type' => 'text/html; charset=utf-8'],
@@ -60,14 +70,12 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
         );
 
         // 查询数据库
-        $result = PDOProxy::query('select * from user where id = ?', [17], []);
+        $result = PDOPool::get('default')->query('select * from iot_user where id = ?', [1], []);
 
-        // 延时一秒后向所有客户端发送数据查询结果
-        delay(1);
+        // 向所有客户端发送数据查询结果
         foreach ($ws->getClients() as $client) {
             $client->send('取得数据: ' . json_encode($result));
         }
-
         foreach ($tcp->getClients() as $client) {
             $client->send('取得数据: ' . json_encode($result) . PHP_EOL);
         }
@@ -104,7 +112,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
 # 定义HTTP错误处理器
 //  `defineRequestHandler` 定义的处理器在执行过程中发生错误将会触发该处理器
 //  `defineExceptionHandler` 内不建议做太多复杂的处理, 因为触发该方法的前提是处理器内部发生了错误
-$http->defineExceptionHandler(function (mixed $error, Request $request) {
+$http->defineExceptionHandler(function (Request $request, mixed $error) {
     $response = Response::new(
         $statusCode = 500,
         $headers = ['Content-Type' => 'text/html; charset=utf-8'],
@@ -112,14 +120,6 @@ $http->defineExceptionHandler(function (mixed $error, Request $request) {
     );
     $request->client->send($response->__toString());
 });
-
-# PDO代理池新增一个代理(详见文档:PDO代理),支持普通查询/事务查询
-PDOProxy::addProxy(1, [
-    'dns' => 'mysql:host=127.0.0.1;dbname=lav',
-    'username' => 'root',
-    'password' => '123456',
-    'options' => $options
-]);
 
 # 启动服务
 $kernel->push($http, $ws, $tcp)->launch();

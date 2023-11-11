@@ -13,12 +13,19 @@ use Worker\Build;
  */
 abstract class TaskStd
 {
+    /**
+     * @var string
+     */
     public string $hash;
+
+    /**
+     * @var Fiber
+     */
     public Fiber $fiber;
 
     public function __construct()
     {
-        $this->hash = PRipple::instance()->uniqueHash();
+        $this->hash = PRipple::uniqueHash();
     }
 
     /**

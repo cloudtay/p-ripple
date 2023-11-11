@@ -13,7 +13,7 @@ use Worker\NetworkWorkerInterface;
 use Worker\WorkerInterface;
 
 /**
- *
+ * 进程管理器
  */
 class ProcessManager extends NetworkWorkerInterface
 {
@@ -41,7 +41,7 @@ class ProcessManager extends NetworkWorkerInterface
      * CCL协议
      * @var ProtocolStd
      */
-    public ProtocolStd $protocol;
+    protected ProtocolStd $protocol;
 
     /**
      * @return ProcessManager|WorkerInterface
@@ -87,7 +87,7 @@ class ProcessManager extends NetworkWorkerInterface
      * 初始化
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
         ProcessManager::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.sock';
         ProcessManager::$LOCK_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.lock';
@@ -105,7 +105,7 @@ class ProcessManager extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         /**
          * @var Build $build

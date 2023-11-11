@@ -72,7 +72,7 @@ class HttpWorker extends NetworkWorkerInterface
      * 创建请求工厂
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->requestFactory = new RequestFactory($this);
@@ -98,7 +98,6 @@ class HttpWorker extends NetworkWorkerInterface
                             } else {
                                 $request->client->send($response->__toString());
                                 $this->removeClient($request->client);
-                                $this->recover($request->hash);
                             }
                         }
                     }
@@ -107,8 +106,8 @@ class HttpWorker extends NetworkWorkerInterface
                 } catch (Throwable $exception) {
                     $this->handleException($exception, $request);
                 }
+                $this->recover($request->hash);
             });
-
             try {
                 if ($fiber->start()) {
                     $this->workFibers[$request->hash] = $fiber;
@@ -140,6 +139,7 @@ class HttpWorker extends NetworkWorkerInterface
     public function onConnect(Client $client): void
     {
         $client->setNoBlock();
+        $client->setReceiveBufferSize(1024 * 1024);
     }
 
     /**
@@ -147,7 +147,7 @@ class HttpWorker extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         try {
             if (($request = $this->requestFactory->revolve($context, $client)) instanceof Request) {
@@ -197,7 +197,7 @@ class HttpWorker extends NetworkWorkerInterface
      * @param Build $event
      * @return void
      */
-    public function handleEvent(Build $event): void
+    protected function handleEvent(Build $event): void
     {
         $hash = $event->publisher;
         if (isset($this->workFibers[$hash])) {
@@ -220,11 +220,14 @@ class HttpWorker extends NetworkWorkerInterface
     public function handleException(Throwable $exception, Request $request): void
     {
         if (isset($this->exceptionHandler)) {
-            call_user_func($this->exceptionHandler, $request, $exception);
+            try {
+                call_user_func($this->exceptionHandler, $request, $exception);
+            } catch (Throwable $exception) {
+                PRipple::printExpect($exception);
+            }
         } else {
-//            PRipple::printExpect($exception);
+            PRipple::printExpect($exception);
         }
-        PRipple::printExpect($exception);
         $this->recover($request->hash);
     }
 }

@@ -11,8 +11,14 @@ use Std\TunnelStd;
  */
 class FifoAisle implements TunnelStd
 {
+    /**
+     *
+     */
     public const EXT = '.fifo';
 
+    /**
+     * @var Fifo|mixed
+     */
     private Fifo $file;
 
     /**
@@ -58,10 +64,10 @@ class FifoAisle implements TunnelStd
     /**
      * 写入数据
      * @param string $context
-     * @param bool $async
+     * @param bool|null $async
      * @return int|bool
      */
-    public function write(string $context, bool $async = false): int|bool
+    public function write(string $context, bool|null $async = false): int|bool
     {
         return $this->file->write($context);
     }

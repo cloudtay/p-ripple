@@ -6,7 +6,7 @@ namespace App\PDOProxy;
 use Worker\Build;
 
 /**
- *
+ * PDO请求包体
  */
 class PDOBuild extends Build
 {
@@ -16,8 +16,20 @@ class PDOBuild extends Build
     public const EVENT_ROLL_BACK = 'pdo.proxy.rollBack';
     public const EVENT_TRANSACTION = 'pdo.proxy.transaction';
 
+
+    /**
+     * @var string|mixed
+     */
     public string $query;
+
+    /**
+     * @var array|mixed
+     */
     public array $bindings;
+
+    /**
+     * @var array|mixed
+     */
     public array $bindParams;
 
     /**

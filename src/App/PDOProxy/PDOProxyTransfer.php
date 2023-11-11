@@ -15,7 +15,7 @@ use Worker\NetWorker\SocketType\SocketUnix;
 use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
- *
+ * PDO代理服务端
  */
 class PDOProxyTransfer
 {
@@ -79,10 +79,20 @@ class PDOProxyTransfer
      */
     private function connectServer(): void
     {
-        try {
-            $this->server = new Client(SocketUnix::connect(PDOProxyWorker::$UNIX_PATH, null, ['nonblock' => true]), SocketUnix::class);
-        } catch (Exception $exception) {
-            PRipple::printExpect($exception);
+        foreach (range(1, 10) as $_) {
+            try {
+                if ($connect = SocketUnix::connect(PDOProxy::$UNIX_PATH, null, ['nonblock' => true])) {
+                    break;
+                }
+            } catch (Exception $exception) {
+                $connect = false;
+                usleep(100000);
+            }
+        }
+        if ($connect) {
+            $this->server = new Client($connect, SocketUnix::class);
+        } else {
+            PRipple::info('    - Unable to connect to the manager, please check the manager process');
             exit;
         }
     }
@@ -96,7 +106,7 @@ class PDOProxyTransfer
         while (true) {
             $readSocketList = [$this->server->getSocket()];
             $writeSocketList = [];
-            if ($this->server->openCache) {
+            if ($this->server->openBuffer) {
                 $writeSocketList = [$this->server->getSocket()];
             }
             if (socket_select($readSocketList, $writeSocketList, $_ignore, 1)) {
@@ -190,7 +200,6 @@ class PDOProxyTransfer
             $event->data = $pdoProxyException;
             $event->serialize();
             $this->ccl->send($this->server, $event->serialize());
-
             $this->count--;
         }
     }

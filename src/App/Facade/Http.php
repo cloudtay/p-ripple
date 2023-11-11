@@ -8,10 +8,13 @@ use Std\Facade;
 use Worker\WorkerInterface;
 
 /**
- *
+ * Http门面
  */
 class Http extends Facade
 {
+    /**
+     * @var mixed
+     */
     public static mixed $instance;
 
     /**

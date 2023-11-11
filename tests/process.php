@@ -24,7 +24,7 @@ $http->defineRequestHandler(function (Request $request) {
         $headers = ['Content-Type' => 'text/html; charset=utf-8'],
         $body = 'hello,world'
     );
-    $request->client->send($response);
+    $request->client->send($response->__toString());
     ProcessContainer::fork(function () {
         ProcessContainer::fork(function () {
             echo 'child process' . PHP_EOL;

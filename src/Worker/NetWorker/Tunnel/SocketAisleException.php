@@ -6,7 +6,7 @@ namespace Worker\NetWorker\Tunnel;
 use Exception;
 
 /**
- *
+ * 套接字传输异常
  */
 class SocketAisleException extends Exception
 {

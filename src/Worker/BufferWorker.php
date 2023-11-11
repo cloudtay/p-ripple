@@ -15,6 +15,7 @@ use Worker\NetWorker\Tunnel\SocketAisleException;
 class BufferWorker extends WorkerInterface
 {
     /**
+     * 缓冲区套接字列表
      * @var SocketAisle[] $buffers
      */
     private array $buffers = [];
@@ -35,7 +36,7 @@ class BufferWorker extends WorkerInterface
     {
         foreach ($this->buffers as $buffer) {
             try {
-                while ($buffer->openCache && !$buffer->deprecated && $buffer->write('')) {
+                while ($buffer->openBuffer && !$buffer->deprecated && $buffer->write('')) {
                     //TODO: 有效缓冲区释放
                 }
             } catch (FileException|SocketAisleException $exception) {

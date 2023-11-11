@@ -8,9 +8,8 @@ try {
     if (!socket_connect($socket, '127.0.0.1', 3002)) {
         exit('connect failed.');
     }
-    sleep(3);
+    sleep(rand(3, 10));
 
-//    sleep(3);
     $ss = [$socket];
     $output = fopen('/tmp/test_file_output_' . getmypid(), 'w');
     $count = 0;
@@ -21,7 +20,7 @@ try {
                 break;
             }
             fwrite($output, $content);
-        } elseif ($count++ === 3) {
+        } elseif ($count++ === 10) {
             break;
         }
         $ss = [$socket];

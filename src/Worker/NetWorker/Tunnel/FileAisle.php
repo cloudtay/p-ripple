@@ -11,7 +11,14 @@ use Std\TunnelStd;
  */
 class FileAisle implements TunnelStd
 {
+    /**
+     * @var string $ext
+     */
     public const EXT = '.temp';
+
+    /**
+     * @var File|mixed $file
+     */
     public File $file;
 
     /**

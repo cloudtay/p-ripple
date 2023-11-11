@@ -4,12 +4,24 @@ declare(strict_types=1);
 namespace App\Http;
 
 /**
- *
+ * 响应实体
  */
 class Response
 {
+
+    /**
+     * @var int
+     */
     public int $statusCode;
+
+    /**
+     * @var array
+     */
     public array $headers;
+
+    /**
+     * @var string
+     */
     public string $body;
 
     /**

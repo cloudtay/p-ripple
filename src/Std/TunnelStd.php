@@ -35,10 +35,10 @@ interface TunnelStd
     /**
      * WRITE DATA TO THE CHANNEL
      * @param string $context
-     * @param bool $async
+     * @param bool|null $async
      * @return int|bool
      */
-    public function write(string $context, bool $async = false): int|bool;
+    public function write(string $context, bool|null $async = false): int|bool;
 
     /**
      * @return void

@@ -9,13 +9,26 @@ use Worker\NetWorker\Client;
 use Worker\NetWorker\Tunnel\SocketAisleException;
 
 /**
- *
+ * PDO代理客户端
  */
 class PDOProxyConnection
 {
+    /**
+     * @var bool
+     */
     public bool $transaction = false;
+    /**
+     * @var int
+     */
     public int $count = 0;
+    /**
+     * @var Client
+     */
     public Client $client;
+
+    /**
+     * @var CCL
+     */
     protected CCL $ccl;
 
     /**

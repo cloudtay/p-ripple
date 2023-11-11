@@ -21,6 +21,7 @@ class Timer extends WorkerInterface
     public const EVENT_TIMER_EVENT = 'timer.event';
     public const EVENT_TIMER_LOOP = 'timer.loop';
     public const EVENT_TIMER_SLEEP = 'timer.sleep';
+
     /**
      * 任务队列
      * @var SplPriorityQueue $taskQueue
@@ -45,7 +46,7 @@ class Timer extends WorkerInterface
         $this->subscribe(Timer::EVENT_TIMER_EVENT);
         $this->subscribe(Timer::EVENT_TIMER_LOOP);
         $this->subscribe(Timer::EVENT_TIMER_SLEEP);
-        $this->todo = true;
+//        $this->todo = true;
         \App\Facade\Timer::setInstance($this);
     }
 

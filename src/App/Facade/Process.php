@@ -14,6 +14,9 @@ use Worker\WorkerInterface;
  */
 class Process extends Facade
 {
+    /**
+     * @var mixed
+     */
     public static mixed $instance;
 
     /**

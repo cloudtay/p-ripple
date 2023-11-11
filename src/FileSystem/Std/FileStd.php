@@ -5,7 +5,7 @@ namespace FileSystem\Std;
 
 
 /**
- *
+ * 文件标准
  */
 interface FileStd
 {

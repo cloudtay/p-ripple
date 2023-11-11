@@ -14,6 +14,9 @@ use Worker\WorkerInterface;
  */
 class Timer extends Facade
 {
+    /**
+     * @var mixed
+     */
     public static mixed $instance;
 
     /**

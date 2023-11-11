@@ -16,22 +16,89 @@ class Request extends TaskStd
 {
     public const EVENT_UPLOAD = 'http.upload.complete';
 
+    /**
+     * @var string|mixed
+     */
     public string $host;
+
+    /**
+     * @var string|mixed
+     */
     public string $scheme;
+
+    /**
+     * @var string
+     */
     public string $url;
+
+    /**
+     * @var string
+     */
     public string $method;
+
+    /**
+     * @var bool
+     */
     public bool $upload;
+
+    /**
+     * @var array
+     */
     public array $files = array();
+
+    /**
+     * @var string|mixed
+     */
     public string $path;
+
+    /**
+     * @var string
+     */
     public string $version;
+
+    /**
+     * @var string
+     */
     public string $header;
+
+    /**
+     * @var string
+     */
     public string $body;
+
+    /**
+     * @var array
+     */
     public array $headerArray = array();
+
+    /**
+     * @var array|mixed
+     */
     public array $post = array();
+
+    /**
+     * @var array
+     */
     public array $query = array();
+
+    /**
+     * @var Client
+     */
     public Client $client;
+
+    /**
+     * @var array
+     */
     public array $serverArray = array();
+
+    /**
+     * @var mixed|array
+     */
     public mixed $cookieArray = array();
+
+    /**
+     * @var bool
+     */
     public bool $keepAlive = false;
 
     /**

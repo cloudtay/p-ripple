@@ -8,7 +8,7 @@ use PRipple;
 use Throwable;
 
 /**
- *
+ * PDO打包器
  */
 class PDOTransaction
 {
@@ -23,7 +23,7 @@ class PDOTransaction
      */
     public function __construct(PDOProxyConnection $proxyConnection)
     {
-        $this->hash = PRipple::instance()->uniqueHash();
+        $this->hash = PRipple::uniqueHash();
         $this->proxyConnection = $proxyConnection;
     }
 
@@ -37,7 +37,7 @@ class PDOTransaction
     public function query(string $query, array $bindings, array $bindParams): mixed
     {
         $this->proxyConnection->pushQuery($this->hash, $query, $bindings, $bindParams);
-        return PDOProxyWorker::instance()->waitResponse();
+        return PDOProxy::instance()->waitResponse();
     }
 
     /**
@@ -47,7 +47,7 @@ class PDOTransaction
     public function _commit(): bool
     {
         $this->proxyConnection->pushCommit($this->hash);
-        return PDOProxyWorker::instance()->waitResponse();
+        return PDOProxy::instance()->waitResponse();
     }
 
     /**
@@ -57,7 +57,7 @@ class PDOTransaction
     public function _rollBack(): bool
     {
         $this->proxyConnection->pushRollBack($this->hash);
-        return PDOProxyWorker::instance()->waitResponse();
+        return PDOProxy::instance()->waitResponse();
     }
 
     /**

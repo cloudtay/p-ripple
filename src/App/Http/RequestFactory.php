@@ -10,9 +10,9 @@ use Worker\NetWorker\Client;
  */
 class RequestFactory
 {
-    public const INVALID = -1;
-    public const COMPLETE = 2;
-    public const INCOMPLETE = 1;
+    public const INVALID = -1;   # 传输异常
+    public const COMPLETE = 2;   # 传输完成
+    public const INCOMPLETE = 1; # 传输中
 
     /**
      * Http服务实体

@@ -7,24 +7,76 @@ use Worker\NetWorker\Client;
 
 
 /**
- *
+ * 请求单例
  */
 class RequestSingle
 {
+
+    /**
+     * @var string
+     */
     public string $hash;
+
+    /**
+     * @var string
+     */
     public string $method;
+
+    /**
+     * @var string
+     */
     public string $url;
+
+    /**
+     * @var string
+     */
     public string $version;
+
+    /**
+     * @var string
+     */
     public string $header;
+
+    /**
+     * @var array
+     */
     public array $headers = [];
+
+    /**
+     * @var string
+     */
     public string $body = '';
+
+    /**
+     * @var int
+     */
     public int $bodyLength = 0;
 
+
+    /**
+     * @var int
+     */
     public int $statusCode;
+
+    /**
+     * @var Client
+     */
     public Client $client;
 
+
+    /**
+     * @var bool
+     */
     public bool $upload = false;
+
+    /**
+     * @var string
+     */
     public string $boundary = '';
+
+    /**
+     * @var RequestUpload
+     */
     public RequestUpload $uploadHandler;
 
 

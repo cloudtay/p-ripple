@@ -18,7 +18,6 @@ async(function () {
     async(function () use (&$num) {
         delay(2);
         $num = 1;
-        echo '888';
     });
 
     echo $num . PHP_EOL;

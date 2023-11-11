@@ -49,11 +49,11 @@ use Worker\NetWorker\Tunnel\SocketAisleException;
     }
 
     /**
+     * 通过协议切割
      * @return string|false|null
      */
     public function getPlaintext(): string|null|false
     {
-        //协议切割遵循缓冲插入机制,协议必须回收缓冲区
         return $this->protocol->parse($this);
     }
 

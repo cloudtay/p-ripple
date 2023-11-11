@@ -16,47 +16,150 @@ use Worker\NetworkWorkerInterface;
  */
 class SocketAisle implements TunnelStd
 {
-    // 弃用的连接
+    /**
+     * 文件缓冲区扩展名
+     * @var string
+     */
     public const EXT = '.tunnel';
+
+    /**
+     * 弃用的连接
+     * @var bool
+     */
     public bool $deprecated = false;
-    // 用户地址
-    public bool $openCache = false;
-    // 在管理器中的键名
+
+    /**
+     * 用户地址
+     * @var bool
+     */
+    public bool $openBuffer = false;
+
+
+    /**
+     * 在管理器中的键名
+     * @var string
+     */
     protected readonly string $address;
-    // 用户连接时
+
+
+    /**
+     * 用户连接时
+     * @var string
+     */
     protected readonly string $hash;
-    // 套接字实体
+
+
+    /**
+     * 套接字实体
+     * @var mixed
+     */
     protected readonly int $createTime;
-    // 套接字远端端口
+
+
+    /**
+     * 套接字远端端口
+     * @var mixed
+     */
     protected readonly mixed $socket;
-    // 发送缓冲区大小
+
+
+    /**
+     * 发送缓冲区大小
+     * @var int
+     */
     protected readonly int $port;
-    // 接收缓冲区大小
+
+
+    /**
+     * 接收缓冲区大小
+     * @var int
+     */
     protected int $sendBufferSize;
-    // 发送低水位大小
+
+
+    /**
+     * 发送低水位大小
+     * @var int
+     */
     protected int $receiveBufferSize;
-    // 接收低水位大小
+
+
+    /**
+     * 接收低水位大小
+     * @var int
+     */
     protected int $sendLowWaterSize;
-    // 总共接收流量
+
+
+    /**
+     * 总共接收流量
+     * @var int
+     */
     protected int $receiveLowWaterSize;
-    // 总共发送流量
+
+
+    /**
+     * 总共发送流量
+     * @var int
+     */
     protected int $sendFlowCount = 0;
-    // 发送丢包储存区
+
+
+    /**
+     * 发送丢包储存区
+     * @var int
+     */
     protected int $receiveFlowCount = 0;
-    // 文件缓冲区
-    public string $sendBuffer = '';
-    // 文件缓冲区文件路径
-    public FileAisle $cacheFile;
-    // 文件缓冲长度
-    protected string $cacheFilePath;
-    // 缓存指针位置
-    protected int $cacheLength = 0;
-    // 自定义的名称
-    protected int $cachePoint = 0;
-    // 自定义身份标识
+
+
+    /**
+     * 文件缓冲区
+     * @var string
+     */
+    protected string $sendingBuffer = '';
+
+
+    /**
+     * 文件缓冲区文件
+     * @var FileAisle
+     */
+    protected FileAisle $bufferFile;
+
+
+    /**
+     * 文件缓冲区文件路径
+     * @var string
+     */
+    protected string $bufferFilePath;
+
+
+    /**
+     * 文件缓冲长度
+     * @var int
+     */
+    protected int $bufferLength = 0;
+
+
+    /**
+     * 缓冲指针位置
+     * @var int
+     */
+    protected int $bufferPoint = 0;
+
+
+    /**
+     * 自定义的名称
+     * @var string|int
+     */
     protected string|int $name;
-    // 上次活跃时间
+
+
+    /**
+     * 自定义身份标识
+     * @var string|int
+     */
     protected string|int $identity;
+
 
     /**
      * @param mixed $socket
@@ -73,9 +176,9 @@ class SocketAisle implements TunnelStd
         $this->receiveBufferSize = socket_get_option($socket, SOL_SOCKET, SO_RCVBUF);
         $this->sendLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_SNDLOWAT);
         $this->receiveLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_RCVLOWAT);
-        $this->cacheFilePath = PP_RUNTIME_PATH . '/socket_cache_' . getmypid() . '_' . $this->hash . SocketAisle::EXT;
-        if (File::exists($this->cacheFilePath)) {
-            unlink($this->cacheFilePath);
+        $this->bufferFilePath = PP_RUNTIME_PATH . '/socket_buffer_' . getmypid() . '_' . $this->hash . SocketAisle::EXT;
+        if (File::exists($this->bufferFilePath)) {
+            unlink($this->bufferFilePath);
         }
     }
 
@@ -284,36 +387,39 @@ class SocketAisle implements TunnelStd
 
     /**
      * 写缓冲到文件缓冲区
+     * 该方法会将文件指针移动到末尾
      * @param string $context
      * @return void
      * @throws FileException
      */
-    public function cacheToFile(string $context): void
+    public function bufferToFile(string $context): void
     {
-        if ($this->openCache === false) {
-            $this->openCache();
+        if ($this->openBuffer === false) {
+            $this->openBuffer();
         }
-        $this->cacheFile->adjustPoint(0, SEEK_END);
-        $this->cacheFile->write($context);
-        $this->cacheLength += strlen($context);
+        $this->bufferFile->adjustPoint(0, SEEK_END);
+        $this->bufferFile->write($context);
+        $this->bufferLength += strlen($context);
     }
 
     /**
      * @return void
      * @throws FileException
      */
-    private function openCache(): void
+    private function openBuffer(): void
     {
         if (count(get_resources()) < PP_MAX_FILE_HANDLE) {
-            if ($cacheFile = File::create($this->cacheFilePath, 'r+')) {
-                $this->cacheFile = FileAisle::create($cacheFile);
-                $this->openCache = true;
+            if ($bufferFile = File::create($this->bufferFilePath, 'r+')) {
+                $this->bufferFile = FileAisle::create($bufferFile);
+                $this->openBuffer = true;
+                $this->bufferPoint = 0;
+                $this->bufferLength = 0;
                 PRipple::publishAsync(Build::new('socket.buffer', $this, SocketAisle::class));
             } else {
-                throw new FileException("Unable to create socket cache buffer file, please check directory permissions: " . $this->cacheFilePath);
+                throw new FileException("Unable to create socket buffer buffer file, please check directory permissions: " . $this->bufferFilePath);
             }
         } else {
-            echo "Error, the maximum number of open handles has been reached: " . $this->cacheFilePath . PHP_EOL;
+            echo "Error, the maximum number of open handles has been reached: " . $this->bufferFilePath . PHP_EOL;
         }
     }
 
@@ -331,93 +437,75 @@ class SocketAisle implements TunnelStd
     /**
      * 实时写入数据
      * @param string $context
-     * @param bool $async
+     * @param bool|null $async
      * @return int|false
      * @throws FileException
      * @throws SocketAisleException
      */
-    public function write(string $context, bool $async = true): int|false
+    public function write(string $context, bool|null $async = true): int|false
     {
         try {
-            //        if (!$async) {
-            //            $handledLength = 0;
-            //            $tasks = str_split($context, $this->sendBufferSize);
-            //            do {
-            //                if ($task = array_shift($tasks)) {
-            //                    $this->sendBuffer .= $task;
-            //                }
-            //                $writeList = [$this->socket];
-            //                socket_select($_, $writeList, $_, null, 1000);
-            //                $_buffer = substr($this->sendBuffer, 0, $this->sendBufferSize);
-            //                $writeLength = socket_send($this->socket, $_buffer, strlen($_buffer), 0);
-            //                if ($writeLength === false || $writeLength === 0) {
-            //                    return false;
-            //                }
-            //                $handledLength += $writeLength;
-            //                $this->sendBuffer = substr($_buffer, $writeLength);
-            //                $this->sendFlowCount += $writeLength;
-            //            } while (!empty($buffer) || count($tasks) > 0);
-            //            return $handledLength;
-            //        }
-            $handledLengthCount = 0;
-
-            // 处理缓冲区数据
-            $list = str_split($this->sendBuffer, $this->sendBufferSize);
-            while ($item = array_shift($list)) {
-                if (!$writeLength = socket_send($this->socket, $item, strlen($item), 0)) {
-                    $this->cacheToFile($item);
-                    $handledLengthCount += strlen($item);
-                    while ($item = array_shift($list)) {
-                        $this->cacheToFile($item);
-                        $handledLengthCount += strlen($item);
+            $transferComplete = 0;
+            # 处理文件缓冲数据
+            if ($this->openBuffer) {
+                while ($this->bufferLength > 0) {
+                    $this->bufferFile->adjustPoint($this->bufferPoint);
+                    $readLength = min($this->sendBufferSize, $this->bufferLength);
+                    $bufferContextFragment = $this->bufferFile->read($readLength, $resultLength);
+                    $bufferContextFragmentLength = strlen($bufferContextFragment);
+                    $writeLength = socket_send($this->socket, $bufferContextFragment, $bufferContextFragmentLength, 0);
+                    if ($writeLength === false) {
+                        break;
+                    } elseif ($writeLength !== $bufferContextFragmentLength) {
+                        $transferComplete += $writeLength;
+                        $this->bufferPoint += $writeLength;
+                        $this->bufferLength -= $writeLength;
+                    } else {
+                        $this->bufferPoint += $writeLength;
+                        $this->bufferLength -= $writeLength;
+                        $transferComplete += $writeLength;
                     }
-                    return $handledLengthCount;
-                }
-                $this->sendBuffer = substr($this->sendBuffer, $writeLength);
-                $handledLengthCount += $writeLength;
-            }
-
-            // 处理缓存文件数据
-            if ($this->openCache && $this->cacheLength > 0) {
-                $this->cacheFile->adjustPoint($this->cachePoint);
-                while ($this->cacheLength > 0 && $cacheContextFragment = $this->cacheFile->read(min($this->sendBufferSize, $this->cacheLength), $resultLength)) {
-                    if (!$handledLength = socket_send($this->socket, $cacheContextFragment, strlen($cacheContextFragment), 0)) {
-                        $this->cacheToFile($context);
-                        return $handledLengthCount;
-                    }
-                    $this->cachePoint += $handledLength;
-                    $this->cacheLength -= $handledLength;
-                    $handledLengthCount += $handledLength;
                 }
             }
-
 
             // 处理请求文本
             $list = str_split($context, $this->sendBufferSize);
             while ($item = array_shift($list)) {
-                if (!$handledLength = socket_send($this->socket, $item, strlen($item), 0)) {
-                    $this->cacheToFile($item);
-                    while ($item = array_shift($list)) {
-                        $this->cacheToFile($item);
-                    }
-                    return $handledLengthCount;
+                if ($this->openBuffer) {
+                    $this->bufferToFile($item);
+                    continue;
                 }
-                $handledLengthCount += $handledLength;
+                $writeLength = socket_send($this->socket, $item, strlen($item), 0);
+                if ($writeLength === false) {
+                    $full = false;
+                } elseif ($writeLength !== strlen($item)) {
+                    $full = false;
+                    $item = substr($item, $writeLength);
+                    $transferComplete += $writeLength;
+                } else {
+                    $full = true;
+                }
+                if (!$full) {
+                    $this->bufferToFile($item);
+                    while ($item = array_shift($list)) {
+                        $this->bufferToFile($item);
+                    }
+                    return $transferComplete;
+                }
+                $transferComplete += $writeLength;
             }
 
-            if ($this->openCache) {
-                $this->closeCache();
-                //调整指针
-
-
+            if ($this->openBuffer && $this->bufferLength === 0) {
+                $this->closeBuffer();
             }
-            return $handledLengthCount;
+            return $transferComplete;
         } catch (FileException $exception) {
             throw $exception;
         } catch (Exception $exception) {
             throw new SocketAisleException($exception->getMessage());
         }
     }
+
 
     /**
      * 实时读取数据
@@ -444,15 +532,6 @@ class SocketAisle implements TunnelStd
         $resultLength += $recLength;
         $this->receiveFlowCount += $recLength;
         while ($target && $length > 0) {
-            $_rs = [$this->socket];
-            $_es = $_rs;
-
-            if (!socket_select($_rs, $_, $_es, 0, 1000)) {
-                return false;
-            }
-            if (!empty($_es)) {
-                return false;
-            }
             if (!$recLength = socket_recv($this->socket, $_buffer, min($length, $this->receiveBufferSize), 0)) {
                 return false;
             }
@@ -467,14 +546,13 @@ class SocketAisle implements TunnelStd
     /**
      * @return void
      */
-    private function closeCache(): void
+    private function closeBuffer(): void
     {
-        $this->cacheFile->destroy();
-        $this->openCache = false;
-        $this->cachePoint = 0;
-        $this->cacheLength = 0;
+        $this->bufferFile->destroy();
+        $this->openBuffer = false;
+        $this->bufferPoint = 0;
+        $this->bufferLength = 0;
         PRipple::publishAsync(Build::new('socket.unBuffer', $this, SocketAisle::class));
-
     }
 
     /**
@@ -483,9 +561,9 @@ class SocketAisle implements TunnelStd
      */
     public function destroy(): void
     {
-        socket_close($this->socket);
-        if ($this->openCache) {
-            $this->closeCache();
+        $this->close();
+        if ($this->openBuffer) {
+            $this->closeBuffer();
         }
     }
 
@@ -522,21 +600,21 @@ class SocketAisle implements TunnelStd
      */
     public function truncate(): int|false
     {
-        $handledLengthCount = 0;
+        $transferComplete = 0;
         // 处理缓冲区数据
-        $handledLengthCount += $this->write($this->sendBuffer);
+        $transferComplete += $this->write($this->sendingBuffer);
 
-        // 处理缓存文件数据
-        if ($this->openCache && $this->cacheLength > 0) {
-            $this->cacheFile->adjustPoint($this->cachePoint);
-            while ($this->cacheLength > 0 && $cacheContextFragment = $this->cacheFile->read(min($this->sendBufferSize, $this->cacheLength), $resultLength)) {
-                $handledLength = $this->write($cacheContextFragment);
-                $this->cacheLength -= $handledLength;
-                $handledLengthCount += $handledLength;
+        // 处理缓冲文件数据
+        if ($this->openBuffer && $this->bufferLength > 0) {
+            $this->bufferFile->adjustPoint($this->bufferPoint);
+            while ($this->bufferLength > 0 && $bufferContextFragment = $this->bufferFile->read(min($this->sendBufferSize, $this->bufferLength), $resultLength)) {
+                $handledLength = $this->write($bufferContextFragment);
+                $this->bufferLength -= $handledLength;
+                $transferComplete += $handledLength;
             }
         }
 
-        return $handledLengthCount;
+        return $transferComplete;
     }
 
     /**
@@ -555,9 +633,9 @@ class SocketAisle implements TunnelStd
      * 获取文件缓冲区长度
      * @return int
      */
-    public function getCacheLength(): int
+    public function getBufferLength(): int
     {
-        return $this->cacheLength;
+        return $this->bufferLength;
     }
 
     /**
@@ -576,12 +654,12 @@ class SocketAisle implements TunnelStd
             'receiveLowWaterSize',
             'sendFlowCount',
             'receiveFlowCount',
-            'sendBuffer',
-            'cacheLength',
-            'cachePoint',
+            'sendingBuffer',
+            'bufferLength',
+            'bufferPoint',
             'name',
             'identity',
-            'cacheFilePath',
+            'bufferFilePath',
             'activeTime'
         ];
     }

@@ -5,25 +5,50 @@ namespace App\Http;
 
 use PRipple;
 use Worker\Build;
-use const FS;
-
 
 /**
  * Http上传解析器
  */
 class RequestUpload
 {
-    public const STATUS_ILLEGAL = -1;
-    public const STATUS_WAIT = 0;
-    public const STATUS_TRAN = 1;
+    public const STATUS_ILLEGAL = -1; # 非法
+    public const STATUS_WAIT = 0;     # 等待
+    public const STATUS_TRAN = 1;     # 传输中
 
+    /**
+     * @var array
+     */
     public array $files = array();
+
+    /**
+     * @var string
+     */
     protected string $currentTransferFilePath;
+
+    /**
+     * @var mixed
+     */
     protected mixed $currentTransferFile;
+
+    /**
+     * @var int
+     */
     protected int $status;
+
+    /**
+     * @var string
+     */
     protected string $buffer = '';
+
+    /**
+     * @var string
+     */
     protected string $boundary;
 
+
+    /**
+     * @var RequestSingle
+     */
     protected RequestSingle $requestSingle;
 
     /**

@@ -6,7 +6,7 @@ namespace Std;
 use Worker\WorkerInterface;
 
 /**
- *
+ * 门面标准
  */
 abstract class Facade
 {

@@ -9,15 +9,24 @@ namespace FileSystem;
  */
 class File
 {
+    /**
+     * @var string
+     */
     public const EXT = '.tmp';
-    // File suffix
 
-    private mixed $file;
-    // File entity
+    /**
+     * @var mixed|false|resource
+     */
+    public mixed $file;
 
+    /**
+     * @var int
+     */
     private int $point = 0;
-    // Pointer position
 
+    /**
+     * @var string
+     */
     public string $path;
 
     /**

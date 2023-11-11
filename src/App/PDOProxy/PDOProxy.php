@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\PDOProxy;
 
-use App\Facade\PDOProxy;
 use App\Facade\Process;
 use App\PDOProxy\Exception\PDOProxyException;
 use App\PDOProxy\Exception\PDOProxyExceptionBuild;
@@ -21,9 +20,9 @@ use Worker\NetworkWorkerInterface;
 use Worker\WorkerInterface;
 
 /**
- *
+ * PDOWorker
  */
-class PDOProxyWorker extends NetworkWorkerInterface
+class PDOProxy extends NetworkWorkerInterface
 {
     public static string $UNIX_PATH;
     public array $proxyProcessIds = [];
@@ -41,6 +40,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
      * @var PDOProxyConnection[] $connections
      */
     private array $connections = [];
+    private array $config;
 
     /**
      * @param Client $client
@@ -48,18 +48,25 @@ class PDOProxyWorker extends NetworkWorkerInterface
      */
     public function onConnect(Client $client): void
     {
-        $proxyName = PRipple::instance()->uniqueHash();
+        $proxyName = PRipple::uniqueHash();
         $client->setName($proxyName);
         $this->connections[$proxyName] = new PDOProxyConnection($client);
+        PRipple::info('    - PDOPRoxy-online:' . $proxyName);
         parent::onConnect($client);
     }
 
     /**
-     * @return PDOProxyWorker|WorkerInterface
+     * @return PDOProxy|WorkerInterface
      */
-    public static function instance(): PDOProxyWorker|WorkerInterface
+    public static function instance(): PDOProxy|WorkerInterface
     {
-        return PRipple::worker(PDOProxyWorker::class);
+        return PRipple::worker(PDOProxy::class);
+    }
+
+    public function config(array $config): PDOProxy
+    {
+        $this->config = $config;
+        return $this;
     }
 
     /**
@@ -67,7 +74,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         /**
          * @var PDOBuild $event
@@ -81,29 +88,27 @@ class PDOProxyWorker extends NetworkWorkerInterface
         $this->connections[$client->getName()]->count--;
     }
 
-//    /**
-//     * @param Client $client
-//     * @return string|false|null
-//     */
-//    public function splitMessage(Client $client): string|null|false
-//    {
-//        if ($result = $this->protocol->cut($client)) {
-//            $this->onMessage($result, $client);
-//        }
-//        return null;
-//    }
+    /**
+     * @param Client $client
+     * @return void
+     */
+    protected function splitMessage(Client $client): void
+    {
+        while ($content = $client->getPlaintext()) {
+            $this->onMessage($content, $client);
+        }
+    }
 
     /**
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
-        PDOProxyWorker::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_pdo_proxy.sock';
-        file_exists(PDOProxyWorker::$UNIX_PATH) && unlink(PDOProxyWorker::$UNIX_PATH);
-        $this->bind('unix://' . PDOProxyWorker::$UNIX_PATH);
+        PDOProxy::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_pdo_proxy.sock';
+        file_exists(PDOProxy::$UNIX_PATH) && unlink(PDOProxy::$UNIX_PATH);
+        $this->bind('unix://' . PDOProxy::$UNIX_PATH);
         $this->protocol(CCL::class);
         parent::initialize();
-        PDOProxy::setInstance($this);
     }
 
     /**
@@ -171,7 +176,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
         if (!$connection = $this->getConnection()) {
             return false;
         }
-        $queueHash = PRipple::instance()->uniqueHash();
+        $queueHash = PRipple::uniqueHash();
         $this->fibers[$queueHash] = Fiber::getCurrent();
         try {
             $connection->pushBeginTransaction($queueHash);
@@ -199,7 +204,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
      */
     public function waitResponse(): mixed
     {
-        $response = Fiber::suspend(Build::new('suspend', null, PDOProxyWorker::class));
+        $response = Fiber::suspend(Build::new('suspend', null, PDOProxy::class));
         if ($response instanceof PDOProxyExceptionBuild) {
             //TODO:抛出一个错误的包,本地模拟构建错误
             throw new PDOProxyException($response->message, $response->code, $response->previous);
@@ -219,22 +224,21 @@ class PDOProxyWorker extends NetworkWorkerInterface
 
     /**
      * @param int $num
-     * @param array $config
      * @return int
      */
-    public function addProxy(int $num, array $config): int
+    public function activate(int $num): int
     {
         if ($num < 1) {
             return 0;
         }
         $result = 0;
         foreach (range(1, $num) as $_) {
-            $pid = Process::fork(function () use ($config) {
+            $pid = Process::fork(function () {
                 PDOProxyTransfer::launch(
-                    $config['dns'],
-                    $config['username'],
-                    $config['password'],
-                    $config['options']
+                    $this->config['dns'],
+                    $this->config['username'],
+                    $this->config['password'],
+                    $this->config['options']
                 );
             });
             if ($pid) {
@@ -288,7 +292,7 @@ class PDOProxyWorker extends NetworkWorkerInterface
      */
     public function query(string $query, array|null $bindValues = [], array|null $bindParams = []): mixed
     {
-        $queueHash = PRipple::instance()->uniqueHash();
+        $queueHash = PRipple::uniqueHash();
         $this->fibers[$queueHash] = Fiber::getCurrent();
         if ($connection = $this->getConnection()) {
             try {

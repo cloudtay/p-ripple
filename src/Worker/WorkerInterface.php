@@ -10,7 +10,7 @@ use Socket;
 use Throwable;
 
 /**
- *
+ * WorkerInterface
  */
 abstract class WorkerInterface
 {
@@ -24,10 +24,18 @@ abstract class WorkerInterface
      * 事件列表
      * @var Build[] $builds
      */
-    public array $builds = [];
+    protected array $builds = [];
 
-    public array $subscribes = [];
+    /**
+     * 订阅事件列表
+     * @var array $subscribes
+     */
+    protected array $subscribes = [];
 
+    /**
+     * 活跃的工作者
+     * @var bool $todo
+     */
     public bool $todo = false;
 
     /**
@@ -58,7 +66,7 @@ abstract class WorkerInterface
      * 初始化
      * @return void
      */
-    abstract public function initialize(): void;
+    abstract protected function initialize(): void;
 
     /**
      * 处理返回
@@ -69,16 +77,16 @@ abstract class WorkerInterface
     private function consumption(Build $build): void
     {
         switch ($build->name) {
-            case 'socket.read':
+            case PRipple::EVENT_SOCKET_READ:
                 $this->handleSocket($build->data);
                 break;
-            case 'socket.expect':
+            case PRipple::EVENT_SOCKET_EXPECT:
                 $this->expectSocket($build->data);
                 break;
-            case 'socket.write':
+            case PRipple::EVENT_SOCKET_WRITE:
 //                $this->writeSocket($build->data);
                 break;
-            case 'heartbeat':
+            case PRipple::EVENT_HEARTBEAT:
                 $this->heartbeat();
                 break;
             default:
@@ -111,14 +119,14 @@ abstract class WorkerInterface
      * @param Build $event
      * @return void
      */
-    abstract public function handleEvent(Build $event): void;
+    abstract protected function handleEvent(Build $event): void;
 
     /**
      * 等待驱动
      * @param Build|null $event
      * @return void
      */
-    public function publishAwait(Build|null $event = null): void
+    protected function publishAwait(Build|null $event = null): void
     {
         try {
             if (!$event) {
@@ -147,7 +155,7 @@ abstract class WorkerInterface
      * @param string $event
      * @return void
      */
-    public function subscribe(string $event): void
+    protected function subscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
@@ -162,7 +170,7 @@ abstract class WorkerInterface
      * @param Build $event
      * @return void
      */
-    public function publishAsync(Build $event): void
+    protected function publishAsync(Build $event): void
     {
         PRipple::publishAsync($event);
     }
@@ -173,7 +181,7 @@ abstract class WorkerInterface
      * @return void
      * @throws Throwable
      */
-    public function unsubscribe(string $event): void
+    protected function unsubscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new('event.unsubscribe', $event, $this->name));
@@ -191,7 +199,7 @@ abstract class WorkerInterface
      * @param Socket $socket
      * @return void
      */
-    public function subscribeSocket(Socket $socket): void
+    protected function subscribeSocket(Socket $socket): void
     {
         try {
             socket_set_nonblock($socket);
@@ -206,7 +214,7 @@ abstract class WorkerInterface
      * @param Socket $socket
      * @return void
      */
-    public function unsubscribeSocket(Socket $socket): void
+    protected function unsubscribeSocket(Socket $socket): void
     {
         try {
             $this->publishAsync(Build::new('socket.unsubscribe', $socket, $this->name));
@@ -220,7 +228,7 @@ abstract class WorkerInterface
      * @param mixed|null $data
      * @return bool
      */
-    public function resume(Fiber $fiber, mixed $data = null): bool
+    protected function resume(Fiber $fiber, mixed $data = null): bool
     {
         try {
             if ($event = $fiber->resume($data)) {
@@ -236,20 +244,6 @@ abstract class WorkerInterface
         }
         return false;
     }
-
-//    /**
-//     * @param Closure $callable
-//     * @return TaskStd
-//     */
-//    public static function generateTask(Closure $callable): TaskStd
-//    {
-//
-//    }
-//
-//    public static function getMyTask(): TaskStd
-//    {
-//
-//    }
 
     /**
      * 释放资源

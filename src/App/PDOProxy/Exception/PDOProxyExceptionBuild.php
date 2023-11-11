@@ -6,7 +6,7 @@ namespace App\PDOProxy\Exception;
 use Worker\Build;
 
 /**
- *
+ * PDO异常容器
  */
 class PDOProxyExceptionBuild extends Build
 {
