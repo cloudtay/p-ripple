@@ -1,7 +1,7 @@
 ### install
 
 ```bash
-composer require cclilshy/p-ripple
+composer require cclilshy/p-ripple dev-main
 ```
 
 ### example
