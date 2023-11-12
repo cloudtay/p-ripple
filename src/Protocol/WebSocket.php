@@ -3,14 +3,14 @@ declare(strict_types=1);
 
 namespace Protocol;
 
+use Core\Output;
 use FileSystem\FileException;
-use PRipple;
 use Protocol\WebSocket\Handshake;
 use Std\ProtocolStd;
 use Std\TunnelStd;
 use stdClass;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * Websocket协议
@@ -143,8 +143,8 @@ class WebSocket implements ProtocolStd
     {
         try {
             return Handshake::accept($client);
-        } catch (FileException|SocketAisleException $exception) {
-            PRipple::printExpect($exception);
+        } catch (FileException|SocketTunnelException $exception) {
+            Output::printException($exception);
             return false;
         }
 

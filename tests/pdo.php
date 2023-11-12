@@ -1,11 +1,13 @@
 <?php
 declare(strict_types=1);
 
-use App\Facade\PDOProxy;
+//use App\Facade\PDOProxy;
 use App\Facade\Process;
 use function PRipple\async;
 use function PRipple\delay;
 use function PRipple\fork;
+
+//use App\PDOProxy\PDOProxy;
 
 include __DIR__ . '/vendor/autoload.php';
 
@@ -14,12 +16,12 @@ $kernel = PRipple::configure([
     'HTTP_UPLOAD_PATH' => __DIR__,
 ]);
 
-PDOProxy::addProxy(10, [
-    'dns' => 'mysql:host=127.0.0.1;dbname=lav',
-    'username' => 'root',
-    'password' => '123456',
-    'options' => []
-]);
+//PDOProxy::addProxy(10, [
+//    'dns' => 'mysql:host=127.0.0.1;dbname=lav',
+//    'username' => 'root',
+//    'password' => '123456',
+//    'options' => []
+//]);
 
 
 async(function () use (&$pid) {
@@ -36,7 +38,7 @@ async(function () use (&$pid) {
         $count = 0;
         while (true) {
             $count++;
-            PDOProxy::query('select * from user where id = ?', [17]);
+//            PDOProxy::query('select * from user where id = ?', [17]);
             echo "第{$count}次查询. \n";
         }
     });

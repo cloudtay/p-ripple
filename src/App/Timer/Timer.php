@@ -4,19 +4,20 @@ declare(strict_types=1);
 namespace App\Timer;
 
 use Closure;
+use Core\Map\CollaborativeFiberMap;
+use Core\Map\WorkerMap;
+use Core\Output;
 use Exception;
-use Fiber;
-use PRipple;
 use Socket;
 use SplPriorityQueue;
 use Throwable;
 use Worker\Build;
-use Worker\WorkerInterface;
+use Worker\WorkerBase;
 
 /**
  * 计时器服务
  */
-class Timer extends WorkerInterface
+class Timer extends WorkerBase
 {
     public const EVENT_TIMER_EVENT = 'timer.event';
     public const EVENT_TIMER_LOOP = 'timer.loop';
@@ -29,24 +30,24 @@ class Timer extends WorkerInterface
     private SplPriorityQueue $taskQueue;
 
     /**
-     * @return Timer|WorkerInterface
+     * @return Timer|WorkerBase
      */
-    public static function instance(): Timer|WorkerInterface
+    public static function instance(): Timer|WorkerBase
     {
-        return PRipple::worker(Timer::class);
+        return WorkerMap::getWorker(Timer::class);
     }
 
     /**
      * 初始化
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
+        $this->todo = true;
         $this->taskQueue = new SplPriorityQueue();
         $this->subscribe(Timer::EVENT_TIMER_EVENT);
         $this->subscribe(Timer::EVENT_TIMER_LOOP);
         $this->subscribe(Timer::EVENT_TIMER_SLEEP);
-//        $this->todo = true;
         \App\Facade\Timer::setInstance($this);
     }
 
@@ -73,7 +74,7 @@ class Timer extends WorkerInterface
                         try {
                             $this->resume($event->data['data']);
                         } catch (Throwable|Exception $exception) {
-                            PRipple::printExpect($exception);
+                            Output::printException($exception);
                         }
                         break;
                 }
@@ -103,7 +104,7 @@ class Timer extends WorkerInterface
      * @param Build $event
      * @return void
      */
-    public function handleEvent(Build $event): void
+    protected function handleEvent(Build $event): void
     {
         $timerData = $event->data;
         $duration = $timerData['time'];
@@ -144,7 +145,7 @@ class Timer extends WorkerInterface
     {
         $event = Build::new(Timer::EVENT_TIMER_SLEEP, [
             'time' => $second,
-            'data' => Fiber::getCurrent()
+            'data' => CollaborativeFiberMap::current()->hash
         ], Timer::class);
         $timerData = $event->data;
         $duration = $timerData['time'];

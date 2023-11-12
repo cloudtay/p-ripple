@@ -20,7 +20,8 @@
     "ext-sockets": "*",
     "ext-pcntl": "*",
     "ext-posix": "*",
-    "ext-pdo": "*"
+    "ext-pdo": "*",
+    "jenssegers/blade": "^1.4"
   },
   "version": "0.1",
   "license": "MIT"

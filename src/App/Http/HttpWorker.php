@@ -5,31 +5,26 @@ namespace App\Http;
 
 use App\Facade\Http;
 use Closure;
-use Fiber;
+use Core\Map\CollaborativeFiberMap;
+use Core\Output;
 use FileSystem\FileException;
 use PRipple;
 use Throwable;
 use Worker\Build;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
-use Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
+use Worker\NetworkWorkerBase;
 
 /**
  * Http服务类
  */
-class HttpWorker extends NetworkWorkerInterface
+class HttpWorker extends NetworkWorkerBase
 {
     /**
      * Http流工厂
      * @var RequestFactory $requestFactory
      */
     private RequestFactory $requestFactory;
-
-    /**
-     * 工作Fiber
-     * @var Fiber[] $workFibers
-     */
-    private array $workFibers = [];
 
     /**
      * 请求处理器
@@ -47,6 +42,10 @@ class HttpWorker extends NetworkWorkerInterface
      * @var string
      */
     public static string $uploadPath;
+
+    /**
+     * @var Closure $exceptionHandler
+     */
     private Closure $exceptionHandler;
 
     /**
@@ -87,7 +86,7 @@ class HttpWorker extends NetworkWorkerInterface
     public function heartbeat(): void
     {
         while ($request = array_shift($this->requests)) {
-            $fiber = new Fiber(function () use ($request) {
+            $request->setupWithCallable(function () use ($request) {
                 try {
                     $requesting = call_user_func($this->requestHandler, $request);
                     foreach ($requesting as $response) {
@@ -101,7 +100,7 @@ class HttpWorker extends NetworkWorkerInterface
                             }
                         }
                     }
-                } catch (SocketAisleException|FileException $exception) {
+                } catch (SocketTunnelException|FileException $exception) {
                     $this->recover($request->hash);
                 } catch (Throwable $exception) {
                     $this->handleException($exception, $request);
@@ -109,8 +108,8 @@ class HttpWorker extends NetworkWorkerInterface
                 $this->recover($request->hash);
             });
             try {
-                if ($fiber->start()) {
-                    $this->workFibers[$request->hash] = $fiber;
+                if ($request->executeFiber()) {
+                    CollaborativeFiberMap::$collaborativeFiberMap[$request->hash] = $request;
                 } else {
                     $this->recover($request->hash);
                 }
@@ -128,7 +127,7 @@ class HttpWorker extends NetworkWorkerInterface
      */
     private function recover(string $hash): void
     {
-        unset($this->workFibers[$hash]);
+        unset(CollaborativeFiberMap::$collaborativeFiberMap[$hash]);
         unset($this->requests[$hash]);
     }
 
@@ -136,7 +135,7 @@ class HttpWorker extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         $client->setNoBlock();
         $client->setReceiveBufferSize(1024 * 1024);
@@ -156,7 +155,7 @@ class HttpWorker extends NetworkWorkerInterface
         } catch (RequestSingleException $exception) {
             try {
                 $client->send((new Response(400, [], $exception->getMessage()))->__toString());
-            } catch (SocketAisleException $exception) {
+            } catch (SocketTunnelException $exception) {
                 return;
             }
         }
@@ -169,7 +168,7 @@ class HttpWorker extends NetworkWorkerInterface
     public function onRequest(Request $request): void
     {
         $this->requests[$request->hash] = $request;
-        unset($this->workFibers[$request->client->getName()]);
+        unset(CollaborativeFiberMap::$collaborativeFiberMap[$request->client->getName()]);
         $request->client->setName($request->hash);
         $this->todo = true;
     }
@@ -179,7 +178,7 @@ class HttpWorker extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         $this->recover($client->getName());
     }
@@ -200,14 +199,14 @@ class HttpWorker extends NetworkWorkerInterface
     protected function handleEvent(Build $event): void
     {
         $hash = $event->publisher;
-        if (isset($this->workFibers[$hash])) {
+        if (isset(CollaborativeFiberMap::$collaborativeFiberMap[$hash])) {
             try {
-                if (!$this->resume($this->workFibers[$hash], $event)) {
+                if (!CollaborativeFiberMap::$collaborativeFiberMap[$hash]->resumeFiberExecution($event)) {
                     $this->recover($hash);
                 }
             } catch (Throwable $exception) {
                 $this->recover($hash);
-                PRipple::printExpect($exception);
+                Output::printException($exception);
             }
         }
     }
@@ -221,12 +220,12 @@ class HttpWorker extends NetworkWorkerInterface
     {
         if (isset($this->exceptionHandler)) {
             try {
-                call_user_func($this->exceptionHandler, $request, $exception);
+                call_user_func($this->exceptionHandler, $exception, $request);
             } catch (Throwable $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
             }
         } else {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
         $this->recover($request->hash);
     }

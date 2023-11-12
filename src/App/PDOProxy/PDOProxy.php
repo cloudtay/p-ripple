@@ -8,6 +8,9 @@ use App\PDOProxy\Exception\PDOProxyException;
 use App\PDOProxy\Exception\PDOProxyExceptionBuild;
 use App\PDOProxy\Exception\RollbackException;
 use Closure;
+use Core\Map\CollaborativeFiberMap;
+use Core\Map\WorkerMap;
+use Core\Output;
 use Fiber;
 use FileSystem\FileException;
 use PRipple;
@@ -15,22 +18,19 @@ use Protocol\CCL;
 use Throwable;
 use Worker\Build;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
-use Worker\NetworkWorkerInterface;
-use Worker\WorkerInterface;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
+use Worker\NetworkWorkerBase;
+use Worker\WorkerBase;
 
 /**
  * PDOWorker
  */
-class PDOProxy extends NetworkWorkerInterface
+class PDOProxy extends NetworkWorkerBase
 {
     public static string $UNIX_PATH;
     public array $proxyProcessIds = [];
     public int $proxyProcessCount = 0;
-    /**
-     * @var Fiber[] $fibers
-     */
-    public array $fibers = [];
+
     /**
      * @var PDOBuild[] $queue
      */
@@ -46,23 +46,27 @@ class PDOProxy extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         $proxyName = PRipple::uniqueHash();
         $client->setName($proxyName);
         $this->connections[$proxyName] = new PDOProxyConnection($client);
-        PRipple::info('    - PDOPRoxy-online:' . $proxyName);
+        Output::info('    - PDOPRoxy-online:' . $proxyName);
         parent::onConnect($client);
     }
 
     /**
-     * @return PDOProxy|WorkerInterface
+     * @return PDOProxy|WorkerBase
      */
-    public static function instance(): PDOProxy|WorkerInterface
+    public static function instance(): PDOProxy|WorkerBase
     {
-        return PRipple::worker(PDOProxy::class);
+        return WorkerMap::getWorker(PDOProxy::class);
     }
 
+    /**
+     * @param array $config
+     * @return $this
+     */
     public function config(array $config): PDOProxy
     {
         $this->config = $config;
@@ -80,11 +84,7 @@ class PDOProxy extends NetworkWorkerInterface
          * @var PDOBuild $event
          */
         $event = unserialize($context);
-        if ($fiber = $this->fibers[$event->publisher] ?? null) {
-            $this->resume($fiber, $event->data);
-            unset($this->fibers[$event->publisher]);
-        }
-
+        $this->resume($event->publisher, $event->data);
         $this->connections[$client->getName()]->count--;
     }
 
@@ -121,7 +121,6 @@ class PDOProxy extends NetworkWorkerInterface
         if ($connection = $this->getConnection()) {
             $transaction = new PDOTransaction($connection);
             if ($transaction->hash = $this->beginTransaction()) {
-                $this->fibers[$transaction->hash] = Fiber::getCurrent();
                 try {
                     call_user_func($callable, $transaction);
                     $transaction->_commit();
@@ -129,10 +128,10 @@ class PDOProxy extends NetworkWorkerInterface
                     try {
                         $transaction->_rollBack();
                     } catch (Throwable $exception) {
-                        PRipple::printExpect($exception);
+                        Output::printException($exception);
                     }
                 } catch (PDOProxyException|Throwable $exception) {
-                    PRipple::printExpect($exception);
+                    Output::printException($exception);
                 }
             }
         } else {
@@ -176,24 +175,23 @@ class PDOProxy extends NetworkWorkerInterface
         if (!$connection = $this->getConnection()) {
             return false;
         }
-        $queueHash = PRipple::uniqueHash();
-        $this->fibers[$queueHash] = Fiber::getCurrent();
         try {
-            $connection->pushBeginTransaction($queueHash);
-        } catch (FileException|SocketAisleException $e) {
-            PRipple::printExpect($e);
+            $hash = CollaborativeFiberMap::current()->hash;
+            $connection->pushBeginTransaction($hash);
+        } catch (FileException|SocketTunnelException $e) {
+            Output::printException($e);
             return false;
         }
         try {
             $result = $this->waitResponse();
         } catch (PDOProxyException $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
             return false;
         }
         if ($result === true) {
             $connection->transaction = true;
-            $this->bindMap[$queueHash] = $connection;
-            return $queueHash;
+            $this->bindMap[$hash] = $connection;
+            return $hash;
         }
         return false;
     }
@@ -216,7 +214,7 @@ class PDOProxy extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         $this->proxyProcessCount--;
         unset($this->connections[$client->getName()]);
@@ -261,13 +259,13 @@ class PDOProxy extends NetworkWorkerInterface
                     case PDOBuild::EVENT_QUERY:
                         try {
                             $connection->pushQuery($queue->publisher, $queue->query, $queue->bindings, $queue->bindParams);
-                        } catch (FileException|SocketAisleException $exception) {
+                        } catch (FileException|SocketTunnelException $exception) {
                             //TODO:查询失败,往返回队列中添加失败信息
-                            if ($fiber = $this->fibers[$queue->publisher] ?? null) {
+                            if ($collaborative = CollaborativeFiberMap::getCollaborativeFiber($queue->publisher) ?? null) {
                                 try {
-                                    $fiber->throw($exception);
+                                    $collaborative->throwExceptionInFiber($exception);
                                 } catch (Throwable $exception) {
-                                    PRipple::printExpect($exception);
+                                    Output::printException($exception);
                                 }
                             }
                         }
@@ -292,19 +290,18 @@ class PDOProxy extends NetworkWorkerInterface
      */
     public function query(string $query, array|null $bindValues = [], array|null $bindParams = []): mixed
     {
-        $queueHash = PRipple::uniqueHash();
-        $this->fibers[$queueHash] = Fiber::getCurrent();
+        $hash = CollaborativeFiberMap::current()->hash;
         if ($connection = $this->getConnection()) {
             try {
                 //TODO: PDO代理发送查询请求
-                $connection->pushQuery($queueHash, $query, $bindValues, $bindParams);
-            } catch (FileException|SocketAisleException $exception) {
-                PRipple::printExpect($exception);
+                $connection->pushQuery($hash, $query, $bindValues, $bindParams);
+            } catch (FileException|SocketTunnelException $exception) {
+                Output::printException($exception);
                 return false;
             }
         } else {
             //TODO: 没有空闲连接时,将查询请求加入队列
-            $this->queue[] = PDOBuild::query($queueHash, $query, $bindValues, $bindParams);
+            $this->queue[] = PDOBuild::query($hash, $query, $bindValues, $bindParams);
             $this->todo = true;
         }
         //TODO: 等待查询结果

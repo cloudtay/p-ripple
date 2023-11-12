@@ -4,13 +4,13 @@ declare(strict_types=1);
 namespace Tests;
 
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
-use Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
+use Worker\NetworkWorkerBase;
 
 /**
  *
  */
-class TestWS extends NetworkWorkerInterface
+class TestWS extends NetworkWorkerBase
 {
     /**
      * @return void
@@ -20,7 +20,7 @@ class TestWS extends NetworkWorkerInterface
         foreach ($this->getClients() as $client) {
             try {
                 $client->send('hello');
-            } catch (SocketAisleException $e) {
+            } catch (SocketTunnelException $e) {
             }
         }
     }
@@ -29,7 +29,7 @@ class TestWS extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
     }
@@ -47,7 +47,7 @@ class TestWS extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         // TODO: Implement onMessage() method.
     }
@@ -56,7 +56,7 @@ class TestWS extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
     }
@@ -65,7 +65,7 @@ class TestWS extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onHandshake(Client $client): void
+    protected function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

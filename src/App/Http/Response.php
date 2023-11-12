@@ -8,7 +8,6 @@ namespace App\Http;
  */
 class Response
 {
-
     /**
      * @var int
      */
@@ -37,17 +36,6 @@ class Response
     }
 
     /**
-     * @param int $statusCode
-     * @param array $headers
-     * @param string $body
-     * @return Response
-     */
-    public static function new(int $statusCode, array $headers, string $body): Response
-    {
-        return new self($statusCode, $headers, $body);
-    }
-
-    /**
      * @return string
      */
     public function __toString(): string
@@ -60,5 +48,16 @@ class Response
         $context .= "\r\n";
         $context .= $this->body;
         return $context;
+    }
+
+    /**
+     * @param int $statusCode
+     * @param array $headers
+     * @param string $body
+     * @return Response
+     */
+    public static function new(int $statusCode, array $headers, string $body): Response
+    {
+        return new self($statusCode, $headers, $body);
     }
 }

@@ -9,7 +9,7 @@ use Std\TunnelStd;
 /**
  * 管道类型通道
  */
-class FifoAisle implements TunnelStd
+class FifoTunnel implements TunnelStd
 {
     /**
      *

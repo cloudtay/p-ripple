@@ -3,30 +3,31 @@ declare(strict_types=1);
 
 namespace Worker;
 
+use Core\Constants;
+use Core\Output;
 use FileSystem\FileException;
-use PRipple;
 use Socket;
-use Worker\NetWorker\Tunnel\SocketAisle;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnel;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 缓冲区工作器
  */
-class BufferWorker extends WorkerInterface
+class BufferWorker extends WorkerBase
 {
     /**
      * 缓冲区套接字列表
-     * @var SocketAisle[] $buffers
+     * @var SocketTunnel[] $buffers
      */
     private array $buffers = [];
 
     /**
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
-        $this->subscribe('socket.buffer');
-        $this->subscribe('socket.unBuffer');
+        $this->subscribe(Constants::EVENT_SOCKET_BUFFER);
+        $this->subscribe(Constants::EVENT_SOCKET_BUFFER_UN);
     }
 
     /**
@@ -39,8 +40,8 @@ class BufferWorker extends WorkerInterface
                 while ($buffer->openBuffer && !$buffer->deprecated && $buffer->write('')) {
                     //TODO: 有效缓冲区释放
                 }
-            } catch (FileException|SocketAisleException $exception) {
-                PRipple::printExpect($exception);
+            } catch (FileException|SocketTunnelException $exception) {
+                Output::printException($exception);
                 unset($this->buffers[$buffer->getHash()]);
                 return;
             }
@@ -51,14 +52,14 @@ class BufferWorker extends WorkerInterface
      * @param Build $event
      * @return void
      */
-    public function handleEvent(Build $event): void
+    protected function handleEvent(Build $event): void
     {
         switch ($event->name) {
-            case 'socket.buffer':
+            case Constants::EVENT_SOCKET_BUFFER:
                 $socketHash = spl_object_hash($event->data);
                 $this->buffers[$socketHash] = $event->data;
                 break;
-            case 'socket.unBuffer':
+            case Constants::EVENT_SOCKET_BUFFER_UN:
                 $socketHash = spl_object_hash($event->data);
                 unset($this->buffers[$socketHash]);
                 break;

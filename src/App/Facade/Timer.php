@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 namespace App\Facade;
 
-use Std\Facade;
+use Std\FacadeStd;
 use Worker\Build;
-use Worker\WorkerInterface;
+use Worker\WorkerBase;
 
 /**
  * @method static void sleep(int $seconds)
  * @method static void loop(int $seconds, callable $callback)
  * @method static void event(int $seconds, Build $event)
  */
-class Timer extends Facade
+class Timer extends FacadeStd
 {
     /**
      * @var mixed
@@ -38,10 +38,10 @@ class Timer extends Facade
     }
 
     /**
-     * @param WorkerInterface $worker
+     * @param WorkerBase $worker
      * @return \App\Timer\Timer
      */
-    public static function setInstance(WorkerInterface $worker): \App\Timer\Timer
+    public static function setInstance(WorkerBase $worker): \App\Timer\Timer
     {
         Timer::$instance = $worker;
         return Timer::$instance;

@@ -5,14 +5,14 @@ namespace App\Facade;
 
 use App\PDOProxy\PDOProxy;
 use App\PDOProxy\PDOProxyPool;
-use Std\Facade;
-use Worker\WorkerInterface;
+use Std\FacadeStd;
+use Worker\WorkerBase;
 
 /**
  * @method static PDOProxy|null get(string $name)
  * @method static PDOProxy add(string $name, array $config)
  */
-class PDOPool extends Facade
+class PDOPool extends FacadeStd
 {
     /**
      * @var mixed
@@ -38,10 +38,10 @@ class PDOPool extends Facade
     }
 
     /**
-     * @param WorkerInterface $worker
+     * @param WorkerBase $worker
      * @return PDOProxyPool
      */
-    public static function setInstance(WorkerInterface $worker): PDOProxyPool
+    public static function setInstance(WorkerBase $worker): PDOProxyPool
     {
         PDOPool::$instance = $worker;
         return PDOPool::$instance;

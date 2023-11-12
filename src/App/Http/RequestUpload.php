@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use PRipple;
+use Core\Map\EventMap;
+use Core\Output;
 use Worker\Build;
 
 /**
@@ -79,7 +80,7 @@ class RequestUpload
                     break;
                 }
             } catch (RequestSingleException $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
                 $this->status = RequestUpload::STATUS_ILLEGAL;
                 $this->requestSingle->statusCode = RequestFactory::INVALID;
             }
@@ -154,7 +155,7 @@ class RequestUpload
             fwrite($this->currentTransferFile, $content);
             fclose($this->currentTransferFile);
             $this->status = RequestUpload::STATUS_WAIT;
-            PRipple::publishAsync(Build::new(Request::EVENT_UPLOAD, current($this->files), $this->requestSingle->hash));
+            EventMap::push(Build::new(Request::EVENT_UPLOAD, current($this->files), $this->requestSingle->hash));
         } else {
             fwrite($this->currentTransferFile, $this->buffer);
             $this->buffer = '';

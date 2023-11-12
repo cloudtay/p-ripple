@@ -9,7 +9,7 @@ use Std\TunnelStd;
 /**
  * 文件类型通道
  */
-class FileAisle implements TunnelStd
+class FileTunnel implements TunnelStd
 {
     /**
      * @var string $ext

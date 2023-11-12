@@ -6,21 +6,21 @@ namespace Tests;
 use FileSystem\FileException;
 use PRipple;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
-use Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
+use Worker\NetworkWorkerBase;
 
 include __DIR__ . '/vendor/autoload.php';
 
 /**
  *
  */
-class test_file_server extends NetworkWorkerInterface
+class test_file_server extends NetworkWorkerBase
 {
     /**
      * execute after the service starts
      * @return void
      */
-    public function initialize(): void
+    protected function initialize(): void
     {
         $filePath = '/tmp/test_file';
         if (!file_exists($filePath)) {
@@ -47,14 +47,14 @@ class test_file_server extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         $filePath = '/tmp/test_file';
         $file = fopen($filePath, 'r');
         while (!feof($file)) {
             try {
                 $client->write(fread($file, 1024));
-            } catch (FileException|SocketAisleException $e) {
+            } catch (FileException|SocketTunnelException $e) {
             }
         }
         fclose($file);
@@ -72,7 +72,7 @@ class test_file_server extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
 
     }
@@ -82,7 +82,7 @@ class test_file_server extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         echo PHP_EOL . 'client is disconnected.' . PHP_EOL;
     }
@@ -99,7 +99,7 @@ class test_file_server extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onHandshake(Client $client): void
+    protected function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }
@@ -112,5 +112,5 @@ $kernel = PRipple::configure([
 
 $server = test_file_server::new('test_file_server')->bind('tcp://127.0.0.1:3002', [SO_REUSEADDR => true]);
 
-PRipple::instance()->push($server);
-PRipple::instance()->launch();
+PRipple::kernel()->push($server);
+PRipple::kernel()->launch();

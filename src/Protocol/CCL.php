@@ -7,7 +7,7 @@ use FileSystem\FileException;
 use Std\ProtocolStd;
 use stdClass;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 一个小而简的报文切割器
@@ -19,7 +19,7 @@ class CCL implements ProtocolStd
      * @param string $context
      * @return bool|int
      * @throws FileException
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public function send(Client $tunnel, string $context): bool|int
     {

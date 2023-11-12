@@ -4,15 +4,15 @@ declare(strict_types=1);
 namespace App\PDOProxy;
 
 use App\PDOProxy\Exception\PDOProxyExceptionBuild;
+use Core\Output;
 use Exception;
 use FileSystem\FileException;
 use JetBrains\PhpStorm\NoReturn;
 use PDO;
-use PRipple;
 use Protocol\CCL;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * PDO代理服务端
@@ -92,7 +92,7 @@ class PDOProxyTransfer
         if ($connect) {
             $this->server = new Client($connect, SocketUnix::class);
         } else {
-            PRipple::info('    - Unable to connect to the manager, please check the manager process');
+            Output::info('    - Unable to connect to the manager, please check the manager process');
             exit;
         }
     }
@@ -137,7 +137,7 @@ class PDOProxyTransfer
      * @param PDOBuild $event
      * @return void
      * @throws FileException
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     private function handleEvent(PDOBuild $event): void
     {

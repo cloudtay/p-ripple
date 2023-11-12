@@ -4,18 +4,20 @@ declare(strict_types=1);
 namespace App\ProcessManager;
 
 use App\Facade\Process;
+use Core\Map\WorkerMap;
+use Core\Output;
 use PRipple;
 use Protocol\CCL;
 use Std\ProtocolStd;
 use Worker\Build;
 use Worker\NetWorker\Client;
-use Worker\NetworkWorkerInterface;
-use Worker\WorkerInterface;
+use Worker\NetworkWorkerBase;
+use Worker\WorkerBase;
 
 /**
  * 进程管理器
  */
-class ProcessManager extends NetworkWorkerInterface
+class ProcessManager extends NetworkWorkerBase
 {
     public static string $UNIX_PATH;
     public static string $LOCK_PATH;
@@ -44,11 +46,11 @@ class ProcessManager extends NetworkWorkerInterface
     protected ProtocolStd $protocol;
 
     /**
-     * @return ProcessManager|WorkerInterface
+     * @return ProcessManager|WorkerBase
      */
-    public static function instance(): ProcessManager|WorkerInterface
+    public static function instance(): ProcessManager|WorkerBase
     {
-        return PRipple::worker(ProcessManager::class);
+        return WorkerMap::getWorker(ProcessManager::class);
     }
 
     /**
@@ -91,7 +93,6 @@ class ProcessManager extends NetworkWorkerInterface
     {
         ProcessManager::$UNIX_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.sock';
         ProcessManager::$LOCK_PATH = PRipple::getArgument('RUNTIME_PATH') . '/p_ripple_process_manager.lock';
-
         file_exists(ProcessManager::$UNIX_PATH) && unlink(ProcessManager::$UNIX_PATH);
         file_exists(ProcessManager::$LOCK_PATH) && unlink(ProcessManager::$LOCK_PATH);
         $this->bind('unix://' . ProcessManager::$UNIX_PATH);
@@ -118,14 +119,14 @@ class ProcessManager extends NetworkWorkerInterface
                 $this->processObserverHashMap[$processId] = $observerProcessId;
                 $client->setIdentity($processId);
                 $client->setName('process.fork');
-                PRipple::info('[Process]', 'new process:', $processId . '=>' . $observerProcessId);
+                Output::info('[Process]', 'new process:', $processId . '=>' . $observerProcessId);
                 break;
             case 'process.observer':
                 $processId = intval($build->data['processId']);
                 $this->observerHashmap[$processId] = $client;
                 $client->setIdentity($processId);
                 $client->setName('process.observer');
-                PRipple::info('[Process]', 'new observer:', strval($processId));
+                Output::info('[Process]', 'new observer:', strval($processId));
                 break;
             case 'process.observer.count':
                 $this->guardCounter(intval(
@@ -152,23 +153,11 @@ class ProcessManager extends NetworkWorkerInterface
         }
     }
 
-//    /**
-//     * @param Client $client
-//     * @return string|false|null
-//     */
-//    public function splitMessage(Client $client): string|null|false
-//    {
-//        if ($result = $this->protocol->cut($client)) {
-//            $this->onMessage($result, $client);
-//        }
-//        return false;
-//    }
-
     /**
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         switch ($client->getName()) {
             case 'process.fork':

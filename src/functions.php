@@ -7,8 +7,8 @@ use App\ProcessManager\ProcessContainer;
 use App\ProcessManager\ProcessManager;
 use App\Timer\Timer;
 use Closure;
+use Core\Map\EventMap;
 use Fiber;
-use PRipple;
 use Worker\Build;
 
 /**
@@ -72,5 +72,5 @@ function fork(Closure $closure): bool|int
  */
 function async(Closure $callable): void
 {
-    PRipple::publishAsync(Build::new('temp.fiber', new Fiber($callable), 'anonymous'));
+    EventMap::push(Build::new('temp.fiber', new Fiber($callable), 'anonymous'));
 }

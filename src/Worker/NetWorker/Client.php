@@ -4,17 +4,17 @@ declare(strict_types=1);
 namespace Worker\NetWorker;
 
 use AllowDynamicProperties;
+use Core\Output;
 use FileSystem\FileException;
-use PRipple;
 use Std\ProtocolStd;
 use stdClass;
-use Worker\NetWorker\Tunnel\SocketAisle;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnel;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 客户端
  */
-#[AllowDynamicProperties] class Client extends SocketAisle
+#[AllowDynamicProperties] class Client extends SocketTunnel
 {
     public string $verifyBuffer;
     public string $socketType;
@@ -85,7 +85,7 @@ use Worker\NetWorker\Tunnel\SocketAisleException;
      * 发送信息
      * @param string $context
      * @return bool|int
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public function send(string $context): bool|int
     {
@@ -95,7 +95,7 @@ use Worker\NetWorker\Tunnel\SocketAisleException;
             try {
                 return boolval($this->write($context));
             } catch (FileException $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
                 return false;
             }
         }

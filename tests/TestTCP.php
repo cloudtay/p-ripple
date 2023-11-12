@@ -4,26 +4,26 @@ declare(strict_types=1);
 namespace Tests;
 
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
-use Worker\NetworkWorkerInterface;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
+use Worker\NetworkWorkerBase;
 
 /**
  *
  */
-class TestTCP extends NetworkWorkerInterface
+class TestTCP extends NetworkWorkerBase
 {
     /**
      * @param Client $client
      * @return void
      */
-    public function onConnect(Client $client): void
+    protected function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
     }
 
     /**
      * @return void
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public function heartbeat(): void
     {
@@ -46,7 +46,7 @@ class TestTCP extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         // TODO: Implement onMessage() method.
     }
@@ -55,7 +55,7 @@ class TestTCP extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onClose(Client $client): void
+    protected function onClose(Client $client): void
     {
         // TODO: Implement onClose() method.
     }
@@ -64,7 +64,7 @@ class TestTCP extends NetworkWorkerInterface
      * @param Client $client
      * @return void
      */
-    public function onHandshake(Client $client): void
+    protected function onHandshake(Client $client): void
     {
         // TODO: Implement onHandshake() method.
     }

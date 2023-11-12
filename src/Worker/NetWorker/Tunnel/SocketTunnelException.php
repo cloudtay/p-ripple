@@ -8,7 +8,7 @@ use Exception;
 /**
  * 套接字传输异常
  */
-class SocketAisleException extends Exception
+class SocketTunnelException extends Exception
 {
 
 }

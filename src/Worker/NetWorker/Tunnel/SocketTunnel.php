@@ -3,18 +3,19 @@ declare(strict_types=1);
 
 namespace Worker\NetWorker\Tunnel;
 
+use Core\Constants;
+use Core\Map\EventMap;
 use Exception;
 use FileSystem\File;
 use FileSystem\FileException;
-use PRipple;
 use Std\TunnelStd;
 use Worker\Build;
-use Worker\NetworkWorkerInterface;
+use Worker\NetworkWorkerBase;
 
 /**
  * 套接字类型通道
  */
-class SocketAisle implements TunnelStd
+class SocketTunnel implements TunnelStd
 {
     /**
      * 文件缓冲区扩展名
@@ -121,9 +122,9 @@ class SocketAisle implements TunnelStd
 
     /**
      * 文件缓冲区文件
-     * @var FileAisle
+     * @var FileTunnel
      */
-    protected FileAisle $bufferFile;
+    protected FileTunnel $bufferFile;
 
 
     /**
@@ -169,14 +170,14 @@ class SocketAisle implements TunnelStd
         socket_getsockname($socket, $address, $port);
         $this->address = $address;
         $this->port = $port ?? 0;
-        $this->hash = NetworkWorkerInterface::getNameBySocket($socket);
+        $this->hash = NetworkWorkerBase::getNameBySocket($socket);
         $this->socket = $socket;
         $this->name = '';
         $this->sendBufferSize = socket_get_option($socket, SOL_SOCKET, SO_SNDBUF);
         $this->receiveBufferSize = socket_get_option($socket, SOL_SOCKET, SO_RCVBUF);
         $this->sendLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_SNDLOWAT);
         $this->receiveLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_RCVLOWAT);
-        $this->bufferFilePath = PP_RUNTIME_PATH . '/socket_buffer_' . getmypid() . '_' . $this->hash . SocketAisle::EXT;
+        $this->bufferFilePath = PP_RUNTIME_PATH . '/socket_buffer_' . getmypid() . '_' . $this->hash . SocketTunnel::EXT;
         if (File::exists($this->bufferFilePath)) {
             unlink($this->bufferFilePath);
         }
@@ -410,11 +411,11 @@ class SocketAisle implements TunnelStd
     {
         if (count(get_resources()) < PP_MAX_FILE_HANDLE) {
             if ($bufferFile = File::create($this->bufferFilePath, 'r+')) {
-                $this->bufferFile = FileAisle::create($bufferFile);
+                $this->bufferFile = FileTunnel::create($bufferFile);
                 $this->openBuffer = true;
                 $this->bufferPoint = 0;
                 $this->bufferLength = 0;
-                PRipple::publishAsync(Build::new('socket.buffer', $this, SocketAisle::class));
+                EventMap::push(Build::new(Constants::EVENT_SOCKET_BUFFER, $this, SocketTunnel::class));
             } else {
                 throw new FileException("Unable to create socket buffer buffer file, please check directory permissions: " . $this->bufferFilePath);
             }
@@ -440,7 +441,7 @@ class SocketAisle implements TunnelStd
      * @param bool|null $async
      * @return int|false
      * @throws FileException
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public function write(string $context, bool|null $async = true): int|false
     {
@@ -502,7 +503,7 @@ class SocketAisle implements TunnelStd
         } catch (FileException $exception) {
             throw $exception;
         } catch (Exception $exception) {
-            throw new SocketAisleException($exception->getMessage());
+            throw new SocketTunnelException($exception->getMessage());
         }
     }
 
@@ -552,7 +553,7 @@ class SocketAisle implements TunnelStd
         $this->openBuffer = false;
         $this->bufferPoint = 0;
         $this->bufferLength = 0;
-        PRipple::publishAsync(Build::new('socket.unBuffer', $this, SocketAisle::class));
+        EventMap::push(Build::new(Constants::EVENT_SOCKET_BUFFER_UN, $this, SocketTunnel::class));
     }
 
     /**

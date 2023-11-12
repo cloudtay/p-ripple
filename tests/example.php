@@ -56,7 +56,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
 
         // 查询数据库
         $result = PDOPool::get('default')->query('select * from iot_user where id = ?', [1], []);
-
+//        $result = [];
         // 向所有客户端发送数据查询结果
         foreach ($ws->getClients() as $client) {
             $client->send('取得数据: ' . json_encode($result));
@@ -64,7 +64,6 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
         foreach ($tcp->getClients() as $client) {
             $client->send('取得数据: ' . json_encode($result) . PHP_EOL);
         }
-
     } elseif ($request->upload) {
         // 在上传完成前响应客户请求
         yield Response::new(

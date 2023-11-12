@@ -5,14 +5,14 @@ namespace App\Facade;
 
 use App\ProcessManager\ProcessContainer;
 use App\ProcessManager\ProcessManager;
-use Std\Facade;
-use Worker\WorkerInterface;
+use Std\FacadeStd;
+use Worker\WorkerBase;
 
 /**
  * @method static void signal(int $processId, int $signal)
  * @method static int|false fork(callable $callback)
  */
-class Process extends Facade
+class Process extends FacadeStd
 {
     /**
      * @var mixed
@@ -41,10 +41,10 @@ class Process extends Facade
     }
 
     /**
-     * @param WorkerInterface $worker
+     * @param WorkerBase $worker
      * @return ProcessManager
      */
-    public static function setInstance(WorkerInterface $worker): ProcessManager
+    public static function setInstance(WorkerBase $worker): ProcessManager
     {
         Process::$instance = $worker;
         return Process::$instance;

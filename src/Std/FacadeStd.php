@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 namespace Std;
 
-use Worker\WorkerInterface;
+use Worker\WorkerBase;
 
 /**
  * 门面标准
  */
-abstract class Facade
+abstract class FacadeStd
 {
     public static mixed $instance;
 
@@ -18,10 +18,10 @@ abstract class Facade
     abstract public static function getInstance(): mixed;
 
     /**
-     * @param WorkerInterface $worker
+     * @param WorkerBase $worker
      * @return mixed
      */
-    abstract public static function setInstance(WorkerInterface $worker): mixed;
+    abstract public static function setInstance(WorkerBase $worker): mixed;
 
     /**
      * @param string $name

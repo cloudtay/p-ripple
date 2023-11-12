@@ -4,15 +4,15 @@ declare(strict_types=1);
 namespace App\ProcessManager;
 
 use Closure;
+use Core\Output;
 use Exception;
 use FileSystem\FileException;
 use JetBrains\PhpStorm\NoReturn;
-use PRipple;
 use Protocol\CCL;
 use Worker\Build;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 进程载体
@@ -67,7 +67,7 @@ class ProcessContainer
             try {
                 ProcessContainer::$managerTunnel = new Client(SocketUnix::connect(ProcessManager::$UNIX_PATH), SocketUnix::class);
             } catch (Exception $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
                 return false;
             }
             ProcessContainer::$hasObserver = true;
@@ -107,7 +107,7 @@ class ProcessContainer
                     $callable();
                 }
             } catch (Exception $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
             }
             exit;
         } else {
@@ -145,7 +145,7 @@ class ProcessContainer
                     }
                 }
             } catch (Exception $exception) {
-                PRipple::printExpect($exception);
+                Output::printException($exception);
             }
             exit;
         } else {
@@ -158,7 +158,7 @@ class ProcessContainer
      * 声明守护计数
      * @return void
      * @throws FileException
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public static function guarded(): void
     {

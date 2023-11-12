@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-use App\Facade\PDOProxy;
 use App\Http\HttpWorker;
 use App\Http\Request;
 use App\Http\Response;
+use App\PDOProxy\PDOProxyPool;
 
 include __DIR__ . '/vendor/autoload.php';
 
@@ -24,7 +24,7 @@ $http->defineRequestHandler(function (Request $request) {
         $body = 'hello world'
     );
 });
-PDOProxy::addProxy(1, [
+PDOProxyPool::addProxy(1, [
     'dns' => 'mysql:host=127.0.0.1;dbname=lav',
     'username' => 'root',
     'password' => '123456',

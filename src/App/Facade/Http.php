@@ -4,13 +4,13 @@ declare(strict_types=1);
 namespace App\Facade;
 
 use App\Http\HttpWorker;
-use Std\Facade;
-use Worker\WorkerInterface;
+use Std\FacadeStd;
+use Worker\WorkerBase;
 
 /**
  * Http门面
  */
-class Http extends Facade
+class Http extends FacadeStd
 {
     /**
      * @var mixed
@@ -36,10 +36,10 @@ class Http extends Facade
     }
 
     /**
-     * @param WorkerInterface $worker
+     * @param WorkerBase $worker
      * @return HttpWorker
      */
-    public static function setInstance(WorkerInterface $worker): HttpWorker
+    public static function setInstance(WorkerBase $worker): HttpWorker
     {
         Http::$instance = $worker;
         return Http::$instance;

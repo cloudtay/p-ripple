@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Worker;
 
+use Core\Output;
 use Exception;
-use PRipple;
 use Protocol\TCPProtocol;
 use Socket;
 use Std\ProtocolStd;
@@ -15,7 +15,7 @@ use Worker\NetWorker\SocketType\SocketUnix;
 /**
  * NetworkWorkerInterface
  */
-class NetworkWorkerInterface extends WorkerInterface
+class NetworkWorkerBase extends WorkerBase
 {
     /**
      * 客户端套接字列表
@@ -69,7 +69,7 @@ class NetworkWorkerInterface extends WorkerInterface
      * @param string $name
      * @param string $protocol
      */
-    public function __construct(string $name = NetworkWorkerInterface::class, string $protocol = TCPProtocol::class)
+    public function __construct(string $name = NetworkWorkerBase::class, string $protocol = TCPProtocol::class)
     {
         parent::__construct($name);
         $this->protocol = new $protocol();
@@ -124,7 +124,7 @@ class NetworkWorkerInterface extends WorkerInterface
      */
     public function getClientBySocket(mixed $clientSocket): Client|null
     {
-        $name = NetworkWorkerInterface::getNameBySocket($clientSocket);
+        $name = NetworkWorkerBase::getNameBySocket($clientSocket);
         return $this->getClientByName($name);
     }
 
@@ -263,7 +263,7 @@ class NetworkWorkerInterface extends WorkerInterface
                 return true;
             }
         } catch (Exception $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
         return false;
     }
@@ -275,7 +275,7 @@ class NetworkWorkerInterface extends WorkerInterface
      */
     protected function addSocket(Socket $socket): void
     {
-        $name = NetworkWorkerInterface::getNameBySocket($socket);
+        $name = NetworkWorkerBase::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clients[$name] = new Client($socket, $this->socketType);
         $this->clients[$name]->setNoBlock();
@@ -386,7 +386,7 @@ class NetworkWorkerInterface extends WorkerInterface
     {
         try {
             while ($addressFull = array_shift($this->bindAddressList)) {
-                PRipple::info("    |_ ", $addressFull);
+                Output::info("    |_ ", $addressFull);
                 $type = match (true) {
                     str_contains($addressFull, 'unix://') => SocketUnix::class,
                     str_contains($addressFull, 'tcp://') => SocketInet::class,
@@ -412,7 +412,7 @@ class NetworkWorkerInterface extends WorkerInterface
                 $this->subscribeSocket($listenSocket);
             }
         } catch (Exception $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 }

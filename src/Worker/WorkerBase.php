@@ -3,16 +3,20 @@ declare(strict_types=1);
 
 namespace Worker;
 
+use Core\Constants;
+use Core\Map\CollaborativeFiberMap;
+use Core\Map\EventMap;
+use Core\Output;
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
-use PRipple;
 use Socket;
+use Std\WorkerInterface;
 use Throwable;
 
 /**
  * WorkerInterface
  */
-abstract class WorkerInterface
+abstract class WorkerBase implements WorkerInterface
 {
     /**
      * 客户端名称
@@ -77,16 +81,15 @@ abstract class WorkerInterface
     private function consumption(Build $build): void
     {
         switch ($build->name) {
-            case PRipple::EVENT_SOCKET_READ:
+            case Constants::EVENT_SOCKET_READ:
                 $this->handleSocket($build->data);
                 break;
-            case PRipple::EVENT_SOCKET_EXPECT:
+            case Constants::EVENT_SOCKET_EXPECT:
                 $this->expectSocket($build->data);
                 break;
-            case PRipple::EVENT_SOCKET_WRITE:
-//                $this->writeSocket($build->data);
+            case Constants::EVENT_SOCKET_WRITE:
                 break;
-            case PRipple::EVENT_HEARTBEAT:
+            case Constants::EVENT_HEARTBEAT:
                 $this->heartbeat();
                 break;
             default:
@@ -136,7 +139,7 @@ abstract class WorkerInterface
                 $this->builds[] = $response;
             }
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 
@@ -161,7 +164,7 @@ abstract class WorkerInterface
             $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
             $this->subscribes[] = $event;
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 
@@ -172,7 +175,7 @@ abstract class WorkerInterface
      */
     protected function publishAsync(Build $event): void
     {
-        PRipple::publishAsync($event);
+        EventMap::push($event);
     }
 
     /**
@@ -190,7 +193,7 @@ abstract class WorkerInterface
                 unset($this->subscribes[$index]);
             }
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 
@@ -205,7 +208,7 @@ abstract class WorkerInterface
             socket_set_nonblock($socket);
             $this->publishAsync(Build::new('socket.subscribe', $socket, $this->name));
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 
@@ -219,19 +222,22 @@ abstract class WorkerInterface
         try {
             $this->publishAsync(Build::new('socket.unsubscribe', $socket, $this->name));
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
     }
 
     /**
-     * @param Fiber $fiber
+     * @param string $hash
      * @param mixed|null $data
      * @return bool
      */
-    protected function resume(Fiber $fiber, mixed $data = null): bool
+    protected function resume(string $hash, mixed $data = null): bool
     {
+        if (!$fiber = CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null) {
+            return false;
+        }
         try {
-            if ($event = $fiber->resume($data)) {
+            if ($event = $fiber->resumeFiberExecution($data)) {
                 if (in_array($event->name, $this->subscribes)) {
                     $this->builds[] = $event;
                 } else {
@@ -240,7 +246,7 @@ abstract class WorkerInterface
                 return true;
             }
         } catch (Throwable $exception) {
-            PRipple::printExpect($exception);
+            Output::printException($exception);
         }
         return false;
     }

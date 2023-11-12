@@ -5,7 +5,7 @@ namespace Protocol\WebSocket;
 
 use FileSystem\FileException;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketAisleException;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 
 /**
@@ -31,7 +31,7 @@ class Handshake
      * @param Client $client
      * @return bool|null
      * @throws FileException
-     * @throws SocketAisleException
+     * @throws SocketTunnelException
      */
     public static function accept(Client $client): bool|null
     {
