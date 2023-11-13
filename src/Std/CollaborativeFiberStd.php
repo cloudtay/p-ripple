@@ -51,10 +51,7 @@ abstract class CollaborativeFiberStd
      */
     public function executeFiber(): mixed
     {
-        if ($response = $this->fiber->start()) {
-            $this->publishAsync($response->name, $response->data);
-        }
-        return $response;
+        return $this->fiber->start();
     }
 
     /**
