@@ -3,14 +3,15 @@ declare(strict_types=1);
 
 namespace App\Facade;
 
-use App\PDOProxy\PDOProxy;
 use App\PDOProxy\PDOProxyPool;
+use App\PDOProxy\PDOProxyWorker;
 use Std\FacadeStd;
 use Worker\WorkerBase;
 
 /**
- * @method static PDOProxy|null get(string $name)
- * @method static PDOProxy add(string $name, array $config)
+ * PDO代理池门面
+ * @method static PDOProxyWorker|null get(string $name)
+ * @method static PDOProxyWorker add(string $name, array $config)
  */
 class PDOPool extends FacadeStd
 {
@@ -26,7 +27,7 @@ class PDOPool extends FacadeStd
      */
     public static function __callStatic(string $name, array $arguments): mixed
     {
-        return call_user_func_array([PDOProxyPool::class, $name], $arguments);
+        return call_user_func_array([PDOProxyPool::instance(), $name], $arguments);
     }
 
     /**

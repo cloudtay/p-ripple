@@ -36,9 +36,6 @@ class Blade extends Original implements DependencyInjectionStandard
         if (!is_dir($viewPath)) {
             mkdir($viewPath, 0755, true);
         }
-        return new static(
-            $viewPath,
-            $cachePath
-        );
+        return new static();
     }
 }

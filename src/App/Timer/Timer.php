@@ -38,21 +38,6 @@ class Timer extends WorkerBase
     }
 
     /**
-     * 初始化
-     * @return void
-     */
-    protected function initialize(): void
-    {
-        $this->todo = true;
-        $this->taskQueue = new SplPriorityQueue();
-        $this->subscribe(Timer::EVENT_TIMER_EVENT);
-        $this->subscribe(Timer::EVENT_TIMER_LOOP);
-        $this->subscribe(Timer::EVENT_TIMER_SLEEP);
-        \App\Facade\Timer::setInstance($this);
-    }
-
-
-    /**
      * 心跳
      * @return void
      */
@@ -97,21 +82,6 @@ class Timer extends WorkerBase
             'time' => $second,
             'data' => $callable
         ], Timer::class));
-    }
-
-    /**
-     * 处理事件
-     * @param Build $event
-     * @return void
-     */
-    protected function handleEvent(Build $event): void
-    {
-        $timerData = $event->data;
-        $duration = $timerData['time'];
-        $this->taskQueue->insert([
-            'expire' => time() + $duration,
-            'event' => $event
-        ], -time() - $duration);
     }
 
     /**
@@ -172,5 +142,34 @@ class Timer extends WorkerBase
     public function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.
+    }
+
+    /**
+     * 初始化
+     * @return void
+     */
+    protected function initialize(): void
+    {
+        $this->todo      = true;
+        $this->taskQueue = new SplPriorityQueue();
+        $this->subscribe(Timer::EVENT_TIMER_EVENT);
+        $this->subscribe(Timer::EVENT_TIMER_LOOP);
+        $this->subscribe(Timer::EVENT_TIMER_SLEEP);
+        \App\Facade\Timer::setInstance($this);
+    }
+
+    /**
+     * 处理事件
+     * @param Build $event
+     * @return void
+     */
+    protected function handleEvent(Build $event): void
+    {
+        $timerData = $event->data;
+        $duration  = $timerData['time'];
+        $this->taskQueue->insert([
+            'expire' => time() + $duration,
+            'event'  => $event
+        ], -time() - $duration);
     }
 }

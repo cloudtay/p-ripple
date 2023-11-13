@@ -4,15 +4,14 @@ namespace App\WebApplication;
 
 use App\Http\HttpWorker;
 use App\Http\Request;
-use App\Http\Response;
 use App\WebApplication\Exception\RouteExcept;
 use App\WebApplication\Exception\WebException;
+use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Std\MiddlewareStd;
 use Generator;
 use ReflectionException;
 use ReflectionMethod;
 use Throwable;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * Class WebApplication
@@ -115,24 +114,20 @@ class WebApplication
      * @param mixed $error
      * @param Request $request
      * @return void
-     * @throws SocketTunnelException
+     * @throws Throwable
      */
     private function exceptionHandler(mixed $error, Request $request): void
     {
-        $html = '<h1>' . $error->getMessage() . '</h1>';
-        $html .= '<h2>' . $error->getFile() . ' on line ' . $error->getLine() . '</h2>';
-        $html .= '<h3>Trace</h3>';
-        $html .= '<ul>';
-        foreach ($error->getTrace() as $trace) {
-            $html .= '<li>';
-            $html .= $trace['file'] ?? '';
-            $html .= ' on line ';
-            $html .= $trace['line'] ?? '';
-            $html .= '</li>';
-        }
-        $html .= '</ul>';
-        $request->client->send(
-            Response::new(500, [], $html)->__toString()
-        );
+        $blade = $request->resolveDependencies(Blade::class);
+        /**
+         * @var Blade $blade
+         */
+        $html = $blade->render('trace', [
+            'title'  => $error->getMessage(),
+            'traces' => $error->getTrace(),
+            'file'   => $error->getFile(),
+            'line'   => $error->getLine(),
+        ]);
+        $request->client->send($request->response()->setStatusCode(500)->setBody($html)->__toString());
     }
 }

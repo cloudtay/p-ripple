@@ -21,28 +21,24 @@ use Worker\NetworkWorkerBase;
 class HttpWorker extends NetworkWorkerBase
 {
     /**
+     * @var string
+     */
+    public static string $uploadPath;
+    /**
      * Http流工厂
      * @var RequestFactory $requestFactory
      */
     private RequestFactory $requestFactory;
-
     /**
      * 请求处理器
      * @var Closure $requestHandler
      */
     private Closure $requestHandler;
-
     /**
      * 请求队列
      * @var Request[] $requests
      */
     private array $requests = [];
-
-    /**
-     * @var string
-     */
-    public static string $uploadPath;
-
     /**
      * @var Closure $exceptionHandler
      */
@@ -68,19 +64,6 @@ class HttpWorker extends NetworkWorkerBase
     }
 
     /**
-     * 创建请求工厂
-     * @return void
-     */
-    protected function initialize(): void
-    {
-        $this->subscribe(Request::EVENT_UPLOAD);
-        $this->requestFactory = new RequestFactory($this);
-        parent::initialize();
-        HttpWorker::$uploadPath = PRipple::getArgument('HTTP_UPLOAD_PATH');
-        Http::setInstance($this);
-    }
-
-    /**
      * @return void
      */
     public function heartbeat(): void
@@ -93,9 +76,16 @@ class HttpWorker extends NetworkWorkerBase
                         if ($response instanceof Response) {
                             if ($request->keepAlive) {
                                 $response->headers['Connection'] = 'Keep-Alive';
-                                $request->client->send($response->__toString());
-                            } else {
-                                $request->client->send($response->__toString());
+                            }
+                            $request->client->send($response->__toString());
+                            if ($response->isFile) {
+                                $response->headers['Connection'] = 'Keep-Alive';
+                                $this->builds[$request->hash]    = Build::new(
+                                    Request::EVENT_DOWNLOAD,
+                                    $response,
+                                    $request->hash
+                                );
+                            } elseif (!$request->keepAlive) {
                                 $this->removeClient($request->client);
                             }
                         }
@@ -105,8 +95,8 @@ class HttpWorker extends NetworkWorkerBase
                 } catch (Throwable $exception) {
                     $this->handleException($exception, $request);
                 }
-                $this->recover($request->hash);
             });
+
             try {
                 if ($request->executeFiber()) {
                     CollaborativeFiberMap::$collaborativeFiberMap[$request->hash] = $request;
@@ -117,6 +107,30 @@ class HttpWorker extends NetworkWorkerBase
                 $this->handleException($exception, $request);
                 $this->recover($request->hash);
             }
+        }
+        foreach ($this->builds as $hash => $event) {
+            $response = $event->data;
+            /**
+             * @var Response $response
+             */
+            switch ($event->name) {
+                case Request::EVENT_DOWNLOAD:
+                    try {
+                        do {
+                            if (!$content = $response->file->readWithTrace($response->client->getSendBufferSize())) {
+                                $this->recover($hash);
+                                break;
+                            }
+                        } while ($response->client->send($content));
+                    } catch (SocketTunnelException $exception) {
+                        $this->recover($hash);
+                        return;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
         }
         $this->todo = false;
     }
@@ -129,6 +143,48 @@ class HttpWorker extends NetworkWorkerBase
     {
         unset(CollaborativeFiberMap::$collaborativeFiberMap[$hash]);
         unset($this->requests[$hash]);
+        unset($this->builds[$hash]);
+    }
+
+    /**
+     * @param Throwable $exception
+     * @param Request   $request
+     * @return void
+     */
+    public function handleException(Throwable $exception, Request $request): void
+    {
+        if (isset($this->exceptionHandler)) {
+            try {
+                call_user_func($this->exceptionHandler, $exception, $request);
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+            }
+        } else {
+            Output::printException($exception);
+        }
+        $this->recover($request->hash);
+    }
+
+    /**
+     * @return void
+     */
+    public function destroy(): void
+    {
+        // TODO: Implement destroy() method.
+    }
+
+    /**
+     * 创建请求工厂
+     * @return void
+     */
+    protected function initialize(): void
+    {
+        $this->subscribe(Request::EVENT_UPLOAD);
+        $this->subscribe(Request::EVENT_DOWNLOAD);
+        $this->requestFactory = new RequestFactory($this);
+        parent::initialize();
+        HttpWorker::$uploadPath = PRipple::getArgument('HTTP_UPLOAD_PATH');
+        Http::setInstance($this);
     }
 
     /**
@@ -154,7 +210,13 @@ class HttpWorker extends NetworkWorkerBase
             }
         } catch (RequestSingleException $exception) {
             try {
-                $client->send((new Response(400, [], $exception->getMessage()))->__toString());
+                $request = (new RequestSingle($client))->build();
+                $client->send(
+                    (new Response($request))
+                        ->setStatusCode(400)
+                        ->setBody($exception->getMessage())
+                        ->__toString()
+                );
             } catch (SocketTunnelException $exception) {
                 return;
             }
@@ -184,21 +246,13 @@ class HttpWorker extends NetworkWorkerBase
     }
 
     /**
-     * @return void
-     */
-    public function destroy(): void
-    {
-        // TODO: Implement destroy() method.
-    }
-
-    /**
      * 处理事件
      * @param Build $event
      * @return void
      */
     protected function handleEvent(Build $event): void
     {
-        $hash = $event->publisher;
+        $hash = $event->source;
         if (isset(CollaborativeFiberMap::$collaborativeFiberMap[$hash])) {
             try {
                 if (!CollaborativeFiberMap::$collaborativeFiberMap[$hash]->resumeFiberExecution($event)) {
@@ -209,24 +263,5 @@ class HttpWorker extends NetworkWorkerBase
                 Output::printException($exception);
             }
         }
-    }
-
-    /**
-     * @param Throwable $exception
-     * @param Request $request
-     * @return void
-     */
-    public function handleException(Throwable $exception, Request $request): void
-    {
-        if (isset($this->exceptionHandler)) {
-            try {
-                call_user_func($this->exceptionHandler, $exception, $request);
-            } catch (Throwable $exception) {
-                Output::printException($exception);
-            }
-        } else {
-            Output::printException($exception);
-        }
-        $this->recover($request->hash);
     }
 }

@@ -6,7 +6,7 @@ use Core\Output;
 use Worker\WorkerBase;
 
 /**
- *
+ * PRipple
  */
 class PRipple
 {
@@ -36,24 +36,6 @@ class PRipple
     }
 
     /**
-     * 获取内核
-     * @return Kernel
-     */
-    public static function kernel(): Kernel
-    {
-        return PRipple::$kernel;
-    }
-
-    /**
-     * 唯一HASH
-     * @return string
-     */
-    public static function uniqueHash(): string
-    {
-        return md5(strval(PRipple::$index++));
-    }
-
-    /**
      * 获取装配参数
      * @param string $name
      * @param string|null $default
@@ -76,9 +58,27 @@ class PRipple
 
     }
 
+    /**
+     * 唯一HASH
+     * @return string
+     */
+    public static function uniqueHash(): string
+    {
+        return md5(strval(PRipple::$index++));
+    }
+
     public static function pushWorker(WorkerBase $worker): Kernel
     {
         PRipple::kernel()->push($worker);
         return PRipple::kernel();
+    }
+
+    /**
+     * 获取内核
+     * @return Kernel
+     */
+    public static function kernel(): Kernel
+    {
+        return PRipple::$kernel;
     }
 }

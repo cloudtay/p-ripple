@@ -24,15 +24,6 @@ class BufferWorker extends WorkerBase
     /**
      * @return void
      */
-    protected function initialize(): void
-    {
-        $this->subscribe(Constants::EVENT_SOCKET_BUFFER);
-        $this->subscribe(Constants::EVENT_SOCKET_BUFFER_UN);
-    }
-
-    /**
-     * @return void
-     */
     public function heartbeat(): void
     {
         foreach ($this->buffers as $buffer) {
@@ -45,24 +36,6 @@ class BufferWorker extends WorkerBase
                 unset($this->buffers[$buffer->getHash()]);
                 return;
             }
-        }
-    }
-
-    /**
-     * @param Build $event
-     * @return void
-     */
-    protected function handleEvent(Build $event): void
-    {
-        switch ($event->name) {
-            case Constants::EVENT_SOCKET_BUFFER:
-                $socketHash = spl_object_hash($event->data);
-                $this->buffers[$socketHash] = $event->data;
-                break;
-            case Constants::EVENT_SOCKET_BUFFER_UN:
-                $socketHash = spl_object_hash($event->data);
-                unset($this->buffers[$socketHash]);
-                break;
         }
     }
 
@@ -90,5 +63,34 @@ class BufferWorker extends WorkerBase
     public function expectSocket(Socket $socket): void
     {
         // TODO: Implement expectSocket() method.
+    }
+
+    /**
+     * @return void
+     */
+    protected function initialize(): void
+    {
+        $this->subscribe(Constants::EVENT_SOCKET_BUFFER);
+        $this->subscribe(Constants::EVENT_SOCKET_BUFFER_UN);
+    }
+
+    /**
+     * @param Build $event
+     * @return void
+     */
+    protected function handleEvent(Build $event): void
+    {
+        switch ($event->name) {
+            case Constants::EVENT_SOCKET_BUFFER:
+                $socketHash = spl_object_hash($event->data);
+                $this->buffers[$socketHash] = $event->data;
+                break;
+            case Constants::EVENT_SOCKET_BUFFER_UN:
+                $socketHash = spl_object_hash($event->data);
+                unset($this->buffers[$socketHash]);
+                break;
+            default:
+                break;
+        }
     }
 }

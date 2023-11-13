@@ -2,3 +2,4 @@
 .vscode
 vendor
 src/.temporary
+tests/cache

@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace App\Http;
 
 use Closure;
+use Core\Output;
+use FileSystem\File;
 use Std\CollaborativeFiberStd;
 use Throwable;
 use Worker\Build;
@@ -14,7 +16,8 @@ use Worker\NetWorker\Client;
  */
 class Request extends CollaborativeFiberStd
 {
-    public const EVENT_UPLOAD = 'http.upload.complete';
+    public const        EVENT_UPLOAD   = 'http.upload.complete';
+    public const        EVENT_DOWNLOAD = 'http.download.complete';
 
     /**
      * @var string|mixed
@@ -105,8 +108,9 @@ class Request extends CollaborativeFiberStd
      * 异步事件订阅列表
      * @var Closure[] $asyncHandlers
      */
-    private array $asyncHandlers = array();
+    private array    $asyncHandlers = array();
     private RequestSingle $requestSingle;
+    private Response $response;
 
     /**
      * @param RequestSingle $requestSingle
@@ -145,6 +149,57 @@ class Request extends CollaborativeFiberStd
         }
         $this->hash = $requestSingle->hash;
         $this->requestSingle = $requestSingle;
+        $this->response = new Response($this);
+    }
+
+    /**
+     * @return Response
+     */
+    public function response(): Response
+    {
+        return new Response($this);
+    }
+
+    /**
+     * @param string|File $body
+     * @param array|null  $headers
+     * @return Response
+     */
+    public function respondBody(string|File $body, array|null $headers = []): Response
+    {
+        $headers = array_merge([
+            'Content-Type' => 'text/html; charset=utf-8',
+        ], $headers);
+        return $this->response->setHeaders($headers)->setBody($body);
+    }
+
+    /**
+     * @param array|string $data
+     * @return Response
+     */
+    public function respondJson(array|string $data): Response
+    {
+        $this->response->setHeader('Content-Type', 'application/json');
+        $body = is_array($data) ? json_encode($data, JSON_UNESCAPED_UNICODE) : $data;
+        return $this->response->setBody($body);
+    }
+
+    /**
+     * @param string     $path
+     * @param string     $filename
+     * @param array|null $headers
+     * @return Response
+     */
+    public function respondFile(string $path, string $filename, array|null $headers = []): Response
+    {
+        $filesize                       = filesize($path);
+        $headers['Content-Type']        = 'application/octet-stream';
+        $headers['Content-Disposition'] = "attachment; filename=\"{$filename}\"";
+        $headers['Content-Length']      = $filesize;
+        $headers['Accept-Length']       = $filesize;
+        $this->async(self::EVENT_DOWNLOAD, function () {
+        });
+        return $this->respondBody(File::open($path, 'r'), $headers);
     }
 
     /**
@@ -160,15 +215,19 @@ class Request extends CollaborativeFiberStd
 
     /**
      * 声明等待异步事件
-     * @return void
-     * @throws Throwable
+     * @return bool
      */
-    public function await(): void
+    public function await(): bool
     {
         foreach ($this->asyncHandlers as $action => $handler) {
-            $event = $this->publishAwait($action, null);
-            $this->handleEvent($event);
+            try {
+                $this->handleEvent($this->publishAwait($action, null));
+                return true;
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+            }
         }
+        return false;
     }
 
     /**
@@ -183,9 +242,14 @@ class Request extends CollaborativeFiberStd
         }
     }
 
+    /**
+     * @param Closure $callable
+     * @return CollaborativeFiberStd
+     */
     public function setupWithCallable(Closure $callable): CollaborativeFiberStd
     {
         $result = parent::setupWithCallable($callable);
+        $this->injectDependencies(Response::class, $this->response);
         $this->requestSingle->hash = $this->hash;
         return $result;
     }

@@ -19,31 +19,31 @@ class Build
     public mixed $data;
 
     /**
-     * @var mixed $publisher
+     * @var mixed $source
      */
-    public mixed $publisher;
+    public mixed $source;
 
     /**
      * @param string $name
      * @param mixed $data
-     * @param mixed $publisher
+     * @param mixed $source
      */
-    public function __construct(string $name, mixed $data, mixed $publisher)
+    public function __construct(string $name, mixed $data, mixed $source)
     {
         $this->name = $name;
         $this->data = $data;
-        $this->publisher = $publisher;
+        $this->source = $source;
     }
 
     /**
      * @param string $name
      * @param mixed $data
-     * @param mixed $publisher
+     * @param mixed $source
      * @return Build
      */
-    public static function new(string $name, mixed $data, mixed $publisher): static
+    public static function new(string $name, mixed $data, mixed $source): static
     {
-        return new static($name, $data, $publisher);
+        return new static($name, $data, $source);
     }
 
     /**

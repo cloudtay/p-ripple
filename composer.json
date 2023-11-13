@@ -23,6 +23,6 @@
     "ext-pdo": "*",
     "jenssegers/blade": "^1.4"
   },
-  "version": "0.1",
+  "version": "0.1.1",
   "license": "MIT"
 }

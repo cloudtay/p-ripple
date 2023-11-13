@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace App\PDOProxy;
 
+use App\PDOProxy\Exception\PDOProxyException;
 use App\PDOProxy\Exception\RollbackException;
+use FileSystem\FileException;
 use PRipple;
-use Throwable;
+use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * PDO打包器
@@ -14,14 +16,14 @@ class PDOTransaction
 {
     public string $hash;
     /**
-     * @var PDOProxyConnection $connection
+     * @var PDOProxyClient $connection
      */
-    private PDOProxyConnection $proxyConnection;
+    private PDOProxyClient $proxyConnection;
 
     /**
-     * @param PDOProxyConnection $proxyConnection
+     * @param PDOProxyClient $proxyConnection
      */
-    public function __construct(PDOProxyConnection $proxyConnection)
+    public function __construct(PDOProxyClient $proxyConnection)
     {
         $this->hash = PRipple::uniqueHash();
         $this->proxyConnection = $proxyConnection;
@@ -29,35 +31,41 @@ class PDOTransaction
 
     /**
      * @param string $query
-     * @param array $bindings
-     * @param array $bindParams
+     * @param array  $bindings
+     * @param array  $bindParams
      * @return mixed
-     * @throws Throwable
+     * @throws PDOProxyException
+     * @throws FileException
+     * @throws SocketTunnelException
      */
     public function query(string $query, array $bindings, array $bindParams): mixed
     {
         $this->proxyConnection->pushQuery($this->hash, $query, $bindings, $bindParams);
-        return PDOProxy::instance()->waitResponse();
+        return PDOProxyWorker::instance()->waitResponse();
     }
 
     /**
      * @return bool
-     * @throws Throwable
+     * @throws FileException
+     * @throws PDOProxyException
+     * @throws SocketTunnelException
      */
     public function _commit(): bool
     {
         $this->proxyConnection->pushCommit($this->hash);
-        return PDOProxy::instance()->waitResponse();
+        return PDOProxyWorker::instance()->waitResponse();
     }
 
     /**
      * @return bool
-     * @throws Throwable
+     * @throws FileException
+     * @throws PDOProxyException
+     * @throws SocketTunnelException
      */
     public function _rollBack(): bool
     {
         $this->proxyConnection->pushRollBack($this->hash);
-        return PDOProxy::instance()->waitResponse();
+        return PDOProxyWorker::instance()->waitResponse();
     }
 
     /**

@@ -10,8 +10,8 @@ use Worker\Build;
 use Worker\WorkerBase;
 
 /**
- * @method static PDOProxy|null get(string $name)
- * @method static void add(string $name, PDOProxy $pdoProxy)
+ * @method static PDOProxyWorker|null get(string $name)
+ * @method static void add(string $name, PDOProxyWorker $pdoProxy)
  */
 class PDOProxyPool extends WorkerBase
 {
@@ -31,7 +31,7 @@ class PDOProxyPool extends WorkerBase
     /**
      * @return PDOProxyPool|WorkerBase
      */
-    private static function instance(): PDOProxyPool|WorkerBase
+    public static function instance(): PDOProxyPool|WorkerBase
     {
         return PDOProxyPool::$instance;
     }
@@ -93,11 +93,11 @@ class PDOProxyPool extends WorkerBase
     /**
      * @param string $name
      * @param array $config
-     * @return PDOProxy
+     * @return PDOProxyWorker
      */
-    private function add(string $name, array $config): PDOProxy
+    public function add(string $name, array $config): PDOProxyWorker
     {
-        $proxy = PDOProxy::new($name)->config($config);
+        $proxy = PDOProxyWorker::new($name)->config($config);
         PRipple::kernel()->push($proxy);
         $this->pool[$name] = $proxy;
         return $proxy;
@@ -105,9 +105,9 @@ class PDOProxyPool extends WorkerBase
 
     /**
      * @param string|null $name
-     * @return PDOProxy|null
+     * @return PDOProxyWorker|null
      */
-    private function get(string|null $name = 'DEFAULT'): PDOProxy|null
+    public function get(string|null $name = 'DEFAULT'): PDOProxyWorker|null
     {
         return $this->pool[$name] ?? null;
     }

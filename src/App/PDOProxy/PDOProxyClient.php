@@ -11,7 +11,7 @@ use Worker\NetWorker\Tunnel\SocketTunnelException;
 /**
  * PDO代理客户端
  */
-class PDOProxyConnection
+class PDOProxyClient
 {
     /**
      * @var bool
@@ -49,6 +49,7 @@ class PDOProxyConnection
     public function pushBeginTransaction(string $hash): void
     {
         $this->ccl->send($this->client, PDOBuild::beginTransaction($hash)->serialize());
+
     }
 
     /**

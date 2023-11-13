@@ -12,9 +12,9 @@ use Worker\Build;
  */
 class RequestUpload
 {
-    public const STATUS_ILLEGAL = -1; # 非法
-    public const STATUS_WAIT = 0;     # 等待
-    public const STATUS_TRAN = 1;     # 传输中
+    public const STATUS_ILLEGAL = -1;    # 非法
+    public const STATUS_WAIT    = 0;     # 等待
+    public const STATUS_TRAN    = 1;     # 传输中
 
     /**
      * @var array

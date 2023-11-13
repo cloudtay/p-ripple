@@ -393,7 +393,7 @@ class SocketTunnel implements TunnelStd
      * @return void
      * @throws FileException
      */
-    public function bufferToFile(string $context): void
+    private function bufferToFile(string $context): void
     {
         if ($this->openBuffer === false) {
             $this->openBuffer();

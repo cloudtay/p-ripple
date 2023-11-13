@@ -201,16 +201,6 @@ class NetworkWorkerBase extends WorkerBase
     }
 
     /**
-     * 必须处理事件
-     * @param Build $event
-     * @return void
-     */
-    protected function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
-    }
-
-    /**
      * 必须处理套接字
      * @param Socket $socket
      * @return void
@@ -336,6 +326,15 @@ class NetworkWorkerBase extends WorkerBase
      * @param Client $client
      * @return void
      */
+    protected function onClose(Client $client): void
+    {
+
+    }
+
+    /**
+     * @param Client $client
+     * @return void
+     */
     protected function splitMessage(Client $client): void
     {
         while ($content = $client->getPlaintext()) {
@@ -354,20 +353,21 @@ class NetworkWorkerBase extends WorkerBase
     }
 
     /**
-     * @param Client $client
-     * @return void
-     */
-    protected function onClose(Client $client): void
-    {
-
-    }
-
-    /**
      * @return void
      */
     public function heartbeat(): void
     {
 
+    }
+
+    /**
+     * 必须处理事件
+     * @param Build $event
+     * @return void
+     */
+    protected function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
     }
 
     /**

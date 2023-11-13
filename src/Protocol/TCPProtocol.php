@@ -46,18 +46,6 @@ class TCPProtocol implements ProtocolStd
      * @param TunnelStd $tunnel
      * @return string|false
      */
-    public function cut(TunnelStd $tunnel): string|false
-    {
-        if ($tunnel instanceof Client) {
-            return $tunnel->cleanCache();
-        }
-        return false;
-    }
-
-    /**
-     * @param TunnelStd $tunnel
-     * @return string|false
-     */
     public function corrective(TunnelStd $tunnel): string|false
     {
         return false;
@@ -70,6 +58,18 @@ class TCPProtocol implements ProtocolStd
     public function parse(Client $tunnel): string|null|false
     {
         return $this->cut($tunnel);
+    }
+
+    /**
+     * @param TunnelStd $tunnel
+     * @return string|false
+     */
+    public function cut(TunnelStd $tunnel): string|false
+    {
+        if ($tunnel instanceof Client) {
+            return $tunnel->cleanCache();
+        }
+        return false;
     }
 
     /**

@@ -9,6 +9,7 @@ use Std\FacadeStd;
 use Worker\WorkerBase;
 
 /**
+ * 进程管理器门面
  * @method static void signal(int $processId, int $signal)
  * @method static int|false fork(callable $callback)
  */

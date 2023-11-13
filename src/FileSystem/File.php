@@ -18,16 +18,14 @@ class File
      * @var mixed|false|resource
      */
     public mixed $file;
-
-    /**
-     * @var int
-     */
-    private int $point = 0;
-
     /**
      * @var string
      */
     public string $path;
+    /**
+     * @var int
+     */
+    public int $point = 0;
 
     /**
      * @param string $path

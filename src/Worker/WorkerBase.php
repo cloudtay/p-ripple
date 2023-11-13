@@ -23,24 +23,21 @@ abstract class WorkerBase implements WorkerInterface
      * @var string
      */
     public string $name;
-
-    /**
-     * 事件列表
-     * @var Build[] $builds
-     */
-    protected array $builds = [];
-
-    /**
-     * 订阅事件列表
-     * @var array $subscribes
-     */
-    protected array $subscribes = [];
-
     /**
      * 活跃的工作者
      * @var bool $todo
      */
     public bool $todo = false;
+    /**
+     * 事件列表
+     * @var Build[] $builds
+     */
+    protected array $builds = [];
+    /**
+     * 订阅事件列表
+     * @var array $subscribes
+     */
+    protected array $subscribes = [];
 
     /**
      * 构造函数
@@ -154,6 +151,12 @@ abstract class WorkerBase implements WorkerInterface
     }
 
     /**
+     * 释放资源
+     * @return void
+     */
+    abstract public function destroy(): void;
+
+    /**
      * 订阅一个事件
      * @param string $event
      * @return void
@@ -250,10 +253,4 @@ abstract class WorkerBase implements WorkerInterface
         }
         return false;
     }
-
-    /**
-     * 释放资源
-     * @return void
-     */
-    abstract public function destroy(): void;
 }

@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
+use Core\Constants;
+use Core\Output;
 use Fiber;
 use Std\CollaborativeFiberStd;
 use Throwable;
+use Worker\Build;
 
 /**
  *
@@ -54,7 +57,7 @@ class CollaborativeFiberMap
 
     /**
      * @param string $hash
-     * @param mixed $data
+     * @param mixed  $data
      * @return mixed
      * @throws Throwable
      */
@@ -64,5 +67,22 @@ class CollaborativeFiberMap
             return $collaborativeFiber->resumeFiberExecution($data);
         }
         return null;
+    }
+
+    /**
+     * @param Throwable $exception
+     * @return void
+     */
+    public static function currentThrowExceptionInFiber(Throwable $exception): void
+    {
+        try {
+            Fiber::suspend(Build::new(
+                Constants::EVENT_FIBER_THROW_EXCEPTION,
+                $exception,
+                CollaborativeFiberMap::current())
+            );
+        } catch (Throwable $exception) {
+            Output::printException($exception);
+        }
     }
 }

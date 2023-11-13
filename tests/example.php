@@ -7,6 +7,7 @@ use App\Facade\PDOPool;
 use App\Http\HttpWorker;
 use App\Http\Request;
 use App\Http\Response;
+use App\PDOProxy\PDOProxyPool;
 use PRipple;
 use Protocol\WebSocket;
 
@@ -21,11 +22,13 @@ $options = [SO_REUSEPORT => true];
 
 # PDO代理池新增一个代理(详见文档:PDO代理),支持普通查询/事务查询
 $default = PDOPool::add('default', [
-    'dns' => 'mysql:host=127.0.0.1;dbname=iot',
+    'dns' => 'mysql:host=127.0.0.1;dbname=ad',
     'username' => 'root',
     'password' => 'Wp!LTf/*g(eon/wM',
     'options' => []
 ]);
+
+PDOProxyPool::instance()->get();
 
 # 激活3个代理, 后台自动维护连接池
 $default->activate(3);
@@ -55,7 +58,7 @@ $http->defineRequestHandler(function (Request $request) use ($ws, $tcp) {
         );
 
         // 查询数据库
-        $result = PDOPool::get('default')->query('select * from iot_user where id = ?', [1], []);
+        $result = PDOPool::get('default')->query('select * from iot_user where id = ?', [1]);
 //        $result = [];
         // 向所有客户端发送数据查询结果
         foreach ($ws->getClients() as $client) {

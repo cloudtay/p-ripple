@@ -11,6 +11,7 @@ $kernel = PRipple::configure([
     'HTTP_UPLOAD_PATH' => __DIR__,
 ]);
 
+
 $router = new RouteMap;
 $router->define(RouteMap::GET, '/index', [Index::class, 'index']);
 $router->define(RouteMap::GET, '/hello', [Index::class, 'hello']);

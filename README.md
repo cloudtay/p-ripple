@@ -56,8 +56,8 @@ class Index
     /**
      * @param Request $request 实现了 CollaborativeFiberStd(纤程构建) 接口的请求对象
      * @param PDOProxyPool $PDOProxyPool  PDO代理池
-     * @param House $house 模拟依赖注入的对象
-     * @param Blade $blade 实现依赖注入的对象
+     * @param House $house 自动依赖注入
+     * @param Blade $blade 中间件实现的依赖注入
      * @return Generator 返回一个生成器
      */
     public static function index(Request $request, PDOProxyPool $PDOProxyPool, House $house, Blade $blade): Generator

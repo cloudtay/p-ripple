@@ -17,7 +17,7 @@ use Worker\NetWorker\Tunnel\SocketTunnelException;
 /**
  * PDO代理服务端
  */
-class PDOProxyTransfer
+class PDOProxyServer
 {
     private string $dns;
     private string $username;
@@ -33,7 +33,7 @@ class PDOProxyTransfer
      * @param string $dns
      * @param string $username
      * @param string $password
-     * @param array $options
+     * @param array  $options
      */
     private function __construct(string $dns, string $username, string $password, array $options)
     {
@@ -58,12 +58,12 @@ class PDOProxyTransfer
      * @param string $dns
      * @param string $username
      * @param string $password
-     * @param array $options
+     * @param array  $options
      * @return void
      */
     #[NoReturn] public static function launch(string $dns, string $username, string $password, array $options): void
     {
-        $pdoProxy = new PDOProxyTransfer($dns, $username, $password, $options);
+        $pdoProxy = new PDOProxyServer($dns, $username, $password, $options);
         $pdoProxy->connectServer();
         try {
             $pdoProxy->loop();
@@ -81,7 +81,7 @@ class PDOProxyTransfer
     {
         foreach (range(1, 10) as $_) {
             try {
-                if ($connect = SocketUnix::connect(PDOProxy::$UNIX_PATH, null, ['nonblock' => true])) {
+                if ($connect = SocketUnix::connect(PDOProxyWorker::$UNIX_PATH, null, ['nonblock' => true])) {
                     break;
                 }
             } catch (Exception $exception) {
@@ -191,13 +191,13 @@ class PDOProxyTransfer
         } catch (Exception $exception) {
             $pdoProxyException = new PDOProxyExceptionBuild(get_class($exception), [
                 'message' => $exception->getMessage(),
-                'code' => $exception->getCode(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
+                'code'     => $exception->getCode(),
+                'file'     => $exception->getFile(),
+                'line'     => $exception->getLine(),
                 'trace' => null,
                 'previous' => null
-            ]);
-            $event->data = $pdoProxyException;
+            ], $event->source);
+            $event->data       = $pdoProxyException;
             $event->serialize();
             $this->ccl->send($this->server, $event->serialize());
             $this->count--;

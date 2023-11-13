@@ -17,6 +17,23 @@ include __DIR__ . '/vendor/autoload.php';
 class test_file_server extends NetworkWorkerBase
 {
     /**
+     * heartbeat
+     * @return void
+     */
+    public function heartbeat(): void
+    {
+        echo '.';
+    }
+
+    /**
+     * @return void
+     */
+    public function destroy(): void
+    {
+
+    }
+
+    /**
      * execute after the service starts
      * @return void
      */
@@ -31,15 +48,6 @@ class test_file_server extends NetworkWorkerBase
             fclose($file);
         }
         parent::initialize();
-    }
-
-    /**
-     * heartbeat
-     * @return void
-     */
-    public function heartbeat(): void
-    {
-        echo '.';
     }
 
     /**
@@ -85,14 +93,6 @@ class test_file_server extends NetworkWorkerBase
     protected function onClose(Client $client): void
     {
         echo PHP_EOL . 'client is disconnected.' . PHP_EOL;
-    }
-
-    /**
-     * @return void
-     */
-    public function destroy(): void
-    {
-
     }
 
     /**

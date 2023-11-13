@@ -10,18 +10,19 @@ use Worker\Build;
  */
 class PDOProxyExceptionBuild extends Build
 {
-    public int $code;
-    public string $message;
-    public string|null $file = null;
-    public int|null $line = null;
-    public array|null $trace = null;
+    public int         $code;
+    public string      $message;
+    public string|null $file  = null;
+    public int|null    $line  = null;
+    public array|null  $trace = null;
     public string|null $previous = null;
 
     /**
      * @param string $name
-     * @param mixed $data
+     * @param mixed  $data
+     * @param string $source
      */
-    public function __construct(string $name, mixed $data)
+    public function __construct(string $name, mixed $data, string $source)
     {
         $this->code = intval($data['code']);
         $this->message = $data['message'];
@@ -29,6 +30,6 @@ class PDOProxyExceptionBuild extends Build
         $this->line = $data['line'];
         $this->trace = $data['trace'];
         $this->previous = $data['previous'];
-        parent::__construct($name, $data, PDOProxyExceptionBuild::class);
+        parent::__construct($name, $data, $source);
     }
 }

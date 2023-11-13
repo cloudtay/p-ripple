@@ -8,6 +8,7 @@ use Worker\Build;
 use Worker\WorkerBase;
 
 /**
+ * 计时器门面
  * @method static void sleep(int $seconds)
  * @method static void loop(int $seconds, callable $callback)
  * @method static void event(int $seconds, Build $event)

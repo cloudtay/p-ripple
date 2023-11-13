@@ -110,15 +110,10 @@ abstract class CollaborativeFiberStd
     }
 
     /**
-     * 依赖注入
-     * @param string $class
-     * @param object $instance
-     * @return object
+     * @param Build $event
+     * @return void
      */
-    public function injectDependencies(string $class, object $instance): object
-    {
-        return $this->dependenceMap[$class] = $instance;
-    }
+    abstract protected function handleEvent(Build $event): void;
 
     /**
      * 解析类依赖
@@ -156,8 +151,13 @@ abstract class CollaborativeFiberStd
     }
 
     /**
-     * @param Build $event
-     * @return void
+     * 依赖注入
+     * @param string $class
+     * @param object $instance
+     * @return object
      */
-    abstract protected function handleEvent(Build $event): void;
+    public function injectDependencies(string $class, object $instance): object
+    {
+        return $this->dependenceMap[$class] = $instance;
+    }
 }

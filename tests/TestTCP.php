@@ -13,15 +13,6 @@ use Worker\NetworkWorkerBase;
 class TestTCP extends NetworkWorkerBase
 {
     /**
-     * @param Client $client
-     * @return void
-     */
-    protected function onConnect(Client $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    /**
      * @return void
      * @throws SocketTunnelException
      */
@@ -39,6 +30,15 @@ class TestTCP extends NetworkWorkerBase
     public function destroy(): void
     {
         // TODO: Implement destroy() method.
+    }
+
+    /**
+     * @param Client $client
+     * @return void
+     */
+    protected function onConnect(Client $client): void
+    {
+        // TODO: Implement onConnect() method.
     }
 
     /**

@@ -34,7 +34,7 @@ class PDOBuild extends Build
 
     /**
      * @param string $name
-     * @param mixed $data
+     * @param mixed  $data
      * @param string $hash
      */
     public function __construct(string $name, mixed $data, string $hash)

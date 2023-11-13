@@ -26,20 +26,20 @@ class TestWS extends NetworkWorkerBase
     }
 
     /**
+     * @return void
+     */
+    public function destroy(): void
+    {
+        // TODO: Implement destroy() method.
+    }
+
+    /**
      * @param Client $client
      * @return void
      */
     protected function onConnect(Client $client): void
     {
         // TODO: Implement onConnect() method.
-    }
-
-    /**
-     * @return void
-     */
-    public function destroy(): void
-    {
-        // TODO: Implement destroy() method.
     }
 
     /**

@@ -129,7 +129,7 @@ class Kernel
                     break;
                 case Constants::EVENT_SOCKET_SUBSCRIBE:
                     $socketHash = spl_object_hash($event->data);
-                    SocketMap::$workerMap[$socketHash] = $event->publisher;
+                    SocketMap::$workerMap[$socketHash] = $event->source;
                     SocketMap::$sockets[$socketHash] = $event->data;
                     break;
                 case Constants::EVENT_SOCKET_UNSUBSCRIBE:
@@ -138,13 +138,13 @@ class Kernel
                     unset(SocketMap::$sockets[$socketHash]);
                     break;
                 case Constants::EVENT_EVENT_SUBSCRIBE:
-                    SocketMap::$workerMap[$event->data] = $event->publisher;
+                    SocketMap::$workerMap[$event->data] = $event->source;
                     break;
                 case Constants::EVENT_EVENT_UNSUBSCRIBE:
                     unset(SocketMap::$workerMap[$event->data]);
                     break;
                 case Constants::EVENT_HEARTBEAT:
-                    if ($event->publisher === Kernel::class) {
+                    if ($event->source === Kernel::class) {
                         // TODO: 全局心跳[空闲时]
                         foreach (WorkerMap::$fiberMap as $fiber) {
                             try {
@@ -158,7 +158,7 @@ class Kernel
                     } else {
                         // TODO: 定向心跳[声明活跃]
                         try {
-                            if ($response = WorkerMap::$fiberMap[$event->publisher]->resume($event)) {
+                            if ($response = WorkerMap::$fiberMap[$event->source]->resume($event)) {
                                 EventMap::push($response);
                             }
                         } catch (Throwable $exception) {
@@ -179,6 +179,9 @@ class Kernel
                 case Constants::EVENT_KERNEL_RATE_SET:
                     $this->rate = $event->data;
                     return;
+                case Constants::EVENT_FIBER_THROW_EXCEPTION:
+                    $event->source->throwExceptionInFiber($event->data);
+                    break;
                 default:
                     $this->distribute($event);
             }

@@ -54,6 +54,21 @@ class ProcessManager extends NetworkWorkerBase
     }
 
     /**
+     * @return void
+     */
+    public function destroy(): void
+    {
+        foreach ($this->processObserverHashMap as $processId => $observerProcessId) {
+            if ($observerProcessId !== posix_getpid()) {
+                $this->signal($processId, SIGUSR2);
+            }
+        }
+        foreach ($this->observerHashmap as $processId => $_) {
+            ProcessManager::commandToObserver($processId, 'exit');
+        }
+    }
+
+    /**
      * 发送信号
      * @param int $processId
      * @param int $signalNo
@@ -63,25 +78,6 @@ class ProcessManager extends NetworkWorkerBase
     {
         if ($observerId = $this->processObserverHashMap[$processId]) {
             $this->commandToObserver($observerId, 'signal', $processId, $signalNo);
-        }
-    }
-
-    /**
-     * 发送指令
-     * @param int $observerProcessId
-     * @param string $command
-     * @param mixed ...$arguments
-     * @return void
-     */
-    public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
-    {
-        if ($observerProcessId === posix_getpid()) {
-            call_user_func([ProcessContainer::class, $command], ...$arguments);
-        } elseif ($client = $this->observerHashmap[$observerProcessId]) {
-            $this->protocol->send($client, Build::new('process.observer.command', [
-                'action' => $command,
-                'arguments' => $arguments
-            ], ProcessManager::class)->__toString());
         }
     }
 
@@ -154,6 +150,25 @@ class ProcessManager extends NetworkWorkerBase
     }
 
     /**
+     * 发送指令
+     * @param int    $observerProcessId
+     * @param string $command
+     * @param mixed  ...$arguments
+     * @return void
+     */
+    public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
+    {
+        if ($observerProcessId === posix_getpid()) {
+            call_user_func([ProcessContainer::class, $command], ...$arguments);
+        } elseif ($client = $this->observerHashmap[$observerProcessId]) {
+            $this->protocol->send($client, Build::new('process.observer.command', [
+                'action'    => $command,
+                'arguments' => $arguments
+            ], ProcessManager::class)->__toString());
+        }
+    }
+
+    /**
      * @param Client $client
      * @return void
      */
@@ -170,21 +185,6 @@ class ProcessManager extends NetworkWorkerBase
                 $processId = $client->getIdentity();
                 unset($this->observerHashmap[$processId]);
                 break;
-        }
-    }
-
-    /**
-     * @return void
-     */
-    public function destroy(): void
-    {
-        foreach ($this->processObserverHashMap as $processId => $observerProcessId) {
-            if ($observerProcessId !== posix_getpid()) {
-                $this->signal($processId, SIGUSR2);
-            }
-        }
-        foreach ($this->observerHashmap as $processId => $_) {
-            ProcessManager::commandToObserver($processId, 'exit');
         }
     }
 }
