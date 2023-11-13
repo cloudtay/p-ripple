@@ -21,18 +21,20 @@ class RequestFactory
     private HttpWorker $httpService;
 
     /**
-     * 半成品
+     * 传输中的Request
      * @var RequestSingle[] $singles
      */
     private array $singles = [];
 
     /**
-     * 传输中的Request
+     * 已经解析但未完成的Request
      * @var RequestSingle[] $transfers
      */
     private array $transfers = [];
 
     /**
+     * HttpWorker constructor.
+     * 也许会用到.
      * @param HttpWorker $httpService
      */
     public function __construct(HttpWorker $httpService)

@@ -48,11 +48,13 @@ class RequestUpload
 
 
     /**
+     * 请求单例
      * @var RequestSingle
      */
     protected RequestSingle $requestSingle;
 
     /**
+     * 上传文件构造
      * @param RequestSingle $requestSingle
      * @param string $boundary
      */

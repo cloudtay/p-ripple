@@ -11,7 +11,6 @@ use Worker\NetWorker\Client;
  */
 class RequestSingle
 {
-
     /**
      * @var string
      */
@@ -78,7 +77,6 @@ class RequestSingle
      * @var RequestUpload
      */
     public RequestUpload $uploadHandler;
-
 
     /**
      * RequestSingle constructor.
@@ -162,23 +160,18 @@ class RequestSingle
                     $this->headers[$lineParam[0]] = $lineParam[1];
                 }
             }
-
             if ($this->method === 'GET') {
                 $this->statusCode = RequestFactory::COMPLETE;
                 return true;
             }
-
             if (!isset($this->headers['Content-Length'])) {
                 throw new RequestSingleException('Content-Length is not set');
             }
-
             # 初次解析POST类型
             if (!isset($this->headers['Content-Type'])) {
                 throw new RequestSingleException('Content-Type is not set');
             }
-
             $contentType = $this->headers['Content-Type'];
-
             if (str_contains($contentType, 'multipart/form-data')) {
                 preg_match('/boundary=(.*)$/', $contentType, $matches);
                 if (isset($matches[1])) {

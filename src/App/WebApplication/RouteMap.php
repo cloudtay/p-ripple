@@ -6,16 +6,6 @@ use InvalidArgumentException;
 
 class RouteMap
 {
-    public const GET     = 'GET';
-    public const POST    = 'POST';
-    public const PUT     = 'PUT';
-    public const DELETE  = 'DELETE';
-    public const PATCH   = 'PATCH';
-    public const HEAD    = 'HEAD';
-    public const OPTIONS = 'OPTIONS';
-    public const TRACE   = 'TRACE';
-    public const CONNECT = 'CONNECT';
-
     /**
      * @var Route[] $routes
      */
@@ -24,7 +14,7 @@ class RouteMap
     /**
      * @param string $method
      * @param string $path
-     * @param array $route
+     * @param array  $route
      * @return Route
      */
     public function define(string $method, string $path, array $route): Route

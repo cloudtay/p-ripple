@@ -12,7 +12,6 @@ use PDO;
 use Protocol\CCL;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * PDO代理服务端
@@ -137,7 +136,6 @@ class PDOProxyServer
      * @param PDOBuild $event
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     private function handleEvent(PDOBuild $event): void
     {

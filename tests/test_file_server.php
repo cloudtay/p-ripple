@@ -6,7 +6,6 @@ namespace Tests;
 use FileSystem\FileException;
 use PRipple;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 use Worker\NetworkWorkerBase;
 
 include __DIR__ . '/vendor/autoload.php';
@@ -62,7 +61,7 @@ class test_file_server extends NetworkWorkerBase
         while (!feof($file)) {
             try {
                 $client->write(fread($file, 1024));
-            } catch (FileException|SocketTunnelException $e) {
+            } catch (FileException $e) {
             }
         }
         fclose($file);

@@ -8,7 +8,6 @@ use Core\Output;
 use FileSystem\FileException;
 use Socket;
 use Worker\NetWorker\Tunnel\SocketTunnel;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 缓冲区工作器
@@ -31,7 +30,7 @@ class BufferWorker extends WorkerBase
                 while ($buffer->openBuffer && !$buffer->deprecated && $buffer->write('')) {
                     //TODO: 有效缓冲区释放
                 }
-            } catch (FileException|SocketTunnelException $exception) {
+            } catch (FileException $exception) {
                 Output::printException($exception);
                 unset($this->buffers[$buffer->getHash()]);
                 return;

@@ -3,10 +3,8 @@
 namespace Tests;
 
 use App\Http\Request;
-use Std\CollaborativeFiberStd;
-use Std\DependencyInjectionStandard;
 
-class House implements DependencyInjectionStandard
+class House
 {
     private Request $request;
 
@@ -15,16 +13,8 @@ class House implements DependencyInjectionStandard
         $this->request = $request;
     }
 
-    public static function createInjector(CollaborativeFiberStd $collaborativeFiberStd): static
+    public function getName(): string
     {
-        if ($collaborativeFiberStd instanceof Request) {
-            return new static($collaborativeFiberStd);
-        }
-        return new static();
-    }
-
-    public function getPath(): string
-    {
-        return $this->request->path;
+        return 'house';
     }
 }

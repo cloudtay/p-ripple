@@ -47,12 +47,14 @@ class Response
     public Client $client;
 
     /**
-     * @param Request $request
+     * @param Request|null $request
      */
-    public function __construct(Request $request)
+    public function __construct(Request|null $request = null)
     {
-        $this->request = $request;
-        $this->client  = $request->client;
+        if ($request) {
+            $this->request = $request;
+            $this->client  = $request->client;
+        }
     }
 
     /**

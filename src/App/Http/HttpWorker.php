@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use App\Facade\Http;
 use Closure;
 use Core\Map\CollaborativeFiberMap;
 use Core\Output;
@@ -21,25 +20,31 @@ use Worker\NetworkWorkerBase;
 class HttpWorker extends NetworkWorkerBase
 {
     /**
+     * 上传文件路径
      * @var string
      */
     public static string $uploadPath;
+
     /**
      * Http流工厂
      * @var RequestFactory $requestFactory
      */
     private RequestFactory $requestFactory;
+
     /**
      * 请求处理器
      * @var Closure $requestHandler
      */
     private Closure $requestHandler;
+
     /**
      * 请求队列
      * @var Request[] $requests
      */
     private array $requests = [];
+
     /**
+     * 请求异常处理器
      * @var Closure $exceptionHandler
      */
     private Closure $exceptionHandler;
@@ -55,6 +60,7 @@ class HttpWorker extends NetworkWorkerBase
     }
 
     /**
+     * 定义异常处理器
      * @param Closure $exceptionHandler
      * @return void
      */
@@ -64,6 +70,7 @@ class HttpWorker extends NetworkWorkerBase
     }
 
     /**
+     * 心跳
      * @return void
      */
     public function heartbeat(): void
@@ -97,6 +104,15 @@ class HttpWorker extends NetworkWorkerBase
                 }
             });
 
+            /**
+             * 遵循CollaborativeFiberStd的设计，将Worker异常处理器注入到CollaborativeFiber中
+             * @param Throwable $exception
+             * @return void
+             */
+            $request->exceptionHandler = function (Throwable $exception) use ($request) {
+                call_user_func_array($this->exceptionHandler, [$exception, $request]);
+            };
+
             try {
                 if ($request->executeFiber()) {
                     CollaborativeFiberMap::$collaborativeFiberMap[$request->hash] = $request;
@@ -108,6 +124,7 @@ class HttpWorker extends NetworkWorkerBase
                 $this->recover($request->hash);
             }
         }
+
         foreach ($this->builds as $hash => $event) {
             $response = $event->data;
             /**
@@ -115,24 +132,18 @@ class HttpWorker extends NetworkWorkerBase
              */
             switch ($event->name) {
                 case Request::EVENT_DOWNLOAD:
-                    try {
-                        do {
-                            if (!$content = $response->file->readWithTrace($response->client->getSendBufferSize())) {
-                                $this->recover($hash);
-                                break;
-                            }
-                        } while ($response->client->send($content));
-                    } catch (SocketTunnelException $exception) {
-                        $this->recover($hash);
-                        return;
-                    }
+                    do {
+                        if (!$content = $response->file->readWithTrace($response->client->getSendBufferSize())) {
+                            $this->recover($hash);
+                            break;
+                        }
+                    } while ($response->client->send($content));
                     break;
                 default:
                     break;
             }
-
         }
-        $this->todo = false;
+        $this->busy = false;
     }
 
     /**
@@ -141,8 +152,9 @@ class HttpWorker extends NetworkWorkerBase
      */
     private function recover(string $hash): void
     {
-        unset(CollaborativeFiberMap::$collaborativeFiberMap[$hash]);
-        unset($this->requests[$hash]);
+        if ($this->requests[$hash]?->destroy()) {
+            unset($this->requests[$hash]);
+        }
         unset($this->builds[$hash]);
     }
 
@@ -184,20 +196,21 @@ class HttpWorker extends NetworkWorkerBase
         $this->requestFactory = new RequestFactory($this);
         parent::initialize();
         HttpWorker::$uploadPath = PRipple::getArgument('HTTP_UPLOAD_PATH');
-        Http::setInstance($this);
     }
 
     /**
+     * 设置为非堵塞模式
      * @param Client $client
      * @return void
      */
     protected function onConnect(Client $client): void
     {
         $client->setNoBlock();
-        $client->setReceiveBufferSize(1024 * 1024);
+        $client->setReceiveBufferSize(8192);
     }
 
     /**
+     * 原始报文到达,压入请求工厂
      * @param string $context
      * @param Client $client
      * @return void
@@ -209,30 +222,27 @@ class HttpWorker extends NetworkWorkerBase
                 $this->onRequest($request);
             }
         } catch (RequestSingleException $exception) {
-            try {
-                $request = (new RequestSingle($client))->build();
-                $client->send(
-                    (new Response($request))
-                        ->setStatusCode(400)
-                        ->setBody($exception->getMessage())
-                        ->__toString()
-                );
-            } catch (SocketTunnelException $exception) {
-                return;
-            }
+            $client->send(
+                (new Response())
+                    ->setStatusCode(400)
+                    ->setBody($exception->getMessage())
+                    ->__toString()
+            );
         }
     }
 
     /**
+     * 一个新请求到达
      * @param Request $request
      * @return void
      */
     public function onRequest(Request $request): void
     {
+        //删除原有的纤程并建立客户端纤程绑定关系
         $this->requests[$request->hash] = $request;
         unset(CollaborativeFiberMap::$collaborativeFiberMap[$request->client->getName()]);
         $request->client->setName($request->hash);
-        $this->todo = true;
+        $this->busy = true;
     }
 
     /**
@@ -253,13 +263,15 @@ class HttpWorker extends NetworkWorkerBase
     protected function handleEvent(Build $event): void
     {
         $hash = $event->source;
-        if (isset(CollaborativeFiberMap::$collaborativeFiberMap[$hash])) {
+        if ($collaborativeFiber = CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null) {
             try {
-                if (!CollaborativeFiberMap::$collaborativeFiberMap[$hash]->resumeFiberExecution($event)) {
+                if ($collaborativeFiber->checkIfTerminated()) {
                     $this->recover($hash);
+                } else {
+                    $this->resume($hash, $event);
                 }
             } catch (Throwable $exception) {
-                $this->recover($hash);
+                call_user_func_array($collaborativeFiber->exceptionHandler, [$exception]);
                 Output::printException($exception);
             }
         }

@@ -23,16 +23,19 @@ abstract class WorkerBase implements WorkerInterface
      * @var string
      */
     public string $name;
+
     /**
      * 活跃的工作者
-     * @var bool $todo
+     * @var bool $busy
      */
-    public bool $todo = false;
+    public bool $busy = false;
+
     /**
      * 事件列表
      * @var Build[] $builds
      */
     protected array $builds = [];
+
     /**
      * 订阅事件列表
      * @var array $subscribes
@@ -164,7 +167,7 @@ abstract class WorkerBase implements WorkerInterface
     protected function subscribe(string $event): void
     {
         try {
-            $this->publishAsync(Build::new('event.subscribe', $event, $this->name));
+            $this->publishAsync(Build::new(Constants::EVENT_EVENT_SUBSCRIBE, $event, $this->name));
             $this->subscribes[] = $event;
         } catch (Throwable $exception) {
             Output::printException($exception);
@@ -190,7 +193,7 @@ abstract class WorkerBase implements WorkerInterface
     protected function unsubscribe(string $event): void
     {
         try {
-            $this->publishAsync(Build::new('event.unsubscribe', $event, $this->name));
+            $this->publishAsync(Build::new(Constants::EVENT_EVENT_UNSUBSCRIBE, $event, $this->name));
             $index = array_search($event, $this->subscribes);
             if ($index !== false) {
                 unset($this->subscribes[$index]);
@@ -209,7 +212,7 @@ abstract class WorkerBase implements WorkerInterface
     {
         try {
             socket_set_nonblock($socket);
-            $this->publishAsync(Build::new('socket.subscribe', $socket, $this->name));
+            $this->publishAsync(Build::new(Constants::EVENT_SOCKET_SUBSCRIBE, $socket, $this->name));
         } catch (Throwable $exception) {
             Output::printException($exception);
         }
@@ -223,13 +226,17 @@ abstract class WorkerBase implements WorkerInterface
     protected function unsubscribeSocket(Socket $socket): void
     {
         try {
-            $this->publishAsync(Build::new('socket.unsubscribe', $socket, $this->name));
+            $this->publishAsync(Build::new(Constants::EVENT_SOCKET_UNSUBSCRIBE, $socket, $this->name));
         } catch (Throwable $exception) {
             Output::printException($exception);
         }
     }
 
     /**
+     * worker自带的纤程恢复方法,自动遵循规范处流程理大多数的事件
+     * 如果Worker有自己的调度规范,请重写此方法
+     * 一般我不建议这么做,如果有新的想法可以发表你的意见
+     *
      * @param string $hash
      * @param mixed|null $data
      * @return bool

@@ -150,7 +150,7 @@ class Timer extends WorkerBase
      */
     protected function initialize(): void
     {
-        $this->todo      = true;
+        $this->busy = true;
         $this->taskQueue = new SplPriorityQueue();
         $this->subscribe(Timer::EVENT_TIMER_EVENT);
         $this->subscribe(Timer::EVENT_TIMER_LOOP);

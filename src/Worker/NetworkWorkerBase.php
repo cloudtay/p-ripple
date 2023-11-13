@@ -214,18 +214,6 @@ class NetworkWorkerBase extends WorkerBase
         if (!$client = $this->getClientBySocket($socket)) {
             return;
         }
-        if (!$client->verify) {
-            if ($handshake = $this->protocol->handshake($client)) {
-                $client->handshake($this->protocol);
-                $this->onHandshake($client);
-            } elseif ($handshake === false) {
-                $this->expectSocket($socket);
-                return;
-            } else {
-                return;
-            }
-        }
-
         if (!$context = $client->read(0, $_)) {
             if ($client->cache === '') {
                 $this->removeClient($client);
@@ -235,6 +223,14 @@ class NetworkWorkerBase extends WorkerBase
             }
         }
         $client->cache .= $context;
+        if (!$client->verify) {
+            if ($handshake = $this->protocol->handshake($client)) {
+                $client->handshake($this->protocol);
+                $this->onHandshake($client);
+            } elseif ($handshake === false) {
+                $this->expectSocket($socket);
+            }
+        }
         $this->splitMessage($client);
     }
 
@@ -289,6 +285,7 @@ class NetworkWorkerBase extends WorkerBase
      */
     protected function onHandshake(Client $client): void
     {
+
     }
 
     /**

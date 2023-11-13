@@ -5,6 +5,7 @@ namespace App\Http;
 
 use Closure;
 use Core\Output;
+use Fiber;
 use FileSystem\File;
 use Std\CollaborativeFiberStd;
 use Throwable;
@@ -105,12 +106,29 @@ class Request extends CollaborativeFiberStd
     public bool $keepAlive = false;
 
     /**
+     * @var Closure $exceptionHandler
+     */
+    public Closure $exceptionHandler;
+
+    /**
      * 异步事件订阅列表
      * @var Closure[] $asyncHandlers
      */
-    private array    $asyncHandlers = array();
+    private array $asyncHandlers = array();
+
+    /**
+     * 请求原始单例
+     * @var RequestSingle
+     */
     private RequestSingle $requestSingle;
-    private Response $response;
+
+    /**
+     * Response包应该储存请求原始数据,包括客户端连接
+     * 考虑到Request在HttpWorker中的生命周期,当请求对象在Worker中被释放时
+     * 如用户下载文件等情况无需保留Request,只需在心跳期间Response依然与客户端交互
+     * @var Response $response
+     */
+    public Response $response;
 
     /**
      * @param RequestSingle $requestSingle
@@ -153,14 +171,7 @@ class Request extends CollaborativeFiberStd
     }
 
     /**
-     * @return Response
-     */
-    public function response(): Response
-    {
-        return new Response($this);
-    }
-
-    /**
+     * 响应基础文本
      * @param string|File $body
      * @param array|null  $headers
      * @return Response
@@ -174,6 +185,7 @@ class Request extends CollaborativeFiberStd
     }
 
     /**
+     * 响应json
      * @param array|string $data
      * @return Response
      */
@@ -185,6 +197,7 @@ class Request extends CollaborativeFiberStd
     }
 
     /**
+     * 响应一个下载请求
      * @param string     $path
      * @param string     $filename
      * @param array|null $headers
@@ -235,7 +248,7 @@ class Request extends CollaborativeFiberStd
      * @param Build $event
      * @return void
      */
-    protected function handleEvent(Build $event): void
+    public function handleEvent(Build $event): void
     {
         if ($handler = $this->asyncHandlers[$event->name]) {
             call_user_func_array($handler, [$event->data]);
@@ -243,6 +256,8 @@ class Request extends CollaborativeFiberStd
     }
 
     /**
+     * 重写CollaborativeFiberStd的main注入器
+     * 将自身作为最基础的依赖对象,供其他类构建时使用
      * @param Closure $callable
      * @return CollaborativeFiberStd
      */
@@ -252,5 +267,23 @@ class Request extends CollaborativeFiberStd
         $this->injectDependencies(Response::class, $this->response);
         $this->requestSingle->hash = $this->hash;
         return $result;
+    }
+
+    /**
+     * 作为一个CollaborativeFiberStd对象的产物, 必须实现错误处理方法
+     * @param Throwable $exception
+     * @return void
+     */
+    public function exceptionHandler(Throwable $exception): void
+    {
+        if (isset($this->exceptionHandler)) {
+            call_user_func_array($this->exceptionHandler, [$exception]);
+        }
+        $this->destroy();
+        try {
+            Fiber::suspend(Build::new('suspend', $exception, $this->hash));
+        } catch (Throwable $exception) {
+            Output::printException($exception);
+        }
     }
 }

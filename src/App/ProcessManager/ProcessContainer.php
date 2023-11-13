@@ -12,7 +12,6 @@ use Protocol\CCL;
 use Worker\Build;
 use Worker\NetWorker\Client;
 use Worker\NetWorker\SocketType\SocketUnix;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 进程载体
@@ -158,7 +157,6 @@ class ProcessContainer
      * 声明守护计数
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public static function guarded(): void
     {

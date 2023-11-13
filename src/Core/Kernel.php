@@ -216,7 +216,7 @@ class Kernel
                         yield Build::new(Constants::EVENT_SOCKET_WRITE, $socket, Kernel::class);
                     }
                     array_map(function (WorkerBase $worker) {
-                        if ($worker->todo) {
+                        if ($worker->busy) {
                             $worker->heartbeat();
                         }
                     }, WorkerMap::$workerMap);

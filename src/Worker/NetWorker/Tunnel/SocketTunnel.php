@@ -437,11 +437,11 @@ class SocketTunnel implements TunnelStd
 
     /**
      * 实时写入数据
+     * 写入数据失败时将不再抛出异常而是返回false
      * @param string $context
      * @param bool|null $async
      * @return int|false
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function write(string $context, bool|null $async = true): int|false
     {
@@ -503,7 +503,7 @@ class SocketTunnel implements TunnelStd
         } catch (FileException $exception) {
             throw $exception;
         } catch (Exception $exception) {
-            throw new SocketTunnelException($exception->getMessage());
+            return false;
         }
     }
 

@@ -51,7 +51,10 @@ abstract class CollaborativeFiberStd
      */
     public function executeFiber(): mixed
     {
-        return $this->fiber->start();
+        if ($response = $this->fiber->start()) {
+            $this->publishAsync($response->name, $response->data);
+        }
+        return $response;
     }
 
     /**
@@ -87,7 +90,7 @@ abstract class CollaborativeFiberStd
 
     /**
      * @param string $eventName
-     * @param mixed $eventData
+     * @param mixed  $eventData
      * @return mixed
      * @throws Throwable
      */
@@ -98,7 +101,7 @@ abstract class CollaborativeFiberStd
 
     /**
      * @param string $eventName
-     * @param mixed $eventData
+     * @param mixed  $eventData
      * @return void
      * @throws Throwable
      */
@@ -109,11 +112,6 @@ abstract class CollaborativeFiberStd
         }
     }
 
-    /**
-     * @param Build $event
-     * @return void
-     */
-    abstract protected function handleEvent(Build $event): void;
 
     /**
      * 解析类依赖
@@ -160,4 +158,25 @@ abstract class CollaborativeFiberStd
     {
         return $this->dependenceMap[$class] = $instance;
     }
+
+    /**
+     * @return true
+     */
+    public function destroy(): true
+    {
+        CollaborativeFiberMap::removeCollaborativeFiber($this);
+        return true;
+    }
+
+    /**
+     * @param Build $event
+     * @return void
+     */
+    abstract public function handleEvent(Build $event): void;
+
+    /**
+     * @param Throwable $exception
+     * @return void
+     */
+    abstract public function exceptionHandler(Throwable $exception): void;
 }

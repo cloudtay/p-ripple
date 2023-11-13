@@ -18,7 +18,6 @@ use Protocol\CCL;
 use Throwable;
 use Worker\Build;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 use Worker\NetworkWorkerBase;
 use Worker\WorkerBase;
 
@@ -116,7 +115,6 @@ class PDOProxyWorker extends NetworkWorkerBase
 
     /**
      * @return string|false
-     * @throws PDOProxyException
      */
     public function beginTransaction(): string|false
     {
@@ -127,7 +125,7 @@ class PDOProxyWorker extends NetworkWorkerBase
         try {
             $hash = CollaborativeFiberMap::current()->hash;
             $connection->pushBeginTransaction($hash);
-        } catch (FileException|SocketTunnelException $e) {
+        } catch (FileException $e) {
             Output::printException($e);
             return false;
         }
@@ -142,18 +140,24 @@ class PDOProxyWorker extends NetworkWorkerBase
 
     /**
      * @return mixed
-     * @throws PDOProxyException
      */
     public function waitResponse(): mixed
     {
         try {
             $response = Fiber::suspend(Build::new('suspend', null, PDOProxyWorker::class));
         } catch (Throwable $exception) {
-            CollaborativeFiberMap::current()->throwExceptionInFiber(new PDOProxyException('No available connections'));
+            CollaborativeFiberMap::current()->exceptionHandler(new PDOProxyException('No available connections'));
             return false;
         }
         if ($response instanceof PDOProxyExceptionBuild) {
-            throw new PDOProxyException($response->message, $response->code, $response->previous);
+            CollaborativeFiberMap::current()->exceptionHandler(
+                new PDOProxyException($response->message, $response->code, $response->previous)
+            );
+            try {
+                Fiber::suspend(Build::new('suspend', null, PDOProxyWorker::class));
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+            }
         }
         return $response;
     }
@@ -171,7 +175,7 @@ class PDOProxyWorker extends NetworkWorkerBase
         foreach (range(1, $num) as $_) {
             $pid = Process::fork(function () {
                 PDOProxyServer::launch(
-                    $this->config['dns'],
+                    $this->config['dsn'],
                     $this->config['username'],
                     $this->config['password'],
                     $this->config['options']
@@ -197,10 +201,10 @@ class PDOProxyWorker extends NetworkWorkerBase
                     case PDOBuild::EVENT_QUERY:
                         try {
                             $connection->pushQuery($queue->source, $queue->query, $queue->bindings, $queue->bindParams);
-                        } catch (FileException|SocketTunnelException $exception) {
+                        } catch (FileException $exception) {
                             //TODO:查询失败,往返回队列中添加失败信息
                             try {
-                                CollaborativeFiberMap::getCollaborativeFiber($queue->source)?->throwExceptionInFiber($exception);
+                                CollaborativeFiberMap::getCollaborativeFiber($queue->source)?->exceptionHandler($exception);
                             } catch (Throwable $exception) {
                                 Output::printException($exception);
                             }
@@ -213,7 +217,7 @@ class PDOProxyWorker extends NetworkWorkerBase
                 return;
             }
         }
-        $this->todo = false;
+        $this->busy = false;
     }
 
     /**
@@ -221,22 +225,24 @@ class PDOProxyWorker extends NetworkWorkerBase
      * @param array|null $bindValues
      * @param array|null $bindParams
      * @return mixed
-     * @throws FileException
-     * @throws PDOProxyException
-     * @throws SocketTunnelException
      */
     public function query(string $query, array|null $bindValues = [], array|null $bindParams = []): mixed
     {
         $hash = CollaborativeFiberMap::current()->hash;
         if ($connection = $this->getConnection()) {
-            $connection->pushQuery($hash, $query, $bindValues, $bindParams);
+            try {
+                $connection->pushQuery($hash, $query, $bindValues, $bindParams);
+            } catch (FileException $exception) {
+                CollaborativeFiberMap::current()->exceptionHandler($exception);
+            }
         } else {
             //TODO: 没有空闲连接时,将查询请求加入队列
             $this->queue[] = PDOBuild::query($hash, $query, $bindValues, $bindParams);
-            $this->todo = true;
+            $this->busy = true;
         }
         //TODO: 等待查询结果
         return $this->waitResponse();
+
     }
 
     /**
@@ -256,8 +262,7 @@ class PDOProxyWorker extends NetworkWorkerBase
      * @param Client $client
      * @return void
      */
-    protected
-    function splitMessage(Client $client): void
+    protected function splitMessage(Client $client): void
     {
         while ($content = $client->getPlaintext()) {
             $this->onMessage($content, $client);
@@ -269,8 +274,7 @@ class PDOProxyWorker extends NetworkWorkerBase
      * @param Client $client
      * @return void
      */
-    protected
-    function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, Client $client): void
     {
         /**
          * @var PDOBuild $event

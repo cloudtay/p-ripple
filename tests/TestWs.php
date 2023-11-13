@@ -4,13 +4,9 @@ declare(strict_types=1);
 namespace Tests;
 
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 use Worker\NetworkWorkerBase;
 
-/**
- *
- */
-class TestWS extends NetworkWorkerBase
+class TestWs extends NetworkWorkerBase
 {
     /**
      * @return void
@@ -18,10 +14,7 @@ class TestWS extends NetworkWorkerBase
     public function heartbeat(): void
     {
         foreach ($this->getClients() as $client) {
-            try {
-                $client->send('hello');
-            } catch (SocketTunnelException $e) {
-            }
+            $client->send('hello');
         }
     }
 

@@ -10,7 +10,6 @@ use Std\ProtocolStd;
 use Std\TunnelStd;
 use stdClass;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * Websocket协议
@@ -20,7 +19,7 @@ class WebSocket implements ProtocolStd
     /**
      * SEND VIA INTERFACE
      * @param TunnelStd $tunnel
-     * @param string $context
+     * @param string    $context
      * @return bool
      */
     public function send(TunnelStd $tunnel, string $context): bool
@@ -143,10 +142,9 @@ class WebSocket implements ProtocolStd
     {
         try {
             return Handshake::accept($client);
-        } catch (FileException|SocketTunnelException $exception) {
+        } catch (FileException $exception) {
             Output::printException($exception);
             return false;
         }
-
     }
 }

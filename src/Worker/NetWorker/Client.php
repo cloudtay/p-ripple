@@ -9,7 +9,6 @@ use FileSystem\FileException;
 use Std\ProtocolStd;
 use stdClass;
 use Worker\NetWorker\Tunnel\SocketTunnel;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * 客户端
@@ -85,7 +84,6 @@ use Worker\NetWorker\Tunnel\SocketTunnelException;
      * 发送信息
      * @param string $context
      * @return bool|int
-     * @throws SocketTunnelException
      */
     public function send(string $context): bool|int
     {

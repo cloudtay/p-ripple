@@ -3,11 +3,9 @@ declare(strict_types=1);
 
 namespace App\PDOProxy;
 
-use App\PDOProxy\Exception\PDOProxyException;
 use App\PDOProxy\Exception\RollbackException;
 use FileSystem\FileException;
 use PRipple;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * PDO打包器
@@ -34,9 +32,7 @@ class PDOTransaction
      * @param array  $bindings
      * @param array  $bindParams
      * @return mixed
-     * @throws PDOProxyException
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function query(string $query, array $bindings, array $bindParams): mixed
     {
@@ -47,8 +43,6 @@ class PDOTransaction
     /**
      * @return bool
      * @throws FileException
-     * @throws PDOProxyException
-     * @throws SocketTunnelException
      */
     public function _commit(): bool
     {
@@ -59,8 +53,6 @@ class PDOTransaction
     /**
      * @return bool
      * @throws FileException
-     * @throws PDOProxyException
-     * @throws SocketTunnelException
      */
     public function _rollBack(): bool
     {

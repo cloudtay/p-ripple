@@ -4,6 +4,16 @@ namespace App\WebApplication;
 
 class Route
 {
+    public const GET     = 'GET';
+    public const POST    = 'POST';
+    public const PUT     = 'PUT';
+    public const DELETE  = 'DELETE';
+    public const PATCH   = 'PATCH';
+    public const HEAD    = 'HEAD';
+    public const OPTIONS = 'OPTIONS';
+    public const TRACE   = 'TRACE';
+    public const CONNECT = 'CONNECT';
+
     /**
      * @var string $method
      */

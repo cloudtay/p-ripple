@@ -5,7 +5,6 @@ namespace Protocol\WebSocket;
 
 use FileSystem\FileException;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 
 /**
@@ -31,12 +30,10 @@ class Handshake
      * @param Client $client
      * @return bool|null
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public static function accept(Client $client): bool|null
     {
-        $context = $client->read(0, $resultLength);
-        $buffer = $client->cache($context);
+        $buffer = $client->cache;
         $identityInfo = Handshake::verify($buffer);
         if ($identityInfo === null) {
             return null;

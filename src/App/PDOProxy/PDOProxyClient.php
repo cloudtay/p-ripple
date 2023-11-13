@@ -6,7 +6,6 @@ namespace App\PDOProxy;
 use FileSystem\FileException;
 use Protocol\CCL;
 use Worker\NetWorker\Client;
-use Worker\NetWorker\Tunnel\SocketTunnelException;
 
 /**
  * PDO代理客户端
@@ -17,10 +16,12 @@ class PDOProxyClient
      * @var bool
      */
     public bool $transaction = false;
+
     /**
      * @var int
      */
     public int $count = 0;
+
     /**
      * @var Client
      */
@@ -44,7 +45,6 @@ class PDOProxyClient
      * @param string $hash
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function pushBeginTransaction(string $hash): void
     {
@@ -59,7 +59,6 @@ class PDOProxyClient
      * @param array|null $bindParams
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function pushQuery(string $hash, string $query, array|null $bindValues = [], array|null $bindParams = []): void
     {
@@ -70,7 +69,6 @@ class PDOProxyClient
      * @param string $hash
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function pushCommit(string $hash): void
     {
@@ -81,7 +79,6 @@ class PDOProxyClient
      * @param string $hash
      * @return void
      * @throws FileException
-     * @throws SocketTunnelException
      */
     public function pushRollBack(string $hash): void
     {

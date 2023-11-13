@@ -15,6 +15,8 @@ use Throwable;
 
 /**
  * Class WebApplication
+ * 低耦合的方式避免Worker
+ * 绑定路由规则并遵循HttpWorker的规范将处理器注入到Worker中
  */
 class WebApplication
 {
@@ -24,18 +26,18 @@ class WebApplication
     /**
      * WebApplication constructor.
      * @param HttpWorker $httpWorker
-     * @param RouteMap $routeMap
+     * @param RouteMap   $routeMap
      */
     public function __construct(HttpWorker $httpWorker, RouteMap $routeMap)
     {
         $this->httpWorker = $httpWorker;
-        $this->routeMap = $routeMap;
+        $this->routeMap   = $routeMap;
     }
 
     /**
      * 加载HttpWorker
      * @param HttpWorker $httpWorker
-     * @param RouteMap $routeMap
+     * @param RouteMap   $routeMap
      * @return void
      */
     public static function inject(HttpWorker $httpWorker, RouteMap $routeMap): void
@@ -58,6 +60,7 @@ class WebApplication
     }
 
     /**
+     * 请求处理
      * @param Request $request
      * @return Generator
      * @throws ReflectionException
@@ -89,8 +92,9 @@ class WebApplication
     }
 
     /**
-     * @param string $class
-     * @param string $method
+     * 解析路由参数
+     * @param string  $class
+     * @param string  $method
      * @param Request $request
      * @return array
      * @throws ReflectionException
@@ -99,8 +103,8 @@ class WebApplication
     private function resolveRouteParams(string $class, string $method, Request $request): array
     {
         $reflectionMethod = new ReflectionMethod($class, $method);
-        $parameters = $reflectionMethod->getParameters();
-        $params = [];
+        $parameters       = $reflectionMethod->getParameters();
+        $params           = [];
         foreach ($parameters as $parameter) {
             $types = $parameter->getType()?->getName() ?? [];
             if (!$params[] = $request->resolveDependencies($types)) {
@@ -111,7 +115,8 @@ class WebApplication
     }
 
     /**
-     * @param mixed $error
+     * 异常处理
+     * @param mixed   $error
      * @param Request $request
      * @return void
      * @throws Throwable
@@ -128,6 +133,6 @@ class WebApplication
             'file'   => $error->getFile(),
             'line'   => $error->getLine(),
         ]);
-        $request->client->send($request->response()->setStatusCode(500)->setBody($html)->__toString());
+        $request->client->send($request->response->setStatusCode(500)->setBody($html)->__toString());
     }
 }
