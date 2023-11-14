@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace App\PDOProxy;
 
 use App\Facade\Process;
+use App\PDOProxy\Exception\CommitException;
 use App\PDOProxy\Exception\PDOProxyException;
 use App\PDOProxy\Exception\PDOProxyExceptionBuild;
-use App\PDOProxy\Exception\RollbackException;
 use Closure;
 use Core\Map\CollaborativeFiberMap;
 use Core\Map\WorkerMap;
@@ -27,13 +27,13 @@ use Worker\WorkerBase;
 class PDOProxyWorker extends NetworkWorkerBase
 {
     public static string $UNIX_PATH;
-    public array $proxyProcessIds   = [];
-    public int   $proxyProcessCount = 0;
+    public array         $proxyProcessIds   = [];
+    public int           $proxyProcessCount = 0;
 
     /**
      * @var PDOBuild[] $queue
      */
-    private array $queue = [];
+    private array $queue   = [];
     private array $bindMap = [];
     /**
      * @var PDOProxyClient[] $connections
@@ -62,28 +62,33 @@ class PDOProxyWorker extends NetworkWorkerBase
     /**
      * @param Closure $callable
      * @return void
-     * @throws PDOProxyException
      */
     public function transaction(Closure $callable): void
     {
         if ($connection = $this->getConnection()) {
-            $transaction = new PDOTransaction($connection);
-            if ($transaction->hash = $this->beginTransaction()) {
+            try {
+                $connection->pushBeginTransaction(CollaborativeFiberMap::current()->hash);
+            } catch (FileException $exception) {
+                CollaborativeFiberMap::current()->exceptionHandler(new PDOProxyException('No available connections'));
+            }
+            if ($this->waitResponse() === true) {
+                $transaction = new PDOTransaction($connection, $this);
                 try {
                     call_user_func($callable, $transaction);
                     $transaction->_commit();
-                } catch (RollbackException $exception) {
+                } catch (CommitException $exception) {
+                    $transaction->_commit();
+                } catch (Throwable $exception) {
                     try {
                         $transaction->_rollBack();
                     } catch (Throwable $exception) {
                         Output::printException($exception);
                     }
-                } catch (PDOProxyException|Throwable $exception) {
-                    Output::printException($exception);
                 }
+                $connection->transaction = false;
             }
         } else {
-            throw new PDOProxyException('No available connections');
+            CollaborativeFiberMap::current()->exceptionHandler(new PDOProxyException('No available connections'));
         }
     }
 
@@ -98,7 +103,7 @@ class PDOProxyWorker extends NetworkWorkerBase
             return $this->bindMap[$hash] ?? false;
         }
 
-        $freeConnections = array_filter($this->connections, function ($connection) {
+        $freeConnections = array_filter($this->connections, function (PDOProxyClient $connection) {
             return $connection->transaction === false;
         });
 
@@ -106,37 +111,36 @@ class PDOProxyWorker extends NetworkWorkerBase
             return false;
         }
 
-        $counts = array_column($freeConnections, 'count');
+        $counts             = array_column($freeConnections, 'count');
         $connectionsByCount = array_combine($counts, $freeConnections);
-        $connection = $connectionsByCount[min($counts)];
+        $connection         = $connectionsByCount[min($counts)];
         $connection->count++;
         return $connection;
     }
 
-    /**
-     * @return string|false
-     */
-    public function beginTransaction(): string|false
-    {
-        // 绑定事务连接,防止事务混淆其他提交
-        if (!$connection = $this->getConnection()) {
-            return false;
-        }
-        try {
-            $hash = CollaborativeFiberMap::current()->hash;
-            $connection->pushBeginTransaction($hash);
-        } catch (FileException $e) {
-            Output::printException($e);
-            return false;
-        }
-        $result = $this->waitResponse();
-        if ($result === true) {
-            $connection->transaction = true;
-            $this->bindMap[$hash] = $connection;
-            return $hash;
-        }
-        return false;
-    }
+//    /**
+//     * @return bool
+//     */
+//    public function beginTransaction(): bool
+//    {
+//        if (!$connection = $this->getConnection()) {
+//            return false;
+//        }
+//        try {
+//            $hash = CollaborativeFiberMap::current()->hash;
+//            $connection->pushBeginTransaction($hash);
+//        } catch (FileException $exception) {
+//            Output::printException($exception);
+//            return false;
+//        }
+//        $result = $this->waitResponse();
+//        if ($result === true) {
+//            $connection->transaction = true;
+//            $this->bindMap[$hash]    = $connection;
+//            return true;
+//        }
+//        return false;
+//    }
 
     /**
      * @return mixed
@@ -221,7 +225,7 @@ class PDOProxyWorker extends NetworkWorkerBase
     }
 
     /**
-     * @param string $query
+     * @param string     $query
      * @param array|null $bindValues
      * @param array|null $bindParams
      * @return mixed
@@ -238,7 +242,7 @@ class PDOProxyWorker extends NetworkWorkerBase
         } else {
             //TODO: 没有空闲连接时,将查询请求加入队列
             $this->queue[] = PDOBuild::query($hash, $query, $bindValues, $bindParams);
-            $this->busy = true;
+            $this->busy    = true;
         }
         //TODO: 等待查询结果
         return $this->waitResponse();

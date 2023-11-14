@@ -16,7 +16,7 @@ class SocketInet
      */
     public static function create(string $address, int $port, int|null $type = SOCK_STREAM, array|null $options = []): Socket
     {
-        $server = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        $server = socket_create(AF_INET, $type, SOL_TCP);
         if (!$server) {
             throw new Exception('Unable to create INET socket, please close the running process');
         }

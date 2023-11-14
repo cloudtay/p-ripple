@@ -5,7 +5,6 @@ namespace App\Http;
 
 use Closure;
 use Core\Output;
-use Fiber;
 use FileSystem\File;
 use Std\CollaborativeFiberStd;
 use Throwable;
@@ -280,10 +279,6 @@ class Request extends CollaborativeFiberStd
             call_user_func_array($this->exceptionHandler, [$exception]);
         }
         $this->destroy();
-        try {
-            Fiber::suspend(Build::new('suspend', $exception, $this->hash));
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-        }
+        parent::exceptionHandler($exception);
     }
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\PDOProxy;
 
+use Core\Map\CollaborativeFiberMap;
 use FileSystem\FileException;
 use Protocol\CCL;
 use Worker\NetWorker\Client;
@@ -58,30 +59,39 @@ class PDOProxyClient
      * @param array|null $bindValues
      * @param array|null $bindParams
      * @return void
-     * @throws FileException
      */
     public function pushQuery(string $hash, string $query, array|null $bindValues = [], array|null $bindParams = []): void
     {
-        $this->ccl->send($this->client, PDOBuild::query($hash, $query, $bindValues, $bindParams)->serialize());
+        try {
+            $this->ccl->send($this->client, PDOBuild::query($hash, $query, $bindValues, $bindParams)->serialize());
+        } catch (FileException $exception) {
+            CollaborativeFiberMap::current()->exceptionHandler($exception);
+        }
     }
 
     /**
      * @param string $hash
      * @return void
-     * @throws FileException
      */
     public function pushCommit(string $hash): void
     {
-        $this->ccl->send($this->client, PDOBuild::commit($hash)->serialize());
+        try {
+            $this->ccl->send($this->client, PDOBuild::commit($hash)->serialize());
+        } catch (FileException $exception) {
+            CollaborativeFiberMap::current()->exceptionHandler($exception);
+        }
     }
 
     /**
      * @param string $hash
      * @return void
-     * @throws FileException
      */
     public function pushRollBack(string $hash): void
     {
-        $this->ccl->send($this->client, PDOBuild::rollBack($hash)->serialize());
+        try {
+            $this->ccl->send($this->client, PDOBuild::rollBack($hash)->serialize());
+        } catch (FileException $exception) {
+            CollaborativeFiberMap::current()->exceptionHandler($exception);
+        }
     }
 }

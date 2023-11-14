@@ -67,15 +67,18 @@ $kernel->push($httpWorker, $wsWorker)->launch();
 
 ```
 
-### `Index.php` file
+### File `Index.php` 
 
 ```php
 <?php
 
 namespace Tests;
 
+use App\Facade\PDOPool;
 use App\Http\Request;
+use App\PDOProxy\Exception\RollbackException;
 use App\PDOProxy\PDOProxyPool;
+use App\PDOProxy\PDOTransaction;
 use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Route;
 use Core\Map\WorkerMap;
@@ -152,6 +155,143 @@ class Index
         $request->await();
     }
 
+    /**
+     * @param Request $request
+     * @return Generator
+     */
+    public static function data(Request $request): Generator
+    {
+        /**
+         * PDOPool::class是PDOProxyPool的助手类,你可以通过静态方法操作代理池单例
+         */
+        $originData = PDOPool::get('DEFAULT')->query('select * from user where id = ?', [17]);
+
+        /**
+         * 你也可以直接使用 PDOProxyPool::class 提供的 instance 方法获取代理池单例
+         * 下面模拟了一次事务回滚
+         */
+        $pdoWorker = PDOProxyPool::instance()->get('DEFAULT');
+
+        $pdoWorker->transaction(function (PDOTransaction $transaction) use (&$updateData) {
+            $transaction->query('update user set `username` = ? where `id` = ?', ['changed', 17], []);
+            $updateData = $transaction->query('select * from `user` where id = ?', [17], []);
+
+            // 抛出异常
+            throw new RollbackException('');
+        });
+
+        $resultData = $pdoWorker->query('select * from user where id = ?', [17]);
+
+        yield $request->respondJson([
+            'origin' => $originData,
+            'update' => $updateData,
+            'result' => $resultData,
+        ]);
+    }
+}
+
+```
+
+### 路由 `GET` `/data` 的输出结果
+
+```json
+{
+  "origin": [
+    {
+      "id": 17,
+      "0": 17,
+      "username": "user2",
+      "1": "user2",
+      "password": "password2",
+      "2": "password2",
+      "level_id": 2,
+      "3": 2,
+      "avatar": "avatar2.jpg",
+      "4": "avatar2.jpg",
+      "nickname": "Nickname 2",
+      "5": "Nickname 2",
+      "email": "user2@example.com",
+      "6": "user2@example.com",
+      "phone_code": null,
+      "7": null,
+      "phone_number": "9876543210",
+      "8": "9876543210",
+      "type": "type2",
+      "9": "type2",
+      "create_time": "2023-09-08 11:17:33",
+      "10": "2023-09-08 11:17:33",
+      "update_time": "2023-09-08 03:27:47",
+      "11": "2023-09-08 03:27:47",
+      "status": 0,
+      "12": 0,
+      "delete_time": "2023-09-08 03:27:47",
+      "13": "2023-09-08 03:27:47"
+    }
+  ],
+  "update": [
+    {
+      "id": 17,
+      "0": 17,
+      "username": "changed",
+      "1": "changed",
+      "password": "password2",
+      "2": "password2",
+      "level_id": 2,
+      "3": 2,
+      "avatar": "avatar2.jpg",
+      "4": "avatar2.jpg",
+      "nickname": "Nickname 2",
+      "5": "Nickname 2",
+      "email": "user2@example.com",
+      "6": "user2@example.com",
+      "phone_code": null,
+      "7": null,
+      "phone_number": "9876543210",
+      "8": "9876543210",
+      "type": "type2",
+      "9": "type2",
+      "create_time": "2023-09-08 11:17:33",
+      "10": "2023-09-08 11:17:33",
+      "update_time": "2023-11-14 10:19:15",
+      "11": "2023-11-14 10:19:15",
+      "status": 0,
+      "12": 0,
+      "delete_time": "2023-09-08 03:27:47",
+      "13": "2023-09-08 03:27:47"
+    }
+  ],
+  "result": [
+    {
+      "id": 17,
+      "0": 17,
+      "username": "user2",
+      "1": "user2",
+      "password": "password2",
+      "2": "password2",
+      "level_id": 2,
+      "3": 2,
+      "avatar": "avatar2.jpg",
+      "4": "avatar2.jpg",
+      "nickname": "Nickname 2",
+      "5": "Nickname 2",
+      "email": "user2@example.com",
+      "6": "user2@example.com",
+      "phone_code": null,
+      "7": null,
+      "phone_number": "9876543210",
+      "8": "9876543210",
+      "type": "type2",
+      "9": "type2",
+      "create_time": "2023-09-08 11:17:33",
+      "10": "2023-09-08 11:17:33",
+      "update_time": "2023-09-08 03:27:47",
+      "11": "2023-09-08 03:27:47",
+      "status": 0,
+      "12": 0,
+      "delete_time": "2023-09-08 03:27:47",
+      "13": "2023-09-08 03:27:47"
+    }
+  ]
 }
 ```
 

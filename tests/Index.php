@@ -2,8 +2,11 @@
 
 namespace Tests;
 
+use App\Facade\PDOPool;
 use App\Http\Request;
+use App\PDOProxy\Exception\RollbackException;
 use App\PDOProxy\PDOProxyPool;
+use App\PDOProxy\PDOTransaction;
 use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Route;
 use Core\Map\WorkerMap;
@@ -80,4 +83,37 @@ class Index
         $request->await();
     }
 
+    /**
+     * @param Request $request
+     * @return Generator
+     */
+    public static function data(Request $request): Generator
+    {
+        /**
+         * PDOPool::class 是 PDOProxyPool的助手类,你可以直接静态方法操作代理池
+         */
+        $originData = PDOPool::get('DEFAULT')->query('select * from user where id = ?', [17]);
+
+        /**
+         * 你也可以直接使用 PDOProxyPool::class 提供的 instance 方法获取代理池
+         * 下面模拟了一次事务回滚
+         */
+        $pdoWorker = PDOProxyPool::instance()->get('DEFAULT');
+
+        $pdoWorker->transaction(function (PDOTransaction $transaction) use (&$updateData) {
+            $transaction->query('update user set `username` = ? where `id` = ?', ['changed', 17], []);
+            $updateData = $transaction->query('select * from `user` where id = ?', [17], []);
+
+            // 数据回滚
+            throw new RollbackException('');
+        });
+
+        $resultData = $pdoWorker->query('select * from user where id = ?', [17]);
+
+        yield $request->respondJson([
+            'origin' => $originData,
+            'update' => $updateData,
+            'result' => $resultData,
+        ]);
+    }
 }

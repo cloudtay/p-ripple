@@ -157,6 +157,15 @@ abstract class CollaborativeFiberStd
     }
 
     /**
+     * @param string $class
+     * @return object|null
+     */
+    public function getDependencies(string $class): object|null
+    {
+        return $this->dependenceMap[$class] ?? null;
+    }
+
+    /**
      * @return true
      */
     public function destroy(): true
@@ -175,5 +184,12 @@ abstract class CollaborativeFiberStd
      * @param Throwable $exception
      * @return void
      */
-    abstract public function exceptionHandler(Throwable $exception): void;
+    public function exceptionHandler(Throwable $exception): void
+    {
+        try {
+            Fiber::suspend(Build::new('suspend', $exception, $this->hash));
+        } catch (Throwable $exception) {
+            Output::printException($exception);
+        }
+    }
 }

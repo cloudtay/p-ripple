@@ -28,6 +28,7 @@ $router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
 $router->define(Route::GET, '/download', [Index::class, 'download']);
 $router->define(Route::GET, '/upload', [Index::class, 'upload']);
 $router->define(Route::POST, '/upload', [Index::class, 'upload']);
+$router->define(Route::GET, '/data', [Index::class, 'data']);
 
 $httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options);
 
