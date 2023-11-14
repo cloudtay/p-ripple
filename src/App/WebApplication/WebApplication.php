@@ -6,9 +6,12 @@ use App\Http\HttpWorker;
 use App\Http\Request;
 use App\WebApplication\Exception\RouteExcept;
 use App\WebApplication\Exception\WebException;
-use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Std\MiddlewareStd;
+use Core\Map\ExtendMap;
+use Extends\Laravel;
 use Generator;
+use Illuminate\View\Factory;
+use PRipple;
 use ReflectionException;
 use ReflectionMethod;
 use Throwable;
@@ -32,6 +35,15 @@ class WebApplication
     {
         $this->httpWorker = $httpWorker;
         $this->routeMap   = $routeMap;
+        $viewPath = PRipple::getArgument('VIEW_PATH_BLADE', PP_ROOT_PATH . '/.resources/views');
+        $cachePath = PRipple::getArgument('PP_RUNTIME_PATH', PP_RUNTIME_PATH) . '/cache';
+
+        /**
+         * 注册模板引擎
+         * @var Laravel $laravel
+         */
+        $laravel = ExtendMap::get(Laravel::class);
+        $laravel->initViewEngine($viewPath, $cachePath);
     }
 
     /**
@@ -42,6 +54,11 @@ class WebApplication
      */
     public static function inject(HttpWorker $httpWorker, RouteMap $routeMap): void
     {
+        /**
+         * 注册模板引擎
+         * @var Laravel $laravel
+         */
+        $laravel = ExtendMap::get(Laravel::class);
         $webApplication = new self($httpWorker, $routeMap);
 
         /**
@@ -70,6 +87,13 @@ class WebApplication
     private function requestHandler(Request $request): Generator
     {
         $request->injectDependencies(Request::class, $request);
+        /**
+         * @var Laravel $laravel
+         */
+        $laravel = ExtendMap::get(Laravel::class);
+        foreach ($laravel->dependencyInjectionList as $key => $value) {
+            $request->injectDependencies($key, $value);
+        }
         if (!$router = $this->routeMap->match($request->method, trim($request->path, '/'))) {
             throw new RouteExcept('404 Not Found', 404);
         }
@@ -123,16 +147,16 @@ class WebApplication
      */
     private function exceptionHandler(mixed $error, Request $request): void
     {
-        $blade = $request->resolveDependencies(Blade::class);
+        $blade = $request->resolveDependencies(Factory::class);
         /**
-         * @var Blade $blade
+         * @var Factory $blade
          */
-        $html = $blade->render('trace', [
+        $html = $blade->make('trace', [
             'title'  => $error->getMessage(),
             'traces' => $error->getTrace(),
             'file'   => $error->getFile(),
             'line'   => $error->getLine(),
-        ]);
+        ])->render();
         $request->client->send($request->response->setStatusCode(500)->setBody($html)->__toString());
     }
 }

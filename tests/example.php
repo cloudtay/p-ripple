@@ -29,6 +29,7 @@ $router->define(Route::GET, '/download', [Index::class, 'download']);
 $router->define(Route::GET, '/upload', [Index::class, 'upload']);
 $router->define(Route::POST, '/upload', [Index::class, 'upload']);
 $router->define(Route::GET, '/data', [Index::class, 'data']);
+$router->define(Route::GET, '/orm', [Index::class, 'orm']);
 
 $httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options);
 
@@ -38,12 +39,16 @@ WebApplication::inject($httpWorker, $router);
 $pdoProxyWorker = PDOProxyPool::instance();
 
 # 使用代理池的标准方法创建一个默认的PDO代理
-$defaultProxyWorker = $pdoProxyWorker->add('DEFAULT', [
-    'dsn'      => 'mysql:host=127.0.0.1;dbname=lav',
-    'username' => 'root',
-    'password' => '123456',
-    'options'  => [],
-]);
+$defaultProxyWorker = $pdoProxyWorker->add([
+    'driver'    => 'mysql',
+    'charset'   => 'utf8',
+    'hostname'  => '127.0.0.1',
+    'database'  => 'lav',
+    'username'  => 'root',
+    'password'  => '123456',
+    'collation' => 'utf8_general_ci',
+    'prefix'    => '',
+], 'default');
 
 # 启动2个PDO序列化代理
 $defaultProxyWorker->activate(2);

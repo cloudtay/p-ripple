@@ -21,8 +21,9 @@
     "ext-pcntl": "*",
     "ext-posix": "*",
     "ext-pdo": "*",
-    "jenssegers/blade": "^1.4"
+    "cclilshy/p-ripple-plugins": "dev-main"
   },
-  "version": "0.1.1",
+  "minimum-stability": "dev",
+  "version": "dev-main",
   "license": "MIT"
 }

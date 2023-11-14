@@ -40,7 +40,7 @@ abstract class CollaborativeFiberStd
     public function setupWithCallable(Closure $callable): CollaborativeFiberStd
     {
         $this->fiber = new Fiber($callable);
-        $this->hash = spl_object_hash($this->fiber);
+        $this->hash  = spl_object_hash($this->fiber);
         CollaborativeFiberMap::addCollaborativeFiber($this);
         return $this;
     }

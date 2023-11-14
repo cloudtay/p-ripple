@@ -7,8 +7,10 @@ use App\PDOProxy\PDOProxyPool;
 use App\ProcessManager\ProcessManager;
 use App\Timer\Timer;
 use Core\Map\EventMap;
+use Core\Map\ExtendMap;
 use Core\Map\SocketMap;
 use Core\Map\WorkerMap;
+use Extends\Laravel;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
@@ -41,14 +43,34 @@ class Kernel
     private function initialize(): void
     {
         $this->registerSignalHandler();
-        $timer = Timer::new(Timer::class);
-        $bufferWorker = BufferWorker::new(BufferWorker::class);
+        $this->loadExtends();
+        $this->launchBuiltInServices();
+    }
+
+    /**
+     * 加载插件
+     * @return void
+     */
+    private function loadExtends(): void
+    {
+        ExtendMap::set(Laravel::class, new Laravel());
+    }
+
+    /**
+     * 启动内置服务
+     * @return void
+     */
+    private function launchBuiltInServices(): void
+    {
+        $timer          = Timer::new(Timer::class);
+        $bufferWorker   = BufferWorker::new(BufferWorker::class);
         $processManager = ProcessManager::new(ProcessManager::class);
-        $pdoProxyPool = PDOProxyPool::new(PDOProxyPool::class);
+        $pdoProxyPool   = PDOProxyPool::new(PDOProxyPool::class);
         $this->push($timer, $bufferWorker, $pdoProxyPool, $processManager);
     }
 
     /**
+     * 注册信号处理器
      * @return void
      */
     private function registerSignalHandler(): void
@@ -128,9 +150,9 @@ class Kernel
                     }
                     break;
                 case Constants::EVENT_SOCKET_SUBSCRIBE:
-                    $socketHash = spl_object_hash($event->data);
+                    $socketHash                        = spl_object_hash($event->data);
                     SocketMap::$workerMap[$socketHash] = $event->source;
-                    SocketMap::$sockets[$socketHash] = $event->data;
+                    SocketMap::$sockets[$socketHash]   = $event->data;
                     break;
                 case Constants::EVENT_SOCKET_UNSUBSCRIBE:
                     $socketHash = spl_object_hash($event->data);
@@ -203,7 +225,7 @@ class Kernel
             if (count($readSockets) === 0) {
                 usleep($this->rate);
             } else {
-                $writeSockets = [];
+                $writeSockets  = [];
                 $exceptSockets = SocketMap::$sockets;
                 if (socket_select($readSockets, $writeSockets, $exceptSockets, 0, $this->rate)) {
                     foreach ($exceptSockets as $socket) {

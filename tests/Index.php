@@ -7,10 +7,11 @@ use App\Http\Request;
 use App\PDOProxy\Exception\RollbackException;
 use App\PDOProxy\PDOProxyPool;
 use App\PDOProxy\PDOTransaction;
-use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Route;
 use Core\Map\WorkerMap;
 use Generator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\Factory;
 
 class Index
 {
@@ -22,7 +23,7 @@ class Index
     public static function index(Request $request, PDOProxyPool $PDOProxyPool): Generator
     {
         /**
-         * 在发生异步操作之前,全局的静态属性都是安全的,但不建议这么做
+         * 在发生异步操作之前,全局的静态属性都是安全的,但不建议使用静态属性
          * 你可以通过依赖中间件+依赖注入的特性,在中间件或其他地方-
          * 构建你需要的对象如 Session|Cache 或将Cookie注入你的无状态Service等
          */
@@ -44,15 +45,15 @@ class Index
 
     /**
      * @param Request $request 实现了 CollaborativeFiberStd(纤程构建) 接口的请求对象
-     * @param Blade   $blade   中间件实现的依赖注入
+     * @param Factory $blade   WebApplication实现的依赖注入
      * @return Generator 返回一个生成器
      */
-    public static function upload(Request $request, Blade $blade): Generator
+    public static function upload(Request $request, Factory $blade): Generator
     {
         if ($request->method === Route::GET) {
-            yield $request->respondBody($blade->render('upload', [
+            yield $request->respondBody($blade->make('upload', [
                 'title' => 'upload files'
-            ]));
+            ])->render());
         } elseif ($request->upload) {
             yield $request->respondBody('文件上传中,请勿关闭页面.');
 
@@ -115,5 +116,16 @@ class Index
             'update' => $updateData,
             'result' => $resultData,
         ]);
+    }
+
+    /**
+     * @param Request $request
+     * @return Generator
+     */
+    public static function orm(Request $request): Generator
+    {
+        $data = DB::table('user')->where('id', 17)->first();
+        $data = UserModel::query()->where('id', 17)->first();
+        yield $request->respondJson($data);
     }
 }

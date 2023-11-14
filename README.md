@@ -43,7 +43,8 @@ $router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
 $router->define(Route::GET, '/download', [Index::class, 'download']);
 $router->define(Route::GET, '/upload', [Index::class, 'upload']);
 $router->define(Route::POST, '/upload', [Index::class, 'upload']);
-
+$router->define(Route::GET, '/data', [Index::class, 'data']);
+$router->define(Route::GET, '/orm', [Index::class, 'orm']);
 $httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options);
 
 WebApplication::inject($httpWorker, $router);
@@ -52,12 +53,16 @@ WebApplication::inject($httpWorker, $router);
 $pdoProxyWorker = PDOProxyPool::instance();
 
 # 使用代理池的标准方法创建一个默认的PDO代理
-$defaultProxyWorker = $pdoProxyWorker->add('DEFAULT', [
-    'dsn'      => 'mysql:host=127.0.0.1;dbname=lav',
-    'username' => 'root',
-    'password' => '123456',
-    'options'  => [],
-]);
+$defaultProxyWorker = $pdoProxyWorker->add([
+    'driver'    => 'mysql',
+    'charset'   => 'utf8',
+    'hostname'  => '127.0.0.1',
+    'database'  => 'lav',
+    'username'  => 'root',
+    'password'  => '123456',
+    'collation' => 'utf8_general_ci',
+    'prefix'    => '',
+], 'default');
 
 # 启动2个PDO序列化代理
 $defaultProxyWorker->activate(2);
@@ -67,7 +72,7 @@ $kernel->push($httpWorker, $wsWorker)->launch();
 
 ```
 
-### File `Index.php` 
+### File `Index.php`
 
 ```php
 <?php
@@ -79,10 +84,11 @@ use App\Http\Request;
 use App\PDOProxy\Exception\RollbackException;
 use App\PDOProxy\PDOProxyPool;
 use App\PDOProxy\PDOTransaction;
-use App\WebApplication\Plugins\Blade;
 use App\WebApplication\Route;
 use Core\Map\WorkerMap;
 use Generator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\Factory;
 
 class Index
 {
@@ -94,7 +100,7 @@ class Index
     public static function index(Request $request, PDOProxyPool $PDOProxyPool): Generator
     {
         /**
-         * 在发生异步操作之前,全局的静态属性都是安全的,但不建议这么做
+         * 在发生异步操作之前,全局的静态属性都是安全的,但不建议使用静态属性
          * 你可以通过依赖中间件+依赖注入的特性,在中间件或其他地方-
          * 构建你需要的对象如 Session|Cache 或将Cookie注入你的无状态Service等
          */
@@ -116,15 +122,15 @@ class Index
 
     /**
      * @param Request $request 实现了 CollaborativeFiberStd(纤程构建) 接口的请求对象
-     * @param Blade   $blade   中间件实现的依赖注入
+     * @param Factory $blade   WebApplication实现的依赖注入
      * @return Generator 返回一个生成器
      */
-    public static function upload(Request $request, Blade $blade): Generator
+    public static function upload(Request $request, Factory $blade): Generator
     {
         if ($request->method === Route::GET) {
-            yield $request->respondBody($blade->render('upload', [
+            yield $request->respondBody($blade->make('upload', [
                 'title' => 'upload files'
-            ]));
+            ])->render());
         } elseif ($request->upload) {
             yield $request->respondBody('文件上传中,请勿关闭页面.');
 
@@ -162,12 +168,12 @@ class Index
     public static function data(Request $request): Generator
     {
         /**
-         * PDOPool::class是PDOProxyPool的助手类,你可以通过静态方法操作代理池单例
+         * PDOPool::class 是 PDOProxyPool的助手类,你可以直接静态方法操作代理池
          */
         $originData = PDOPool::get('DEFAULT')->query('select * from user where id = ?', [17]);
 
         /**
-         * 你也可以直接使用 PDOProxyPool::class 提供的 instance 方法获取代理池单例
+         * 你也可以直接使用 PDOProxyPool::class 提供的 instance 方法获取代理池
          * 下面模拟了一次事务回滚
          */
         $pdoWorker = PDOProxyPool::instance()->get('DEFAULT');
@@ -176,7 +182,7 @@ class Index
             $transaction->query('update user set `username` = ? where `id` = ?', ['changed', 17], []);
             $updateData = $transaction->query('select * from `user` where id = ?', [17], []);
 
-            // 抛出异常
+            // 数据回滚
             throw new RollbackException('');
         });
 
@@ -188,11 +194,22 @@ class Index
             'result' => $resultData,
         ]);
     }
+
+    /**
+     * @param Request $request
+     * @return Generator
+     */
+    public static function orm(Request $request): Generator
+    {
+        $data = DB::table('user')->where('id', 17)->first();
+        $data = UserModel::query()->where('id', 17)->first();
+        yield $request->respondJson($data);
+    }
 }
 
 ```
 
-### 路由 `GET` `/data` 的输出结果
+### Transaction Example
 
 ```json
 {

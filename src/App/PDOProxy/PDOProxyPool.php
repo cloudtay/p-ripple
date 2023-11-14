@@ -4,6 +4,12 @@ declare(strict_types=1);
 namespace App\PDOProxy;
 
 use App\Facade\PDOPool;
+use Core\Map\ExtendMap;
+use Extends\Laravel;
+use Illuminate\Container\Container;
+use Illuminate\Database\Capsule\Manager;
+use Illuminate\Support\Facades\DB;
+use PDO;
 use PRipple;
 use Socket;
 use Worker\Build;
@@ -16,11 +22,12 @@ use Worker\WorkerBase;
 class PDOProxyPool extends WorkerBase
 {
     private static PDOProxyPool $instance;
-    private array $pool = [];
+    private Manager $manager;
+    private array   $pool = [];
 
     /**
      * @param string $name
-     * @param array $arguments
+     * @param array  $arguments
      * @return mixed
      */
     public static function __callStatic(string $name, array $arguments)
@@ -79,6 +86,13 @@ class PDOProxyPool extends WorkerBase
     {
         PDOPool::setInstance($this);
         PDOProxyPool::$instance = $this;
+        $this->manager = new Manager;
+        $this->manager->bootEloquent();
+        $this->manager->setAsGlobal();
+        ExtendMap::get(Laravel::class)->container->bind('db', function (Container $container) {
+            return $this->manager->getDatabaseManager();
+        });
+        DB::setFacadeApplication(ExtendMap::get(Laravel::class)->container);
     }
 
     /**
@@ -91,15 +105,23 @@ class PDOProxyPool extends WorkerBase
     }
 
     /**
-     * @param string $name
-     * @param array $config
+     * @param array       $config
+     * @param string|null $name
      * @return PDOProxyWorker
      */
-    public function add(string $name, array $config): PDOProxyWorker
+    public function add(array $config, string|null $name = 'default'): PDOProxyWorker
     {
-        $proxy = PDOProxyWorker::new($name)->config($config);
+        $config['dsn']                                   = $config['driver'] . ':host=' . $config['hostname'] . ';dbname=' . $config['database'];
+        $config['options'][PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_OBJ;
+        $proxy                                           = PDOProxyWorker::new($name)->config($config);
+        $this->pool[$name]                               = $proxy;
+        $this->manager->addConnection([
+            'driver'    => $config['driver'],
+            'charset'   => $config['charset'] ?? 'utf8',
+            'collation' => $config['collation'] ?? 'utf8_general_ci',
+            'prefix'    => $config['prefix'] ?? '',
+        ], $name);
         PRipple::kernel()->push($proxy);
-        $this->pool[$name] = $proxy;
         return $proxy;
     }
 
@@ -107,7 +129,7 @@ class PDOProxyPool extends WorkerBase
      * @param string|null $name
      * @return PDOProxyWorker|null
      */
-    public function get(string|null $name = 'DEFAULT'): PDOProxyWorker|null
+    public function get(string|null $name = 'default'): PDOProxyWorker|null
     {
         return $this->pool[$name] ?? null;
     }

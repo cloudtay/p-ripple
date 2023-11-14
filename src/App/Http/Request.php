@@ -134,27 +134,27 @@ class Request extends CollaborativeFiberStd
      */
     public function __construct(RequestSingle $requestSingle)
     {
-        $this->url = $requestSingle->url;
+        $this->url    = $requestSingle->url;
         $this->method = $requestSingle->method;
         if (($this->upload = $requestSingle->upload)) {
             $this->files = $requestSingle->uploadHandler->files;
         }
-        $this->version = $requestSingle->version;
-        $this->header = $requestSingle->header;
+        $this->version     = $requestSingle->version;
+        $this->header      = $requestSingle->header;
         $this->headerArray = $requestSingle->headers;
 
         if ($connection = $this->headerArray['Connection'] ?? null) {
             $this->keepAlive = strtoupper($connection) === 'KEEP-ALIVE';
         }
 
-        $this->body = $requestSingle->body;
+        $this->body   = $requestSingle->body;
         $this->client = $requestSingle->client;
-        $info = parse_url($this->url);
+        $info         = parse_url($this->url);
         if ($query = $info['query'] ?? null) {
             parse_str($query, $this->query);
         }
-        $this->path = $info['path'];
-        $this->host = $info['host'] ?? '';
+        $this->path   = $info['path'];
+        $this->host   = $info['host'] ?? '';
         $this->scheme = $info['scheme'] ?? '';
         if (isset($this->headerArray['Content-Type']) && $this->headerArray['Content-Type'] === 'application/json') {
             $this->post = json_decode($this->body, true);
@@ -164,9 +164,9 @@ class Request extends CollaborativeFiberStd
         if ($cookie = $this->headerArray['Cookie'] ?? null) {
             $this->cookieArray['Cookie'] = explode('; ', $cookie);
         }
-        $this->hash = $requestSingle->hash;
+        $this->hash          = $requestSingle->hash;
         $this->requestSingle = $requestSingle;
-        $this->response = new Response($this);
+        $this->response      = new Response($this);
     }
 
     /**
@@ -185,14 +185,16 @@ class Request extends CollaborativeFiberStd
 
     /**
      * 响应json
-     * @param array|string $data
+     * @param array|object|string $data
      * @return Response
      */
-    public function respondJson(array|string $data): Response
+    public function respondJson(array|object|string $data): Response
     {
         $this->response->setHeader('Content-Type', 'application/json');
-        $body = is_array($data) ? json_encode($data, JSON_UNESCAPED_UNICODE) : $data;
-        return $this->response->setBody($body);
+        if (!is_string($data)) {
+            $data = json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
+        return $this->response->setBody($data);
     }
 
     /**
@@ -216,7 +218,7 @@ class Request extends CollaborativeFiberStd
 
     /**
      * 订阅异步事件
-     * @param string $action
+     * @param string  $action
      * @param Closure $callable
      * @return void
      */
@@ -233,7 +235,7 @@ class Request extends CollaborativeFiberStd
     {
         foreach ($this->asyncHandlers as $action => $handler) {
             try {
-                $this->handleEvent($this->publishAwait($action, null));
+                $this->handleEvent($this->publishAwait('AWAIT_' . $action, null));
                 return true;
             } catch (Throwable $exception) {
                 Output::printException($exception);
