@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Protocol\WebSocket;
 
-use FileSystem\FileException;
-use Worker\NetWorker\Client;
+use Core\FileSystem\FileException;
+use Worker\Socket\TCPConnection;
 
 
 /**
@@ -14,33 +14,33 @@ class Handshake
 {
     /**
      * Attempts to recognize handshake data when receiving a client for the first time
-     * @param Client $client
+     * @param TCPConnection $client
      * @return bool
      */
 
     public const NEED_HEAD = [
-        'Host' => true,
-        'Upgrade' => true,
-        'Connection' => true,
-        'Sec-WebSocket-Key' => true,
+        'Host'                  => true,
+        'Upgrade'               => true,
+        'Connection'            => true,
+        'Sec-WebSocket-Key'     => true,
         'Sec-WebSocket-Version' => true
     ];
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return bool|null
      * @throws FileException
      */
-    public static function accept(Client $client): bool|null
+    public static function accept(TCPConnection $client): bool|null
     {
-        $buffer = $client->cache;
+        $buffer       = $client->cache;
         $identityInfo = Handshake::verify($buffer);
         if ($identityInfo === null) {
             return null;
         } elseif ($identityInfo === false) {
             return false;
         } else {
-            $client->info = $identityInfo;
+            $client->info       = $identityInfo;
             $secWebSocketAccept = Handshake::getSecWebSocketAccept($client->info['Sec-WebSocket-Key']);
             $client->write(Handshake::generateResultContext($secWebSocketAccept));
             $client->cleanCache();
@@ -57,14 +57,14 @@ class Handshake
     {
         if (str_contains($buffer, "\r\n\r\n")) {
             $verify = Handshake::NEED_HEAD;
-            $lines = explode("\r\n", $buffer);
+            $lines  = explode("\r\n", $buffer);
             $header = array();
 
             if (count($firstLineInfo = explode(" ", array_shift($lines))) !== 3) {
                 return false;
             } else {
-                $header['method'] = $firstLineInfo[0];
-                $header['url'] = $firstLineInfo[1];
+                $header['method']  = $firstLineInfo[0];
+                $header['url']     = $firstLineInfo[1];
                 $header['version'] = $firstLineInfo[2];
             }
 
@@ -101,8 +101,8 @@ class Handshake
     private static function generateResultContext(string $accept): string
     {
         $headers = [
-            'Upgrade' => 'websocket',
-            'Connection' => 'Upgrade',
+            'Upgrade'              => 'websocket',
+            'Connection'           => 'Upgrade',
             'Sec-WebSocket-Accept' => $accept
         ];
         $context = "HTTP/1.1 101 NFS\r\n";

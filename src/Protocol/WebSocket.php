@@ -3,13 +3,13 @@ declare(strict_types=1);
 
 namespace Protocol;
 
+use Core\FileSystem\FileException;
 use Core\Output;
-use FileSystem\FileException;
+use Core\Std\ProtocolStd;
+use Core\Std\TunnelStd;
 use Protocol\WebSocket\Handshake;
-use Std\ProtocolStd;
-use Std\TunnelStd;
 use stdClass;
-use Worker\NetWorker\Client;
+use Worker\Socket\TCPConnection;
 
 /**
  * Websocket协议
@@ -35,7 +35,7 @@ class WebSocket implements ProtocolStd
      */
     public function build(string $context, int $opcode = 0x1, bool $fin = true): string
     {
-        $frame = chr(($fin ? 0x80 : 0) | $opcode); // FIN 和 Opcode
+        $frame      = chr(($fin ? 0x80 : 0) | $opcode); // FIN 和 Opcode
         $contextLen = strlen($context);
         if ($contextLen < 126) {
             $frame .= chr($contextLen); // Payload Length
@@ -50,7 +50,7 @@ class WebSocket implements ProtocolStd
 
     /**
      * MESSAGE VERIFICATION
-     * @param string $context MESSAGE
+     * @param string        $context  MESSAGE
      * @param stdClass|null $Standard Additional parameters
      * @return string|false Validation results
      */
@@ -67,49 +67,49 @@ class WebSocket implements ProtocolStd
      */
     public function cut(TunnelStd $tunnel): string|null|false
     {
-        if ($tunnel instanceof Client) {
+        if ($tunnel instanceof TCPConnection) {
             return WebSocket::parse($tunnel);
         }
         return false;
     }
 
     /**
-     * @param Client $tunnel
+     * @param TCPConnection $tunnel
      * @return string|false|null
      */
-    public function parse(Client $tunnel): string|null|false
+    public function parse(TCPConnection $tunnel): string|null|false
     {
-        $context = $tunnel->cache();
-        $payload = '';
+        $context       = $tunnel->cache();
+        $payload       = '';
         $payloadLength = '';
-        $mask = '';
-        $maskingKey = '';
-        $opcode = '';
-        $fin = '';
-        $dataLength = strlen($context);
-        $index = 0;
-        $byte = ord($context[$index++]);
-        $fin = ($byte & 0x80) != 0;
-        $opcode = $byte & 0x0F;
-        $byte = ord($context[$index++]);
-        $mask = ($byte & 0x80) != 0;
+        $mask          = '';
+        $maskingKey    = '';
+        $opcode        = '';
+        $fin           = '';
+        $dataLength    = strlen($context);
+        $index         = 0;
+        $byte          = ord($context[$index++]);
+        $fin           = ($byte & 0x80) != 0;
+        $opcode        = $byte & 0x0F;
+        $byte          = ord($context[$index++]);
+        $mask          = ($byte & 0x80) != 0;
         $payloadLength = $byte & 0x7F;
 
         // 处理 2 字节或 8 字节的长度字段
         if ($payloadLength > 125) {
             if ($payloadLength == 126) {
                 $payloadLength = unpack('n', substr($context, $index, 2))[1];
-                $index += 2;
+                $index         += 2;
             } else {
                 $payloadLength = unpack('J', substr($context, $index, 8))[1];
-                $index += 8;
+                $index         += 8;
             }
         }
 
         // 处理掩码密钥
         if ($mask) {
             $maskingKey = substr($context, $index, 4);
-            $index += 4;
+            $index      += 4;
         }
 
         // 处理负载数据
@@ -135,10 +135,10 @@ class WebSocket implements ProtocolStd
 
     /**
      * 请求握手
-     * @param Client $client
+     * @param TCPConnection $client
      * @return bool|null
      */
-    public function handshake(Client $client): bool|null
+    public function handshake(TCPConnection $client): bool|null
     {
         try {
             return Handshake::accept($client);

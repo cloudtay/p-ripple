@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
-use Worker\Build;
+use Worker\Prop\Build;
 
 /**
  *

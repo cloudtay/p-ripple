@@ -1,3 +1,5 @@
+## Refactoring....
+
 ### install
 
 ```bash
@@ -16,14 +18,7 @@ vim main.php
 <?php
 include __DIR__ . '/vendor/autoload.php';
 
-use App\Http\HttpWorker;
-use App\PDOProxy\PDOProxyPool;
-use App\WebApplication\Route;
-use App\WebApplication\RouteMap;
-use App\WebApplication\WebApplication;
-use Protocol\WebSocket;
-use Tests\Index;
-use Tests\TestWs;
+use Protocol\WebSocket;use recycle\Http\HttpWorker;use recycle\PDOProxyPool;use recycle\WebApplication\Route;use recycle\WebApplication\RouteMap;use recycle\WebApplication\WebApplication;use Tests\Index;use Tests\TestWs;
 
 //'VIEW_PATH_BLADE'  => __DIR__,
 $kernel = PRipple::configure([
@@ -38,7 +33,7 @@ $options = [SO_REUSEPORT => 1];
 $wsWorker = TestWs::new('ws')->bind('tcp://127.0.0.1:8001', $options)->protocol(WebSocket::class);
 
 # 构建HttpWorker并使用注入框架
-$router = new RouteMap;
+$router = new RouteMap();
 $router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
 $router->define(Route::GET, '/download', [Index::class, 'download']);
 $router->define(Route::GET, '/upload', [Index::class, 'upload']);
@@ -79,16 +74,7 @@ $kernel->push($httpWorker, $wsWorker)->launch();
 
 namespace Tests;
 
-use App\Facade\PDOPool;
-use App\Http\Request;
-use App\PDOProxy\Exception\RollbackException;
-use App\PDOProxy\PDOProxyPool;
-use App\PDOProxy\PDOTransaction;
-use App\WebApplication\Route;
-use Core\Map\WorkerMap;
-use Generator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\View\Factory;
+use Core\Map\WorkerMap;use Generator;use Illuminate\Support\Facades\DB;use Illuminate\View\Factory;use recycle\Http\Request;use recycle\PDOPool;use recycle\PDOProxy\Exception\RollbackException;use recycle\PDOProxyPool;use recycle\PDOTransaction;use recycle\WebApplication\Route;
 
 class Index
 {

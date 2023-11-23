@@ -3,19 +3,21 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Worker\NetWorker\Client;
-use Worker\NetworkWorkerBase;
+use Worker\Built\JsonRpc\Attribute\Rpc;
+use Worker\Built\JsonRpc\JsonRpc;
+use Worker\Socket\TCPConnection;
+use Worker\Worker;
 
-class TestWs extends NetworkWorkerBase
+class TestWs extends Worker
 {
+    use JsonRpc;
+
     /**
      * @return void
      */
     public function heartbeat(): void
     {
-        foreach ($this->getClients() as $client) {
-            $client->send('hello');
-        }
+        $this->sendMessageToClients('hello,world');
     }
 
     /**
@@ -23,43 +25,56 @@ class TestWs extends NetworkWorkerBase
      */
     public function destroy(): void
     {
-        // TODO: Implement destroy() method.
+        parent::destroy();
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onConnect(Client $client): void
+    protected function onConnect(TCPConnection $client): void
     {
         // TODO: Implement onConnect() method.
     }
 
     /**
-     * @param string $context
-     * @param Client $client
+     * @param string        $context
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, TCPConnection $client): void
     {
         // TODO: Implement onMessage() method.
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onClose(Client $client): void
+    protected function onClose(TCPConnection $client): void
     {
         // TODO: Implement onClose() method.
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    protected function onHandshake(TCPConnection $client): void
     {
         // TODO: Implement onHandshake() method.
+    }
+
+
+    /**
+     * @param string $message
+     * @return mixed
+     */
+    #[Rpc("发送信息到所有客户端")] public function sendMessageToClients(string $message): mixed
+    {
+        foreach ($this->getClients() as $client) {
+            $client->send($message);
+        }
+        return true;
     }
 }

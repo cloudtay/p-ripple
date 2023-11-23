@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace Protocol;
 
-use FileSystem\FileException;
-use Std\ProtocolStd;
+use Core\FileSystem\FileException;
+use Core\Std\ProtocolStd;
 use stdClass;
-use Worker\NetWorker\Client;
+use Worker\Socket\TCPConnection;
 
 /**
  * 一个小而简的报文切割器
@@ -14,12 +14,12 @@ use Worker\NetWorker\Client;
 class CCL implements ProtocolStd
 {
     /**
-     * @param Client $tunnel
-     * @param string $context
+     * @param TCPConnection $tunnel
+     * @param string        $context
      * @return bool|int
      * @throws FileException
      */
-    public function send(Client $tunnel, string $context): bool|int
+    public function send(TCPConnection $tunnel, string $context): bool|int
     {
         $context = CCL::build($context);
         return $tunnel->write($context);
@@ -34,14 +34,14 @@ class CCL implements ProtocolStd
     public function build(string $context): string
     {
         $contextLength = strlen($context);
-        $pack = pack('L', $contextLength);
+        $pack          = pack('L', $contextLength);
         return $pack . $context;
     }
 
     /**
      * 报文验证
      *
-     * @param string $context
+     * @param string        $context
      * @param stdClass|null $Standard 附加参数
      * @return string|false 验证结果
      */
@@ -51,40 +51,38 @@ class CCL implements ProtocolStd
     }
 
     /**
-     * @param Client $tunnel
+     * @param TCPConnection $tunnel
      * @return string|false
      */
-    public function corrective(Client $tunnel): string|false
+    public function corrective(TCPConnection $tunnel): string|false
     {
-        // TODO: Implement corrective() method.
         return false;
     }
 
     /**
-     * @param Client $tunnel
+     * @param TCPConnection $tunnel
      * @return string|false|null
      */
-    public function parse(Client $tunnel): string|null|false
+    public function parse(TCPConnection $tunnel): string|null|false
     {
-        // TODO: Implement parse() method.
         return $this->cut($tunnel);
     }
 
     /**
-     * @param Client $tunnel
+     * @param TCPConnection $tunnel
      * @return string|false|null
      */
-    public function cut(Client $tunnel): string|null|false
+    public function cut(TCPConnection $tunnel): string|null|false
     {
         $buffer = $tunnel->cache();
         if (strlen($buffer) < 4) {
             return false;
         }
         $length = substr($buffer, 0, 4);
-        $pack = unpack('L', $length);
+        $pack   = unpack('L', $length);
         $length = $pack[1];
         if (strlen($buffer) >= $length + 4) {
-            $context = substr($buffer, 4, $length);
+            $context       = substr($buffer, 4, $length);
             $tunnel->cache = substr($buffer, $length + 4);
             return $context;
         }
@@ -92,12 +90,11 @@ class CCL implements ProtocolStd
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return bool|null
      */
-    public function handshake(Client $client): bool|null
+    public function handshake(TCPConnection $client): bool|null
     {
-        // TODO: Implement handshake() method.
         return true;
     }
 }

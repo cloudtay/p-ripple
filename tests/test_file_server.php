@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use FileSystem\FileException;
+use Core\FileSystem\FileException;
 use PRipple;
-use Worker\NetWorker\Client;
-use Worker\NetworkWorkerBase;
+use Worker\Socket\TCPConnection;
+use Worker\Worker;
 
 include __DIR__ . '/vendor/autoload.php';
 
 /**
  *
  */
-class test_file_server extends NetworkWorkerBase
+class test_file_server extends Worker
 {
     /**
      * heartbeat
@@ -36,7 +36,7 @@ class test_file_server extends NetworkWorkerBase
      * execute after the service starts
      * @return void
      */
-    protected function initialize(): void
+    public function initialize(): void
     {
         $filePath = '/tmp/test_file';
         if (!file_exists($filePath)) {
@@ -51,10 +51,10 @@ class test_file_server extends NetworkWorkerBase
 
     /**
      * Fired when a new connection is made
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onConnect(Client $client): void
+    protected function onConnect(TCPConnection $client): void
     {
         $filePath = '/tmp/test_file';
         $file = fopen($filePath, 'r');
@@ -75,30 +75,30 @@ class test_file_server extends NetworkWorkerBase
 
     /**
      * Process server packets
-     * @param string $context
-     * @param Client $client
+     * @param string        $context
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onMessage(string $context, Client $client): void
+    protected function onMessage(string $context, TCPConnection $client): void
     {
 
     }
 
     /**
      * Triggered when the connection is disconnected
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onClose(Client $client): void
+    protected function onClose(TCPConnection $client): void
     {
         echo PHP_EOL . 'client is disconnected.' . PHP_EOL;
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return void
      */
-    protected function onHandshake(Client $client): void
+    protected function onHandshake(TCPConnection $client): void
     {
         // TODO: Implement onHandshake() method.
     }

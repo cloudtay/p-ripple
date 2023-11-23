@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace Protocol;
 
-use Std\ProtocolStd;
-use Std\TunnelStd;
+use Core\Std\ProtocolStd;
+use Core\Std\TunnelStd;
 use stdClass;
-use Worker\NetWorker\Client;
+use Worker\Socket\TCPConnection;
 
 /**
  * TCP协议
@@ -24,7 +24,7 @@ class TCPProtocol implements ProtocolStd
 
     /**
      * @param TunnelStd $tunnel
-     * @param string $context
+     * @param string    $context
      * @return bool|int
      */
     public function send(TunnelStd $tunnel, string $context): bool|int
@@ -33,7 +33,7 @@ class TCPProtocol implements ProtocolStd
     }
 
     /**
-     * @param string $context
+     * @param string        $context
      * @param stdClass|null $Standard
      * @return string|false
      */
@@ -52,10 +52,10 @@ class TCPProtocol implements ProtocolStd
     }
 
     /**
-     * @param Client $tunnel
+     * @param TCPConnection $tunnel
      * @return string|false|null
      */
-    public function parse(Client $tunnel): string|null|false
+    public function parse(TCPConnection $tunnel): string|null|false
     {
         return $this->cut($tunnel);
     }
@@ -66,17 +66,17 @@ class TCPProtocol implements ProtocolStd
      */
     public function cut(TunnelStd $tunnel): string|false
     {
-        if ($tunnel instanceof Client) {
+        if ($tunnel instanceof TCPConnection) {
             return $tunnel->cleanCache();
         }
         return false;
     }
 
     /**
-     * @param Client $client
+     * @param TCPConnection $client
      * @return bool|null
      */
-    public function handshake(Client $client): bool|null
+    public function handshake(TCPConnection $client): bool|null
     {
         return true;
     }

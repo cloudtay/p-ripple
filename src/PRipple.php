@@ -2,8 +2,7 @@
 declare(strict_types=1);
 
 use Core\Kernel;
-use Core\Output;
-use Worker\WorkerBase;
+use Worker\Worker;
 
 /**
  * PRipple
@@ -11,7 +10,7 @@ use Worker\WorkerBase;
 class PRipple
 {
     private static Kernel $kernel;
-    private static int $index = 0;
+    private static int    $index              = 0;
     private static array  $configureArguments = [];
 
     /**
@@ -30,32 +29,25 @@ class PRipple
         define('PP_START_TIMESTAMP', time());
         define('PP_ROOT_PATH', __DIR__);
         define('PP_RUNTIME_PATH', PRipple::getArgument('RUNTIME_PATH', '/tmp'));
-        define('PP_MAX_FILE_HANDLE', intval(shell_exec("ulimit -n")));
+        define('PP_MAX_FILE_HANDLE', 10240);
         PRipple::$kernel = new Kernel();
         return PRipple::$kernel;
     }
 
     /**
      * 获取装配参数
-     * @param string $name
+     * @param string      $name
      * @param string|null $default
      * @return mixed
      */
-    public static function getArgument(string $name, string|null $default = null): mixed
+    public static function getArgument(string $name, mixed $default = null): mixed
     {
         if ($value = PRipple::$configureArguments[$name] ?? null) {
             return $value;
         } elseif ($default) {
             return $default;
         }
-
-        try {
-            throw new Exception("Argument {$name} not found");
-        } catch (Exception $exception) {
-            Output::printException($exception);
-            exit;
-        }
-
+        return null;
     }
 
     /**
@@ -67,7 +59,11 @@ class PRipple
         return md5(strval(PRipple::$index++));
     }
 
-    public static function pushWorker(WorkerBase $worker): Kernel
+    /**
+     * @param Worker $worker
+     * @return Kernel
+     */
+    public static function pushWorker(Worker $worker): Kernel
     {
         PRipple::kernel()->push($worker);
         return PRipple::kernel();
@@ -80,5 +76,14 @@ class PRipple
     public static function kernel(): Kernel
     {
         return PRipple::$kernel;
+    }
+
+    /**
+     * 获取客户端ID
+     * @return int
+     */
+    public static function getClientId(): int
+    {
+        return posix_getpid();
     }
 }

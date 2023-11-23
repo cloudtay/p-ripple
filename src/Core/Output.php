@@ -21,7 +21,7 @@ class Output
         echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
         echo "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n";
         echo "\033[0;32mStack trace:\033[0m\n";
-        $trace = $exception->getTraceAsString();
+        $trace      = $exception->getTraceAsString();
         $traceLines = explode("\n", $trace);
         foreach ($traceLines as $line) {
             echo "\033[0;32m" . $line . "\033[0m\n";

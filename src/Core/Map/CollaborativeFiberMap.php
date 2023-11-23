@@ -5,10 +5,10 @@ namespace Core\Map;
 
 use Core\Constants;
 use Core\Output;
+use Core\Std\CollaborativeFiberStd;
 use Fiber;
-use Std\CollaborativeFiberStd;
 use Throwable;
-use Worker\Build;
+use Worker\Prop\Build;
 
 /**
  *

@@ -2,25 +2,27 @@
 
 namespace Tests;
 
-use App\Facade\PDOPool;
-use App\Http\Request;
-use App\PDOProxy\Exception\RollbackException;
-use App\PDOProxy\PDOProxyPool;
-use App\PDOProxy\PDOTransaction;
-use App\WebApplication\Route;
 use Core\Map\WorkerMap;
 use Generator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\Factory;
+use recycle\Extends\Session\Session;
+use recycle\Http\Request;
+use recycle\Http\Response;
+use recycle\PDOPool;
+use recycle\PDOProxy\Exception\RollbackException;
+use recycle\PDOProxyPool;
+use recycle\PDOTransaction;
+use recycle\WebApplication\Route;
+use function PRipple\delay;
 
 class Index
 {
     /**
-     * @param Request      $request      实现了 CollaborativeFiberStd(纤程构建) 接口的请求对象
-     * @param PDOProxyPool $PDOProxyPool 内置Worker都支持自动依赖注入
+     * @param Request $request 实现了 CollaborativeFiberStd(纤程构建) 接口的请求对象
      * @return Generator 返回一个生成器
      */
-    public static function index(Request $request, PDOProxyPool $PDOProxyPool): Generator
+    public static function index(Request $request): Generator
     {
         /**
          * 在发生异步操作之前,全局的静态属性都是安全的,但不建议使用静态属性
@@ -28,18 +30,11 @@ class Index
          * 构建你需要的对象如 Session|Cache 或将Cookie注入你的无状态Service等
          */
         yield $request->respondBody('hello world');
+    }
 
-        $data = $PDOProxyPool->get('DEFAULT')->query('select * from user where id = ?', [17]);
-
-        /**
-         * 你可以通过 WorkerMap::get 获取已经启动的Worker
-         * 内置的Worker都是单例模式运行并以className命名
-         * @var TestWs $ws
-         */
-        $ws = WorkerMap::get('ws');
-        foreach ($ws->getClients() as $client) {
-            $client->send("用户{$request->client->getAddress()} 访问了网站,取得数据:" . json_encode($data));
-        }
+    public static function rpc(): Generator
+    {
+        yield (new Response())->setBody('test');
     }
 
 
@@ -93,18 +88,19 @@ class Index
         /**
          * PDOPool::class 是 PDOProxyPool的助手类,你可以直接静态方法操作代理池
          */
-        $originData = PDOPool::get('DEFAULT')->query('select * from user where id = ?', [17]);
+        $originData = PDOPool::get('default')->query('select * from user where id = ?', [17]);
 
         /**
          * 你也可以直接使用 PDOProxyPool::class 提供的 instance 方法获取代理池
          * 下面模拟了一次事务回滚
          */
-        $pdoWorker = PDOProxyPool::instance()->get('DEFAULT');
+        $pdoWorker = PDOProxyPool::instance()->get('default');
 
         $pdoWorker->transaction(function (PDOTransaction $transaction) use (&$updateData) {
+            delay(1);
+
             $transaction->query('update user set `username` = ? where `id` = ?', ['changed', 17], []);
             $updateData = $transaction->query('select * from `user` where id = ?', [17], []);
-
             // 数据回滚
             throw new RollbackException('');
         });
@@ -127,5 +123,16 @@ class Index
         $data = DB::table('user')->where('id', 17)->first();
         $data = UserModel::query()->where('id', 17)->first();
         yield $request->respondJson($data);
+    }
+
+    public static function login(Request $request, Session $session): Generator
+    {
+        if ($name = $request->query['name'] ?? null) {
+            $session->set('name', $name);
+            $session->save();
+            yield $request->respondJson(['name' => $name]);
+        } else {
+            yield $request->respondJson(['hello' => $session->get('name')]);
+        }
     }
 }

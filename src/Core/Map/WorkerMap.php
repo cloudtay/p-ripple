@@ -4,15 +4,15 @@ declare(strict_types=1);
 namespace Core\Map;
 
 use Fiber;
-use Worker\WorkerBase;
+use Worker\Worker;
 
 /**
- *
+ * Class WorkerMap
  */
 class WorkerMap
 {
     /**
-     * @var WorkerBase[] $workerMap
+     * @var Worker[] $workerMap
      */
     public static array $workerMap = [];
 
@@ -22,22 +22,22 @@ class WorkerMap
     public static array $fiberMap = [];
 
     /**
-     * @param WorkerBase $worker
-     * @return void
+     * @param Worker $worker
+     * @return Fiber
      */
-    public static function addWorker(WorkerBase $worker): void
+    public static function addWorker(Worker $worker): Fiber
     {
         WorkerMap::$workerMap[$worker->name] = $worker;
-        WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
+        return WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
             $worker->launch();
         });
     }
 
     /**
      * @param string $name
-     * @return WorkerBase|null
+     * @return Worker|null
      */
-    public static function getWorker(string $name): WorkerBase|null
+    public static function getWorker(string $name): Worker|null
     {
         return WorkerMap::$workerMap[$name] ?? null;
     }
@@ -53,10 +53,23 @@ class WorkerMap
 
     /**
      * @param string $name
-     * @return WorkerBase|null
+     * @return Worker|null
      */
-    public static function get(string $name): WorkerBase|null
+    public static function get(string $name): Worker|null
     {
         return WorkerMap::$workerMap[$name] ?? null;
+    }
+
+    /**
+     * 卸载一个服务
+     * @param Worker    $worker
+     * @param bool|null $isFork
+     * @return void
+     */
+    public static function unload(Worker $worker, bool|null $isFork = false): void
+    {
+        unset(WorkerMap::$workerMap[$worker->name]);
+        unset(WorkerMap::$fiberMap[$worker->name]);
+        $worker->unload($isFork);
     }
 }

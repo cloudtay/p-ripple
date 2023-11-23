@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Http\Request;
+use recycle\Http\Request;
 
 class House
 {

@@ -3,13 +3,14 @@ declare(strict_types=1);
 
 namespace PRipple;
 
-use App\ProcessManager\ProcessContainer;
-use App\ProcessManager\ProcessManager;
-use App\Timer\Timer;
 use Closure;
+use Core\Constants;
 use Core\Map\EventMap;
-use Fiber;
-use Worker\Build;
+use Core\Std\CollaborativeFiberStd;
+use Worker\Built\ProcessManager\ProcessContainer;
+use Worker\Built\ProcessManager\ProcessManager;
+use Worker\Built\Timer;
+use Worker\Prop\Build;
 
 /**
  * 延时
@@ -18,29 +19,29 @@ use Worker\Build;
  */
 function delay(int $second): void
 {
-    Timer::instance()->sleep($second);
+    Timer::getInstance()->sleep($second);
 }
 
 /**
  * 延时发布一个事件
- * @param int $second
+ * @param int   $second
  * @param Build $event
  * @return void
  */
 function event(int $second, Build $event): void
 {
-    Timer::instance()->event($second, $event);
+    Timer::getInstance()->event($second, $event);
 }
 
 /**
  * 循环执行一个闭包
- * @param int $second
+ * @param int     $second
  * @param Closure $callable
  * @return void
  */
 function loop(int $second, Closure $callable): void
 {
-    Timer::instance()->loop($second, $callable);
+    Timer::getInstance()->loop($second, $callable);
 }
 
 /**
@@ -51,19 +52,19 @@ function loop(int $second, Closure $callable): void
  */
 function signal(int $processId, int $signalNo): void
 {
-    ProcessManager::instance()->signal($processId, $signalNo);
+    ProcessManager::getInstance()->signal($processId, $signalNo);
 }
 
 /**
  * 创建一个进程
- * @param Closure $closure
+ * @param Closure   $closure
+ * @param bool|null $exit
  * @return bool|int
  */
-function fork(Closure $closure): bool|int
+function fork(Closure $closure, bool|null $exit = true): bool|int
 {
     return ProcessContainer::fork($closure);
 }
-
 
 /**
  * 异步执行
@@ -72,5 +73,10 @@ function fork(Closure $closure): bool|int
  */
 function async(Closure $callable): void
 {
-    EventMap::push(Build::new('temp.fiber', new Fiber($callable), 'anonymous'));
+    EventMap::push(Build::new(Constants::EVENT_TEMP_FIBER, new class($callable) extends CollaborativeFiberStd {
+        public function __construct(Closure $callable)
+        {
+            $this->setupWithCallable($callable);
+        }
+    }, 'anonymous'));
 }
