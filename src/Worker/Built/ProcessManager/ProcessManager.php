@@ -1,12 +1,50 @@
 <?php
+/*
+ * Copyright (c) 2023 cclilshy
+ * Contact Information:
+ * Email: jingnigg@gmail.com
+ * Website: https://cc.cloudtay.com/
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * 版权所有 (c) 2023 cclilshy
+ *
+ * 特此免费授予任何获得本软件及相关文档文件（“软件”）副本的人，不受限制地处理
+ * 本软件，包括但不限于使用、复制、修改、合并、出版、发行、再许可和/或销售
+ * 软件副本的权利，并允许向其提供本软件的人做出上述行为，但须符合以下条件：
+ *
+ * 上述版权声明和本许可声明应包含在本软件的所有副本或主要部分中。
+ *
+ * 本软件按“原样”提供，不提供任何形式的保证，无论是明示或暗示的，
+ * 包括但不限于适销性、特定目的的适用性和非侵权性的保证。在任何情况下，
+ * 无论是合同诉讼、侵权行为还是其他方面，作者或版权持有人均不对
+ * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
+ */
+
 declare(strict_types=1);
 
 namespace Worker\Built\ProcessManager;
 
 use Core\Output;
-use Core\Std\ProtocolStd;
 use Facade\Process;
-use Protocol\CCL;
+use Protocol\Slice;
+use Worker\Built\JsonRpc\Attribute\Rpc;
 use Worker\Built\JsonRpc\JsonRpc;
 use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
@@ -30,7 +68,7 @@ class ProcessManager extends Worker
     public static string $LOCK_PATH;
 
     /**
-     * 映射:进程=>守护ID
+     * 映射 进程=>守护ID
      * @var array
      */
     public array $processObserverHashMap = [];
@@ -48,16 +86,10 @@ class ProcessManager extends Worker
     public array $observerCountMap = [];
 
     /**
-     * CCL协议
-     * @var ProtocolStd
-     */
-    protected ProtocolStd $protocol;
-
-    /**
      * 进程管理器门面
      * @var string $facadeClass
      */
-    protected static string $facadeClass = Process::class;
+    public static string $facadeClass = Process::class;
 
     /**
      * 资源释放
@@ -100,7 +132,7 @@ class ProcessManager extends Worker
         file_exists(ProcessManager::$UNIX_PATH) && unlink(ProcessManager::$UNIX_PATH);
         file_exists(ProcessManager::$LOCK_PATH) && unlink(ProcessManager::$LOCK_PATH);
         $this->bind('unix://' . ProcessManager::$UNIX_PATH);
-        $this->protocol(CCL::class);
+        $this->protocol(Slice::class);
         parent::initialize();
     }
 
@@ -110,7 +142,7 @@ class ProcessManager extends Worker
      * @param TCPConnection $client
      * @return void
      */
-    protected function onMessage(string $context, TCPConnection $client): void
+    public function onMessage(string $context, TCPConnection $client): void
     {
         /**
          * @var Build $build
@@ -159,30 +191,11 @@ class ProcessManager extends Worker
     }
 
     /**
-     * 发送指令
-     * @param int    $observerProcessId
-     * @param string $command
-     * @param mixed  ...$arguments
-     * @return void
-     */
-    public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
-    {
-        if ($observerProcessId === posix_getpid()) {
-            call_user_func([ProcessContainer::class, $command], ...$arguments);
-        } elseif ($client = $this->observerHashmap[$observerProcessId]) {
-            $this->protocol->send($client, Build::new('process.observer.command', [
-                'action'    => $command,
-                'arguments' => $arguments
-            ], ProcessManager::class)->__toString());
-        }
-    }
-
-    /**
      * 客户端断开连接
      * @param TCPConnection $client
      * @return void
      */
-    protected function onClose(TCPConnection $client): void
+    public function onClose(TCPConnection $client): void
     {
         switch ($client->getName()) {
             case ProcessManager::EVENT_PROCESS_FORK:
@@ -195,6 +208,25 @@ class ProcessManager extends Worker
                 $processId = $client->getIdentity();
                 unset($this->observerHashmap[$processId]);
                 break;
+        }
+    }
+
+    /**
+     * 发送指令
+     * @param int    $observerProcessId
+     * @param string $command
+     * @param mixed  ...$arguments
+     * @return void
+     */
+    #[Rpc("向指定进程发送指令")] public function commandToObserver(int $observerProcessId, string $command, mixed ...$arguments): void
+    {
+        if ($observerProcessId === posix_getpid()) {
+            call_user_func([ProcessContainer::class, $command], ...$arguments);
+        } elseif ($client = $this->observerHashmap[$observerProcessId]) {
+            $this->protocol->send($client, Build::new('process.observer.command', [
+                'action'    => $command,
+                'arguments' => $arguments
+            ], ProcessManager::class)->__toString());
         }
     }
 }

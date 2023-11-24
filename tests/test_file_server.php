@@ -54,7 +54,7 @@ class test_file_server extends Worker
      * @param TCPConnection $client
      * @return void
      */
-    protected function onConnect(TCPConnection $client): void
+    public function onConnect(TCPConnection $client): void
     {
         $filePath = '/tmp/test_file';
         $file = fopen($filePath, 'r');
@@ -79,7 +79,7 @@ class test_file_server extends Worker
      * @param TCPConnection $client
      * @return void
      */
-    protected function onMessage(string $context, TCPConnection $client): void
+    public function onMessage(string $context, TCPConnection $client): void
     {
 
     }
@@ -89,7 +89,7 @@ class test_file_server extends Worker
      * @param TCPConnection $client
      * @return void
      */
-    protected function onClose(TCPConnection $client): void
+    public function onClose(TCPConnection $client): void
     {
         echo PHP_EOL . 'client is disconnected.' . PHP_EOL;
     }
@@ -98,7 +98,7 @@ class test_file_server extends Worker
      * @param TCPConnection $client
      * @return void
      */
-    protected function onHandshake(TCPConnection $client): void
+    public function onHandshake(TCPConnection $client): void
     {
         // TODO: Implement onHandshake() method.
     }

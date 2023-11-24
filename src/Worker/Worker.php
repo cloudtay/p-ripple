@@ -1,4 +1,42 @@
 <?php
+/*
+ * Copyright (c) 2023 cclilshy
+ * Contact Information:
+ * Email: jingnigg@gmail.com
+ * Website: https://cc.cloudtay.com/
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * 版权所有 (c) 2023 cclilshy
+ *
+ * 特此免费授予任何获得本软件及相关文档文件（“软件”）副本的人，不受限制地处理
+ * 本软件，包括但不限于使用、复制、修改、合并、出版、发行、再许可和/或销售
+ * 软件副本的权利，并允许向其提供本软件的人做出上述行为，但须符合以下条件：
+ *
+ * 上述版权声明和本许可声明应包含在本软件的所有副本或主要部分中。
+ *
+ * 本软件按“原样”提供，不提供任何形式的保证，无论是明示或暗示的，
+ * 包括但不限于适销性、特定目的的适用性和非侵权性的保证。在任何情况下，
+ * 无论是合同诉讼、侵权行为还是其他方面，作者或版权持有人均不对
+ * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
+ */
+
 declare(strict_types=1);
 
 namespace Worker;
@@ -14,12 +52,11 @@ use Exception;
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
 use PRipple;
-use Protocol\CCL;
+use Protocol\Slice;
 use Protocol\TCPProtocol;
 use Socket;
 use Throwable;
 use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Built\JsonRpc\JsonRpcBuild;
 use Worker\Built\ProcessManager\ProcessContainer;
 use Worker\Map\RpcServices;
 use Worker\Prop\Build;
@@ -36,12 +73,8 @@ class Worker implements WorkerInterface
      * 协同工作模式
      */
     public const MODE_COLLABORATIVE = 1;
-
-    /**
-     * 门面表
-     * @var string $facadeClass
-     */
-    protected static string $facadeClass;
+    public const IDENTITY_USER      = 1;
+    public const IDENTITY_RPC       = 2;
 
     /**
      * 运行模式
@@ -50,7 +83,7 @@ class Worker implements WorkerInterface
     public int $mode = 1;
 
     /**
-     * 客户端名称
+     * 服务名称
      * @var string
      */
     public string $name;
@@ -62,7 +95,7 @@ class Worker implements WorkerInterface
     public bool $busy = false;
 
     /**
-     * 是否为分叉进程
+     * 是否为分生并行进程
      * @var bool $isFork
      */
     public bool $isFork = false;
@@ -83,79 +116,73 @@ class Worker implements WorkerInterface
      * 事件列表
      * @var Build[] $queue
      */
-    protected array $queue = [];
+    public array $queue = [];
 
     /**
      * 订阅事件列表
      * @var array $subscribes
      */
-    protected array $subscribes = [];
+    public array $subscribes = [];
 
     /**
      * Rpc服务连接
      * @var array $rpcServiceSockets
      */
-    protected array $rpcServiceSockets = [];
+    public array $rpcServiceSockets = [];
 
     /**
-     * 是否允许分叉
+     * 是否允许分生并行
      * @var bool $allowFork
      */
-    protected bool $allowFork = true;
+    public bool $allowFork = true;
 
     /**
      * 连接类型
      * @var string
      */
-    protected string $socketType;
+    public string $socketType;
 
     /**
      * 协议
      * @var ProtocolStd
      */
-    protected ProtocolStd $protocol;
+    public ProtocolStd $protocol;
 
     /**
      * 监听地址列表
      * @var array[] $bindAddressList
      */
-    protected array $bindAddressList = [];
+    public array $bindAddressList = [];
 
     /**
      * 监听地址哈希表
      * @var Socket[] $bindAddressHashMap
      */
-    protected array $bindAddressHashMap = [];
+    public array $bindAddressHashMap = [];
 
     /**
      * Rpc监听地址
      * @var string $rpcServiceListenAddress
      */
-    protected string $rpcServiceListenAddress;
+    public string $rpcServiceListenAddress;
 
     /**
      * Rpc监听连接
      * @var Socket $rpcServiceListenSocket
      */
-    protected Socket $rpcServiceListenSocket;
-
-    /**
-     * Rpc客户端连接列表
-     * @var Socket[] $rpcClientSocketSockets
-     */
-    protected array $rpcClientSocketSockets = [];
-
-    /**
-     * Rpc客户端列表
-     * @var TCPConnection[] $rpcClientSocketClients
-     */
-    protected array $rpcClientSocketClients = [];
+    public Socket $rpcServiceListenSocket;
 
     /**
      * 报文切割器
-     * @var CCL $CCL
+     * @var Slice $slice
      */
-    protected CCL $CCL;
+    public Slice $slice;
+
+    /**
+     * 门面类
+     * @var string $facadeClass
+     */
+    public static string $facadeClass;
 
     /**
      * 构造函数
@@ -166,35 +193,7 @@ class Worker implements WorkerInterface
     {
         $this->name = $name;
         $this->protocol($protocol);
-        $this->CCL = new CCL;
-    }
-
-    /**
-     * 绑定协议
-     * @param string|null $protocol
-     * @return $this
-     */
-    public function protocol(string|null $protocol = TCPProtocol::class): static
-    {
-        $this->protocol = new $protocol();
-        return $this;
-    }
-
-    /**
-     * 设置门面类
-     * @return Worker|null
-     */
-    public static function getInstance(): static|null
-    {
-        if (isset(static::$facadeClass)) {
-            return call_user_func([static::$facadeClass, 'getInstance']);
-        }
-        try {
-            throw new Exception('Facade class not found.');
-        } catch (Exception $exception) {
-            Output::printException($exception);
-            return null;
-        }
+        $this->slice = new Slice;
     }
 
     /**
@@ -212,6 +211,17 @@ class Worker implements WorkerInterface
     }
 
     /**
+     * 绑定协议
+     * @param string|null $protocol
+     * @return $this
+     */
+    public function protocol(string|null $protocol = TCPProtocol::class): static
+    {
+        $this->protocol = new $protocol();
+        return $this;
+    }
+
+    /**
      * 初始化时执行
      * @return void
      */
@@ -222,7 +232,6 @@ class Worker implements WorkerInterface
         }
         $this->listen();
         if (isset(static::$facadeClass)) {
-            var_dump(static::$facadeClass);;
             call_user_func([static::$facadeClass, 'setInstance'], $this);
         }
     }
@@ -231,7 +240,7 @@ class Worker implements WorkerInterface
      * 是否使用Rpc服务
      * @return bool
      */
-    private function checkRpcService(): bool
+    public function checkRpcService(): bool
     {
         return in_array(JsonRpc::class, class_uses($this));
     }
@@ -240,23 +249,19 @@ class Worker implements WorkerInterface
      * Rpc服务初始化
      * @return void Rpc服务初始化
      */
-    private function initializeRpcService(): void
+    public function initializeRpcService(): void
     {
         try {
             [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
             switch ($type) {
                 case SocketInet::class:
                     $this->socketType             = SocketInet::class;
-                    $this->rpcServiceListenSocket = SocketInet::create($address, $port, [
-                        SO_REUSEADDR => 1
-                    ]);
+                    $this->rpcServiceListenSocket = SocketInet::create($address, $port, [SO_REUSEADDR => 1]);
                     $this->subscribeSocket($this->rpcServiceListenSocket);
                     break;
                 case SocketUnix::class:
                     $this->socketType             = SocketInet::class;
-                    $this->rpcServiceListenSocket = SocketUnix::create($address, [
-                        SO_REUSEADDR => 1
-                    ]);
+                    $this->rpcServiceListenSocket = SocketUnix::create($address, [SO_REUSEPORT => 1]);
                     $this->subscribeSocket($this->rpcServiceListenSocket);
                     break;
                 default:
@@ -266,27 +271,6 @@ class Worker implements WorkerInterface
         } catch (Exception $exception) {
             Output::printException($exception);
         }
-    }
-
-    /**
-     * 解析地址
-     * @param string $addressFull
-     * @return array
-     * @throws Exception
-     */
-    public static function parseAddress(string $addressFull): array
-    {
-        return [
-            $type = match (true) {
-                str_contains($addressFull, 'unix://') => SocketUnix::class,
-                str_contains($addressFull, 'tcp://') => SocketInet::class,
-                default => throw new Exception('Invalid address')
-            },
-            $addressFull = str_replace(['unix://', 'tcp://'], '', $addressFull),
-            $addressInfo = explode(':', $addressFull),
-            $address = $addressInfo[0],
-            $port = intval(($addressInfo[1] ?? 0)),
-        ];
     }
 
     /**
@@ -300,17 +284,17 @@ class Worker implements WorkerInterface
             $this->rpcServiceListenAddress =
                 'unix://'
                 . PRipple::getArgument('RUNTIME_PATH', '/tmp') . FS
-                . 'rpc' . UL
+                . Worker::IDENTITY_RPC . UL
                 . $address . '.sock';
         }
         return $this->rpcServiceListenAddress;
     }
 
     /**
-     * 创建监听
+     * 列表监听
      * @return void
      */
-    protected function listen(): void
+    public function listen(): void
     {
         try {
             foreach ($this->bindAddressList as $addressFull => $options) {
@@ -341,7 +325,7 @@ class Worker implements WorkerInterface
      * @param Socket $socket
      * @return void
      */
-    protected function subscribeSocket(Socket $socket): void
+    public function subscribeSocket(Socket $socket): void
     {
         try {
             socket_set_nonblock($socket);
@@ -356,26 +340,16 @@ class Worker implements WorkerInterface
      * @param Build $event
      * @return void
      */
-    protected function publishAsync(Build $event): void
+    public function publishAsync(Build $event): void
     {
         EventMap::push($event);
-    }
-
-    /**
-     * 快捷创建
-     * @param string $name
-     * @return static
-     */
-    public static function new(string $name): static
-    {
-        return new static($name);
     }
 
     /**
      * 协作模式运行
      * @return void
      */
-    private function launchCollaborative(): void
+    public function launchCollaborative(): void
     {
         while (true) {
             while ($build = array_shift($this->queue)) {
@@ -391,7 +365,7 @@ class Worker implements WorkerInterface
      * @return void
      * @throws Throwable
      */
-    private function consumption(Build $build): void
+    public function consumption(Build $build): void
     {
         switch ($build->name) {
             case Constants::EVENT_SOCKET_READ:
@@ -411,7 +385,7 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * 处理连接请求
+     * 处理客户端请求
      * @param Socket $socket
      * @return void
      */
@@ -419,18 +393,16 @@ class Worker implements WorkerInterface
     {
         if (in_array($socket, array_values($this->bindAddressHashMap), true)) {
             if ($client = $this->accept($socket)) {
-                $client->setIdentity('user');
+                $client->setIdentity(Worker::IDENTITY_USER);
             }
             return;
         } elseif ($this->checkRpcService() && $socket === $this->rpcServiceListenSocket) {
-            echo 188;
             if ($client = $this->accept($socket)) {
-                $client->setIdentity('rpc');
+                $client->setIdentity(Worker::IDENTITY_RPC);
                 $this->subscribeSocket($client->getSocket());
             }
             return;
         }
-        echo 'onconnect';
 
         if (!$client = $this->getClientBySocket($socket)) {
             return;
@@ -445,7 +417,7 @@ class Worker implements WorkerInterface
             }
         }
         $client->cache .= $context;
-        if ($client->getIdentity() === 'user') {
+        if ($client->getIdentity() === Worker::IDENTITY_USER) {
             if (!$client->verify) {
                 if ($handshake = $this->protocol->handshake($client)) {
                     $client->handshake($this->protocol);
@@ -455,8 +427,8 @@ class Worker implements WorkerInterface
                 }
             }
             $this->splitMessage($client);
-        } elseif ($client->getIdentity() === 'rpc') {
-            while ($content = $this->CCL->parse($client)) {
+        } elseif ($this->checkRpcService() && $client->getIdentity() === Worker::IDENTITY_RPC) {
+            while ($content = $this->slice->parse($client)) {
                 $build      = unserialize($content);
                 $rpcRequest = $build->data;
                 if (method_exists($this, $rpcRequest->method)) {
@@ -464,12 +436,14 @@ class Worker implements WorkerInterface
                         call_user_func_array([$this, $rpcRequest->method], $rpcRequest->params)
                     );
                     try {
-                        $this->CCL->send($client, $build->serialize());
+                        $this->slice->send($client, $build->serialize());
                     } catch (FileException $exception) {
                         Output::printException($exception);
                     }
                 }
             }
+        } else {
+            echo '未知的客户端身份' . PHP_EOL;
         }
     }
 
@@ -478,7 +452,7 @@ class Worker implements WorkerInterface
      * @param Socket $listenSocket
      * @return TCPConnection|false
      */
-    protected function accept(Socket $listenSocket): TCPConnection|false
+    public function accept(Socket $listenSocket): TCPConnection|false
     {
         try {
             if ($socket = socket_accept($listenSocket)) {
@@ -499,7 +473,7 @@ class Worker implements WorkerInterface
      * @param Socket $socket
      * @return TCPConnection
      */
-    protected function addSocket(Socket $socket): TCPConnection
+    public function addSocket(Socket $socket): TCPConnection
     {
         $name                       = Worker::getNameBySocket($socket);
         $this->clientSockets[$name] = $socket;
@@ -525,7 +499,7 @@ class Worker implements WorkerInterface
      * @param TCPConnection $client
      * @return void
      */
-    protected function onConnect(TCPConnection $client): void
+    public function onConnect(TCPConnection $client): void
     {
 
     }
@@ -570,14 +544,19 @@ class Worker implements WorkerInterface
      */
     public function destroy(): void
     {
-        if ($this->checkRpcService()) {
-            socket_close($this->rpcServiceListenSocket);
-            try {
+        try {
+            foreach ($this->bindAddressList as $address) {
                 [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
                 $type === SocketUnix::class && unlink($address);
-            } catch (Exception $exception) {
-                Output::printException($exception);
             }
+            if ($this->checkRpcService()) {
+                socket_close($this->rpcServiceListenSocket);
+
+                [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
+                $type === SocketUnix::class && unlink($address);
+            }
+        } catch (Exception $exception) {
+            Output::printException($exception);
         }
     }
 
@@ -586,7 +565,7 @@ class Worker implements WorkerInterface
      * @param Socket $socket
      * @return void
      */
-    protected function unsubscribeSocket(Socket $socket): void
+    public function unsubscribeSocket(Socket $socket): void
     {
         try {
             $this->publishAsync(Build::new(Constants::EVENT_SOCKET_UNSUBSCRIBE, $socket, $this->name));
@@ -600,7 +579,7 @@ class Worker implements WorkerInterface
      * @param TCPConnection $client
      * @return void
      */
-    protected function onClose(TCPConnection $client): void
+    public function onClose(TCPConnection $client): void
     {
 
     }
@@ -610,7 +589,7 @@ class Worker implements WorkerInterface
      * @param TCPConnection $client
      * @return void
      */
-    protected function onHandshake(TCPConnection $client): void
+    public function onHandshake(TCPConnection $client): void
     {
 
     }
@@ -630,7 +609,7 @@ class Worker implements WorkerInterface
      * @param TCPConnection $client
      * @return void
      */
-    protected function splitMessage(TCPConnection $client): void
+    public function splitMessage(TCPConnection $client): void
     {
         while ($content = $client->getPlaintext()) {
             $this->onMessage($content, $client);
@@ -643,7 +622,7 @@ class Worker implements WorkerInterface
      * @param TCPConnection $client
      * @return void
      */
-    protected function onMessage(string $context, TCPConnection $client): void
+    public function onMessage(string $context, TCPConnection $client): void
     {
 
     }
@@ -662,7 +641,7 @@ class Worker implements WorkerInterface
      * @param Build $event
      * @return void
      */
-    protected function handleEvent(Build $event): void
+    public function handleEvent(Build $event): void
     {
     }
 
@@ -671,7 +650,7 @@ class Worker implements WorkerInterface
      * @param Build|null $event
      * @return void
      */
-    protected function publishAwait(Build|null $event = null): void
+    public function publishAwait(Build|null $event = null): void
     {
         try {
             if (!$event) {
@@ -689,7 +668,7 @@ class Worker implements WorkerInterface
      * 独占模式运行
      * @return void
      */
-    private function launchAlone(): void
+    public function launchAlone(): void
     {
         ProcessContainer::fork(function () {
             $this->launchCollaborative();
@@ -697,7 +676,7 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * 进程分叉
+     * 进程分生并行
      * @param int|null $count
      * @return int $count
      */
@@ -717,8 +696,8 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * Worker进程分叉前执行
-     * @return bool 返回true则允许进程分叉,返回false则禁止进程分叉,禁止进程分叉的worker会在子进程中自动被卸载
+     * Worker进程分生并行前执行
+     * @return bool 返回true则允许进程分生并行,返回false则禁止进程分生并行,禁止进程分生并行的worker会在子进程中自动被卸载
      */
     public function forkBefore(): bool
     {
@@ -735,13 +714,12 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * 进程分叉时执行
+     * 进程分生并行时执行
      * 默认会取消接管父进程的所有客户端连接
      * @return void
      */
     public function forking(): void
     {
-        echo "forking : {$this->name}\n";
         $this->isFork = true;
         // 取消接管父进程的客户端连接
         foreach ($this->getClients() as $client) {
@@ -761,21 +739,18 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * 被动分叉会触发器,默认会取消接管父进程的所有客户端连接和监听
+     * 被动分生并行会触发器,默认会取消接管父进程的所有客户端连接和监听
      * @return void
      */
     public function forkPassive(): void
     {
-        echo "forkPassive : {$this->name}\n";
         $this->isFork = true;
         foreach ($this->getClients() as $client) {
             $this->unsubscribeSocket($client->getSocket());
             unset($this->subscribes[$client->getHash()]);
             unset($this->clients[$client->getHash()]);
         }
-        foreach ($this->bindAddressHashMap as $socket) {
-            $this->unsubscribeSocket($socket);
-        }
+       var_dump($this->bindAddressHashMap);
         $this->bindAddressHashMap = array_filter($this->bindAddressHashMap, function (Socket $socket) {
             $this->unsubscribeSocket($socket);
             return false;
@@ -783,7 +758,7 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * Worker进程分叉后执行
+     * Worker进程分生并行后执行
      * @return void
      */
     public function forkAfter(): void
@@ -828,7 +803,7 @@ class Worker implements WorkerInterface
      * @param string $event
      * @return void
      */
-    protected function subscribe(string $event): void
+    public function subscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new(Constants::EVENT_EVENT_SUBSCRIBE, $event, $this->name));
@@ -844,7 +819,7 @@ class Worker implements WorkerInterface
      * @return void
      * @throws Throwable
      */
-    protected function unsubscribe(string $event): void
+    public function unsubscribe(string $event): void
     {
         try {
             $this->publishAsync(Build::new(Constants::EVENT_EVENT_UNSUBSCRIBE, $event, $this->name));
@@ -858,15 +833,15 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * worker自带的纤程恢复方法,自动遵循规范处流程理大多数的事件
-     * 如果Worker有自己的调度规范,请重写此方法
-     * 一般我不建议这么做,如果有新的想法可以发表你的意见
+     * The fiber recovery method that comes with the worker automatically follows the standard processing procedures to handle most events.
+     * If the Worker has its own scheduling specification, please override this method
+     * Bug generally I don't recommend doing this. If you have new ideas, you can express your opinions.
      *
      * @param string     $hash
      * @param mixed|null $data
      * @return bool
      */
-    protected function resume(string $hash, mixed $data = null): bool
+    public function resume(string $hash, mixed $data = null): bool
     {
         if (!$collaborativeFiber = CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null) {
             return false;
@@ -890,12 +865,62 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * 多路复用模式运行
+     * 定义Worker运行模式
      * @param int|null $mode
      * @return void
      */
-    protected function mode(int|null $mode = Worker::MODE_COLLABORATIVE): void
+    public function mode(int|null $mode = Worker::MODE_COLLABORATIVE): void
     {
         $this->mode = $mode;
+    }
+
+
+    /**
+     * 获取门面类
+     * @return Worker|null
+     */
+    public static function getInstance(): static|null
+    {
+        if (isset(static::$facadeClass)) {
+            return call_user_func([static::$facadeClass, 'getInstance']);
+        }
+        try {
+            throw new Exception('Facade class not found.');
+        } catch (Exception $exception) {
+            Output::printException($exception);
+            return null;
+        }
+    }
+
+
+    /**
+     * 解析地址
+     * @param string $addressFull
+     * @return array
+     * @throws Exception
+     */
+    public static function parseAddress(string $addressFull): array
+    {
+        return [
+            $type = match (true) {
+                str_contains($addressFull, 'unix://') => SocketUnix::class,
+                str_contains($addressFull, 'tcp://') => SocketInet::class,
+                default => throw new Exception('Invalid address')
+            },
+            $addressFull = str_replace(['unix://', 'tcp://'], '', $addressFull),
+            $addressInfo = explode(':', $addressFull),
+            $address = $addressInfo[0],
+            $port = intval(($addressInfo[1] ?? 0)),
+        ];
+    }
+
+    /**
+     * 便捷创建
+     * @param string $name
+     * @return static
+     */
+    public static function new(string $name): static
+    {
+        return new static($name);
     }
 }
