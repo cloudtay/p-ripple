@@ -43,21 +43,25 @@ use Core\Map\CollaborativeFiberMap;
 use Core\Output;
 use Exception;
 use Protocol\Slice;
+use Socket;
 use Throwable;
-use Worker\Prop\Build;
+use Worker\Built\JsonRpc\Exception\RpcException;
 use Worker\Socket\SocketInet;
 use Worker\Socket\SocketUnix;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
+/**
+ * This is a Json Rpc connection for this process to interact with services of other processes.
+ */
 class JsonRpcConnection
 {
     public const  MODE_LOCAL  = 1;
     public const  MODE_REMOTE = 2;
     public TCPConnection $tcpConnection;
-    private int          $mode = 1;
     private Worker       $workerBase;
     private Slice        $slice;
+    private int          $mode = 1;
     public string        $rpcServiceSocketAddress;
 
     /**
@@ -71,36 +75,30 @@ class JsonRpcConnection
     }
 
     /**
-     * @return void
+     * @return Socket|false
      */
-    public function connect(): void
+    public function connect(): Socket|false
     {
         $this->slice = new Slice();
         $this->mode  = JsonRpcConnection::MODE_REMOTE;
         try {
             [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->rpcServiceSocketAddress);
-            switch ($type) {
-                case SocketUnix::class:
-                    $this->tcpConnection = new TCPConnection(SocketUnix::connect($addressFull), $type);
-                    break;
-                case SocketInet::class:
-                    $this->tcpConnection = new TCPConnection(SocketInet::connect($address, $port), $type);
-                    break;
-            }
-            $this->workerBase->bindAddressHashMap[$addressFull] = $this->workerBase->name;
-            $this->workerBase->subscribeSocket($this->tcpConnection->getSocket());
-            $client                                                       = $this->workerBase->addSocket($this->tcpConnection->getSocket());
-            $this->workerBase->rpcServiceSockets[$this->workerBase->name] = $client;
-            $client->setIdentity(Worker::IDENTITY_RPC);
+            return match ($type) {
+                SocketUnix::class => SocketUnix::connect($addressFull),
+                SocketInet::class => SocketInet::connect($address, $port),
+                default => false
+            };
         } catch (Exception $exception) {
             Output::printException($exception);
         }
+        return false;
     }
 
     /**
      * @param string $method
      * @param mixed  ...$params
      * @return mixed
+     * @throws RpcException
      */
     public function call(string $method, mixed ...$params): mixed
     {
@@ -115,10 +113,16 @@ class JsonRpcConnection
      * @param string $method
      * @param array  $params
      * @return mixed
+     * @throws RpcException
      */
     private function localCall(string $method, array $params): mixed
     {
-        return call_user_func_array([$this->workerBase, $method], $params);
+        if (method_exists($this->workerBase, $method)) {
+            return call_user_func_array([$this->workerBase, $method], $params);
+        } elseif (function_exists($method)) {
+            return call_user_func_array($method, $params);
+        }
+        throw new RpcException('Method not found.');
     }
 
     /**
@@ -131,11 +135,9 @@ class JsonRpcConnection
         try {
             $this->slice->send(
                 $this->tcpConnection,
-                Build::new(
-                    'rpc.json.call',
-                    JsonRpcBuild::create(posix_getpid(), $method, ...$params),
-                    CollaborativeFiberMap::current()->hash
-                )
+                (new JsonRpcBuild(CollaborativeFiberMap::current()->hash))
+                    ->method($method)
+                    ->params($params)->request()
             );
             return CollaborativeFiberMap::current()->publishAwait('suspend', []);
         } catch (Throwable $exception) {

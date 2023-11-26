@@ -45,13 +45,13 @@ use Core\Map\EventMap;
 use Core\Map\SocketMap;
 use Core\Map\WorkerMap;
 use Facade\JsonRpc;
+use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
 use Worker\Built\BufferWorker;
 use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\ProcessManager\ProcessContainer;
-use Worker\Built\ProcessManager\ProcessManager;
+use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Built\Timer;
 use Worker\Prop\Build;
 use Worker\Worker;
@@ -71,7 +71,7 @@ class Kernel
      * 是否为子进程
      * @var bool $isFork
      */
-    private bool $isFork = false;
+    public bool $isFork = false;
 
     /**
      * 当前进程主导者
@@ -93,10 +93,23 @@ class Kernel
      */
     #[NoReturn] public function launch(): void
     {
-        foreach (EventMap::$eventMap as $event) {
-            $this->handleEvent($event);
+        $this->consumption();
+        foreach (WorkerMap::$workerMap as $worker) {
+            WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
+                $worker->launch();
+            });
+            try {
+                if ($response = WorkerMap::$fiberMap[$worker->name]->start()) {
+                    EventMap::push($response);
+                }
+                if ($this->isFork()) {
+                    break;
+                }
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+            }
         }
-        JsonRpc::connectAll();
+        JsonRpc::getInstance()->connectAll();
         $this->loop();
     }
 
@@ -111,7 +124,7 @@ class Kernel
             $worker->destroy();
         }
         Output::info('[PRipple]', 'Stopped successfully...');
-        exit;
+        exit(0);
     }
 
     /**
@@ -129,7 +142,8 @@ class Kernel
     }
 
     /**
-     * 初始化
+     * 初始化在该阶段应确保RPC/监听等服务已经注册到对应列表
+     * 保证在Launch时支持不同类型的服务启动模式都能顺利建立连接
      * @return void
      */
     private function initialize(): void
@@ -139,7 +153,21 @@ class Kernel
     }
 
     /**
-     * 插入服务
+     * 启动内置服务
+     * @return void
+     */
+    private function loadBuiltInServices(): void
+    {
+        $this->push(
+            $timer = Timer::new(Timer::class),
+            $processManager = ProcessTree::new(ProcessTree::class),
+            $bufferWorker = BufferWorker::new(BufferWorker::class),
+            $jsonRpcClientWorker = JsonRpcClient::new(JsonRpcClient::class)
+        );
+    }
+
+    /**
+     * 插入服务,该方法会直接执行服务的初始化
      * @param Worker ...$workers
      * @return Kernel
      */
@@ -148,9 +176,7 @@ class Kernel
         foreach ($workers as $worker) {
             try {
                 Output::info("[{$worker->name}]");
-                if ($response = WorkerMap::addWorker($worker)->start()) {
-                    EventMap::push($response);
-                }
+                WorkerMap::addWorker($worker)->initialize();
             } catch (Throwable $exception) {
                 Output::printException($exception);
             }
@@ -158,20 +184,6 @@ class Kernel
         return $this;
     }
 
-
-    /**
-     * 启动内置服务
-     * @return void
-     */
-    private function loadBuiltInServices(): void
-    {
-        $this->push(
-            $timer = Timer::new(Timer::class),
-            $processManager = ProcessManager::new(ProcessManager::class),
-            $bufferWorker = BufferWorker::new(BufferWorker::class),
-            $jsonRpcClientWorker = JsonRpcClient::new(JsonRpcClient::class)
-        );
-    }
 
     /**
      * 注册信号处理器
@@ -201,30 +213,25 @@ class Kernel
             case Constants::EVENT_SOCKET_READ:
             case Constants::EVENT_SOCKET_WRITE:
                 $socketHash = spl_object_hash($event->data);
-                if ($workerName = SocketMap::$workerMap[$socketHash] ?? null) {
+                if ($workerName = SocketMap::$worker[$socketHash] ?? null) {
                     WorkerMap::$workerMap[$workerName]->handleSocket($event->data);
-                    echo 'hash:' . $socketHash . 'worker name:' . $workerName . PHP_EOL;
-                } else {
-                    echo '找到野生的socket' . PHP_EOL;
                 }
                 break;
             case Constants::EVENT_SOCKET_SUBSCRIBE:
-                $socketHash                        = spl_object_hash($event->data);
-                SocketMap::$workerMap[$socketHash] = $event->source;
-                SocketMap::$sockets[$socketHash]   = $event->data;
-
-                echo 'worker name:' . $event->source . 'subscribe:' . $socketHash . PHP_EOL;
+                $socketHash                      = spl_object_hash($event->data);
+                SocketMap::$worker[$socketHash]  = $event->source;
+                SocketMap::$sockets[$socketHash] = $event->data;
                 break;
             case Constants::EVENT_SOCKET_UNSUBSCRIBE:
                 $socketHash = spl_object_hash($event->data);
-                unset(SocketMap::$workerMap[$socketHash]);
+                unset(SocketMap::$worker[$socketHash]);
                 unset(SocketMap::$sockets[$socketHash]);
                 break;
             case Constants::EVENT_EVENT_SUBSCRIBE:
-                SocketMap::$workerMap[$event->data] = $event->source;
+                SocketMap::$worker[$event->data] = $event->source;
                 break;
             case Constants::EVENT_EVENT_UNSUBSCRIBE:
-                unset(SocketMap::$workerMap[$event->data]);
+                unset(SocketMap::$worker[$event->data]);
                 break;
             case Constants::EVENT_TEMP_FIBER:
                 try {
@@ -243,6 +250,9 @@ class Kernel
                 return;
             case Constants::EVENT_FIBER_THROW_EXCEPTION:
                 $event->source->throwExceptionInFiber($event->data);
+                break;
+            case Constants::EVENT_PUSH_SERVICE:
+                $this->push($event->data);
                 break;
             default:
                 $this->distribute($event);
@@ -297,7 +307,7 @@ class Kernel
      */
     private function distribute(Build $event): void
     {
-        if ($subscriber = SocketMap::$workerMap[$event->name] ?? null) {
+        if ($subscriber = SocketMap::$worker[$event->name] ?? null) {
             try {
                 if ($event = WorkerMap::$fiberMap[$subscriber]->resume($event)) {
                     EventMap::push($event);
@@ -331,52 +341,14 @@ class Kernel
 
     /**
      * 服务请求分生
-     * @param Worker $masterWorker
-     * @return int
+     * @return void
      */
-    public function fork(Worker $masterWorker): int
+    public function consumption(): void
     {
         while ($event = array_shift(EventMap::$eventMap)) {
             $this->handleEvent($event);
+            EventMap::$count--;
         }
-        $this->forkBefore();
-        $processId = ProcessContainer::fork(function () use ($masterWorker) {
-            $this->isFork       = true;
-            $this->masterWorker = $masterWorker;
-            foreach (WorkerMap::$workerMap as $workerName => $worker) {
-                if ($worker->name !== $masterWorker->name) {
-                    $worker->forkPassive();
-                } else {
-                    $worker->forking();
-                }
-            }
-        }, false);
-        if ($processId > 0) {
-            $this->forkAfter();
-        }
-        return $processId;
-    }
-
-    /**
-     * 分生后主程执行
-     * @return void
-     */
-    public function forkAfter(): void
-    {
-        foreach (WorkerMap::$workerMap as $worker) {
-            $worker->forkAfter();
-        }
-    }
-
-    /**
-     * 分生前主进程执行
-     * @return Worker[] $workers
-     */
-    public function forkBefore(): array
-    {
-        return array_filter(WorkerMap::$workerMap, function (Worker $worker) {
-            return $worker->forkBefore();
-        });
     }
 
     /**

@@ -41,12 +41,13 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
+use Core\MapInterface;
 use Socket;
 
 /**
  *
  */
-class SocketMap
+class SocketMap implements MapInterface
 {
     /**
      * @var Socket[] $sockets
@@ -56,7 +57,7 @@ class SocketMap
     /**
      * @var array $socketHashMap
      */
-    public static array $workerMap = [];
+    public static array $worker = [];
 
     /**
      * @var int

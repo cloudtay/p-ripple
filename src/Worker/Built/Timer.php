@@ -194,14 +194,10 @@ class Timer extends Worker
     }
 
     /**
-     * 主动fork时清空任务队列
      * @return void
      */
     public function forking(): void
     {
-        while (!$this->taskQueue->isEmpty()) {
-            $this->taskQueue->extract();
-        }
         parent::forking();
     }
 }

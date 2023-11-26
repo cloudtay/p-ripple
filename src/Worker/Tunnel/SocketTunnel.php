@@ -206,16 +206,16 @@ class SocketTunnel implements TunnelStd
     public function __construct(mixed $socket)
     {
         socket_getsockname($socket, $address, $port);
-        $this->address = $address;
-        $this->port = $port ?? 0;
-        $this->hash = Worker::getNameBySocket($socket);
-        $this->socket = $socket;
-        $this->name = '';
-        $this->sendBufferSize = socket_get_option($socket, SOL_SOCKET, SO_SNDBUF);
-        $this->receiveBufferSize = socket_get_option($socket, SOL_SOCKET, SO_RCVBUF);
-        $this->sendLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_SNDLOWAT);
+        $this->address             = $address;
+        $this->port                = $port ?? 0;
+        $this->hash                = Worker::getHashBySocket($socket);
+        $this->socket              = $socket;
+        $this->name                = '';
+        $this->sendBufferSize      = socket_get_option($socket, SOL_SOCKET, SO_SNDBUF);
+        $this->receiveBufferSize   = socket_get_option($socket, SOL_SOCKET, SO_RCVBUF);
+        $this->sendLowWaterSize    = socket_get_option($socket, SOL_SOCKET, SO_SNDLOWAT);
         $this->receiveLowWaterSize = socket_get_option($socket, SOL_SOCKET, SO_RCVLOWAT);
-        $this->bufferFilePath = PP_RUNTIME_PATH . '/socket_buffer_' . getmypid() . '_' . $this->hash . SocketTunnel::EXT;
+        $this->bufferFilePath      = PP_RUNTIME_PATH . '/socket_buffer_' . getmypid() . '_' . $this->hash . SocketTunnel::EXT;
         if (File::exists($this->bufferFilePath)) {
             unlink($this->bufferFilePath);
         }
@@ -449,9 +449,9 @@ class SocketTunnel implements TunnelStd
     {
         if (count(get_resources()) < PP_MAX_FILE_HANDLE) {
             if ($bufferFile = File::create($this->bufferFilePath, 'r+')) {
-                $this->bufferFile = FileTunnel::create($bufferFile);
-                $this->openBuffer = true;
-                $this->bufferPoint = 0;
+                $this->bufferFile   = FileTunnel::create($bufferFile);
+                $this->openBuffer   = true;
+                $this->bufferPoint  = 0;
                 $this->bufferLength = 0;
                 EventMap::push(Build::new(Constants::EVENT_SOCKET_BUFFER, $this, SocketTunnel::class));
             } else {
@@ -476,7 +476,7 @@ class SocketTunnel implements TunnelStd
     /**
      * 实时写入数据
      * 写入数据失败时将不再抛出异常而是返回false
-     * @param string $context
+     * @param string    $context
      * @param bool|null $async
      * @return int|false
      * @throws FileException
@@ -489,20 +489,20 @@ class SocketTunnel implements TunnelStd
             if ($this->openBuffer) {
                 while ($this->bufferLength > 0) {
                     $this->bufferFile->adjustPoint($this->bufferPoint);
-                    $readLength = min($this->sendBufferSize, $this->bufferLength);
-                    $bufferContextFragment = $this->bufferFile->read($readLength, $resultLength);
+                    $readLength                  = min($this->sendBufferSize, $this->bufferLength);
+                    $bufferContextFragment       = $this->bufferFile->read($readLength, $resultLength);
                     $bufferContextFragmentLength = strlen($bufferContextFragment);
-                    $writeLength = socket_send($this->socket, $bufferContextFragment, $bufferContextFragmentLength, 0);
+                    $writeLength                 = socket_send($this->socket, $bufferContextFragment, $bufferContextFragmentLength, 0);
                     if ($writeLength === false) {
                         break;
                     } elseif ($writeLength !== $bufferContextFragmentLength) {
-                        $transferComplete += $writeLength;
-                        $this->bufferPoint += $writeLength;
+                        $transferComplete   += $writeLength;
+                        $this->bufferPoint  += $writeLength;
                         $this->bufferLength -= $writeLength;
                     } else {
-                        $this->bufferPoint += $writeLength;
+                        $this->bufferPoint  += $writeLength;
                         $this->bufferLength -= $writeLength;
-                        $transferComplete += $writeLength;
+                        $transferComplete   += $writeLength;
                     }
                 }
             }
@@ -518,8 +518,8 @@ class SocketTunnel implements TunnelStd
                 if ($writeLength === false) {
                     $full = false;
                 } elseif ($writeLength !== strlen($item)) {
-                    $full = false;
-                    $item = substr($item, $writeLength);
+                    $full             = false;
+                    $item             = substr($item, $writeLength);
                     $transferComplete += $writeLength;
                 } else {
                     $full = true;
@@ -548,7 +548,7 @@ class SocketTunnel implements TunnelStd
 
     /**
      * 实时读取数据
-     * @param int $length
+     * @param int       $length
      * @param int|null &$resultLength
      * @return string|false
      */
@@ -561,22 +561,22 @@ class SocketTunnel implements TunnelStd
             // 严格接收模式
             $target = true;
         }
-        $data = '';
+        $data         = '';
         $resultLength = 0;
         if (!$recLength = socket_recv($this->socket, $_buffer, min($length, $this->receiveBufferSize), 0)) {
             return false;
         }
-        $length -= $recLength;
-        $data .= $_buffer;
-        $resultLength += $recLength;
+        $length                 -= $recLength;
+        $data                   .= $_buffer;
+        $resultLength           += $recLength;
         $this->receiveFlowCount += $recLength;
         while ($target && $length > 0) {
             if (!$recLength = socket_recv($this->socket, $_buffer, min($length, $this->receiveBufferSize), 0)) {
                 return false;
             }
-            $length -= $recLength;
-            $data .= $_buffer;
-            $resultLength += $recLength;
+            $length                 -= $recLength;
+            $data                   .= $_buffer;
+            $resultLength           += $recLength;
             $this->receiveFlowCount += $recLength;
         }
         return $data;
@@ -588,8 +588,8 @@ class SocketTunnel implements TunnelStd
     private function closeBuffer(): void
     {
         $this->bufferFile->destroy();
-        $this->openBuffer = false;
-        $this->bufferPoint = 0;
+        $this->openBuffer   = false;
+        $this->bufferPoint  = 0;
         $this->bufferLength = 0;
         EventMap::push(Build::new(Constants::EVENT_SOCKET_BUFFER_UN, $this, SocketTunnel::class));
     }
@@ -647,9 +647,9 @@ class SocketTunnel implements TunnelStd
         if ($this->openBuffer && $this->bufferLength > 0) {
             $this->bufferFile->adjustPoint($this->bufferPoint);
             while ($this->bufferLength > 0 && $bufferContextFragment = $this->bufferFile->read(min($this->sendBufferSize, $this->bufferLength), $resultLength)) {
-                $handledLength = $this->write($bufferContextFragment);
+                $handledLength      = $this->write($bufferContextFragment);
                 $this->bufferLength -= $handledLength;
-                $transferComplete += $handledLength;
+                $transferComplete   += $handledLength;
             }
         }
 

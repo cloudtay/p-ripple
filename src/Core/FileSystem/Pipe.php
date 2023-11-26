@@ -46,7 +46,7 @@ use Core\FileSystem\Std\FileStd;
 
 
 /**
- * 管道类
+ * Pipeline class
  */
 class Pipe implements FileStd
 {

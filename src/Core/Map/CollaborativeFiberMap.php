@@ -42,6 +42,7 @@ declare(strict_types=1);
 namespace Core\Map;
 
 use Core\Constants;
+use Core\MapInterface;
 use Core\Output;
 use Core\Std\CollaborativeFiberStd;
 use Fiber;
@@ -51,7 +52,7 @@ use Worker\Prop\Build;
 /**
  *
  */
-class CollaborativeFiberMap
+class CollaborativeFiberMap implements MapInterface
 {
     /**
      * @var CollaborativeFiberStd[] $collaborativeFiberMap

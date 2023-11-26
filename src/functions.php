@@ -45,8 +45,7 @@ use Closure;
 use Core\Constants;
 use Core\Map\EventMap;
 use Core\Std\CollaborativeFiberStd;
-use Worker\Built\ProcessManager\ProcessContainer;
-use Worker\Built\ProcessManager\ProcessManager;
+use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Built\Timer;
 use Worker\Prop\Build;
 
@@ -90,7 +89,7 @@ function loop(int $second, Closure $callable): void
  */
 function signal(int $processId, int $signalNo): void
 {
-    ProcessManager::getInstance()->signal($processId, $signalNo);
+    ProcessTree::getInstance()->signal($processId, $signalNo);
 }
 
 /**
@@ -99,9 +98,9 @@ function signal(int $processId, int $signalNo): void
  * @param bool|null $exit
  * @return bool|int
  */
-function fork(Closure $closure, bool|null $exit = true): bool|int
+function process(Closure $closure, bool|null $exit = true): bool|int
 {
-    return ProcessContainer::fork($closure);
+    return ProcessTree::getInstance()->process($closure, $exit);
 }
 
 /**

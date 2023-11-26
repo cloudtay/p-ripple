@@ -41,13 +41,14 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
+use Core\MapInterface;
 use Fiber;
 use Worker\Worker;
 
 /**
  * Class WorkerMap
  */
-class WorkerMap
+class WorkerMap implements MapInterface
 {
     /**
      * @var Worker[] $workerMap
@@ -61,14 +62,11 @@ class WorkerMap
 
     /**
      * @param Worker $worker
-     * @return Fiber
+     * @return Worker
      */
-    public static function addWorker(Worker $worker): Fiber
+    public static function addWorker(Worker $worker): Worker
     {
-        WorkerMap::$workerMap[$worker->name] = $worker;
-        return WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
-            $worker->launch();
-        });
+        return WorkerMap::$workerMap[$worker->name] = $worker;
     }
 
     /**

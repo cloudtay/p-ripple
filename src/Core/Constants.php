@@ -61,4 +61,5 @@ class Constants
     public const        EVENT_SOCKET_BUFFER_UN      = 'socket.buffer.on';
     public const        EVENT_SOCKET_BUFFER         = 'socket.buffer';
     public const        EVENT_FIBER_THROW_EXCEPTION = 'fiber.throw.exception';
+    public const        EVENT_PUSH_SERVICE          = 'push.server';
 }

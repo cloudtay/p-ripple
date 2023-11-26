@@ -45,67 +45,46 @@ namespace Worker\Built\JsonRpc;
  */
 class JsonRpcBuild
 {
-    public string $version = '2.0';
-    public string $method;
-    public array  $params  = [];
-    public int    $id;
-    public mixed  $result;
+    public string     $version = '2.0';
+    public string     $method;
+    public array      $params  = [];
+    public int|string $id;
+    public mixed      $result;
 
     /**
-     * @param int    $id
-     * @param string $method
-     * @param array  $params
+     * @param int|string $id
      */
-    public function __construct(int $id, string $method, mixed ...$params)
+    public function __construct(int|string $id)
     {
-        $this->id     = $id;
+        $this->id = $id;
+    }
+
+    public function method(string $method): JsonRpcBuild
+    {
         $this->method = $method;
+        return $this;
+    }
+
+    public function params(array $params): JsonRpcBuild
+    {
         $this->params = $params;
+        return $this;
     }
 
-    /**
-     * @param int    $id
-     * @param string $method
-     * @param array  $params
-     * @return JsonRpcBuild
-     */
-    public static function create(int $id, string $method, mixed ...$params): JsonRpcBuild
-    {
-        return new static($id, $method, ...$params);
-    }
-
-    /**
-     * @param string $json
-     * @return JsonRpcBuild|null
-     */
-    public static function parse(string $json): JsonRpcBuild|null
-    {
-        if (!$data = json_decode($json, true)) {
-            return null;
-        }
-        return new JsonRpcBuild($data['id'], $data['method'], $data['params']);
-    }
 
     /**
      * @return string
      */
-    public function __toString(): string
-    {
-        return $this->build();
-    }
-
-    /**
-     * @return string
-     */
-    public function build(): string
+    public function request(): string
     {
         return json_encode([
             'version' => $this->version,
             'method'  => $this->method,
             'params'  => $this->params,
             'id'      => $this->id
-        ], JSON_UNESCAPED_UNICODE);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
+
 
     /**
      * @param mixed $result
@@ -113,21 +92,17 @@ class JsonRpcBuild
      */
     public function result(mixed $result): string
     {
-        $this->result = [
+        return json_encode($this->result = [
             'code'   => 0,
-            'result' => $result
-        ];
-        return json_encode([
-            'version' => $this->version,
-            'result'  => $this->result,
-            'id'      => $this->id
-        ], JSON_UNESCAPED_UNICODE);
+            'result' => $result,
+            'id'     => $this->id
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     /**
      * @param int    $code
      * @param string $message
-     * @return $this
+     * @return string
      */
     public function error(int $code, string $message): string
     {

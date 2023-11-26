@@ -41,12 +41,13 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
+use Core\MapInterface;
 use Worker\Prop\Build;
 
 /**
  *
  */
-class EventMap
+class EventMap implements MapInterface
 {
     /**
      * @var Build[] $eventMap

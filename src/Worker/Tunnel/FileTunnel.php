@@ -91,7 +91,7 @@ class FileTunnel implements TunnelStd
 
     /**
      * 读取数据
-     * @param int $length
+     * @param int      $length
      * @param int|null $resultLength
      * @return string
      */
@@ -103,7 +103,7 @@ class FileTunnel implements TunnelStd
 
     /**
      * 写入数据
-     * @param string $context
+     * @param string    $context
      * @param bool|null $async
      * @return int|bool
      */
@@ -132,7 +132,7 @@ class FileTunnel implements TunnelStd
 
     /**
      * 移动指针
-     * @param int $location
+     * @param int      $location
      * @param int|null $whence
      * @return int
      */

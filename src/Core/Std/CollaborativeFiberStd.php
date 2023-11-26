@@ -232,14 +232,12 @@ abstract class CollaborativeFiberStd
     /**
      * 向纤程抛出一个异常,由纤程自身处理
      * @param Throwable $exception
-     * @return void
+     * @return true
      */
-    public function exceptionHandler(Throwable $exception): void
+    public function exceptionHandler(Throwable $exception): true
     {
-        try {
-            Fiber::suspend(Build::new('suspend', $exception, $this->hash));
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-        }
+        $this->destroy();
+        Output::printException($exception);
+        return true;
     }
 }

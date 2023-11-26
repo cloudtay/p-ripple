@@ -42,8 +42,7 @@ declare(strict_types=1);
 namespace Facade;
 
 use Core\Std\FacadeStd;
-use Worker\Built\ProcessManager\ProcessContainer;
-use Worker\Built\ProcessManager\ProcessManager;
+use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Worker;
 
 /**
@@ -65,25 +64,22 @@ class Process extends FacadeStd
      */
     public static function __callStatic(string $name, array $arguments): mixed
     {
-        if ($name === 'fork') {
-            return call_user_func_array([ProcessContainer::class, $name], $arguments);
-        }
         return call_user_func_array([Process::$instance, $name], $arguments);
     }
 
     /**
-     * @return ProcessManager
+     * @return ProcessTree
      */
-    public static function getInstance(): ProcessManager
+    public static function getInstance(): ProcessTree
     {
         return Process::$instance;
     }
 
     /**
      * @param Worker $worker
-     * @return ProcessManager
+     * @return ProcessTree
      */
-    public static function setInstance(Worker $worker): ProcessManager
+    public static function setInstance(Worker $worker): ProcessTree
     {
         Process::$instance = $worker;
         return Process::$instance;

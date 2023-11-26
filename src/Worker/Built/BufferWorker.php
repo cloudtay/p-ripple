@@ -112,15 +112,6 @@ class BufferWorker extends Worker
         }
     }
 
-    /**
-     * 重置
-     * @return void
-     */
-    public function forking(): void
-    {
-        $this->buffers = [];
-        parent::forking();
-    }
 
     /**
      * 被动fork
@@ -130,5 +121,14 @@ class BufferWorker extends Worker
     {
         $this->buffers = [];
         parent::forkPassive();
+    }
+
+    /**
+     * @return void
+     */
+    public function forking(): void
+    {
+        parent::forking();
+        $this->forkPassive();
     }
 }

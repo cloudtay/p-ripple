@@ -89,7 +89,7 @@ class FifoTunnel implements TunnelStd
 
     /**
      * 读取数据
-     * @param int $length
+     * @param int      $length
      * @param int|null $resultLength
      * @return string
      */
@@ -101,7 +101,7 @@ class FifoTunnel implements TunnelStd
 
     /**
      * 写入数据
-     * @param string $context
+     * @param string    $context
      * @param bool|null $async
      * @return int|bool
      */

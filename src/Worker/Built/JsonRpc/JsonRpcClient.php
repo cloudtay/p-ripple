@@ -41,19 +41,20 @@ namespace Worker\Built\JsonRpc;
 
 use Core\Output;
 use Facade\JsonRpc;
+use Facade\JsonRpc as JsonRpcFacade;
 use Protocol\Slice;
-use Throwable;
-use Worker\Map\RpcServices;
-use Worker\Prop\Build;
-use Worker\Socket\SocketInet;
+use Worker\Built\JsonRpc\Exception\RpcException;
+use Worker\Built\ProcessManager\ProcessTree;
+use Worker\Map\JsonRpcServices;
 use Worker\Socket\SocketUnix;
-use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
 /**
  * This is a Json Rpc client for this process to interact with services of other processes.
  * Workers of all network types in this process can access the services of other processes through Json Rpc Client.
  * During passive fork, the connection between the current process and other rpc services should be re-established.
+ * 原有的JsonRpcClient进支持被动接受响应并恢复协程，但是这种方式不够优雅
+ * 但这不够, 它应该能够处理被动接受请求
  */
 class JsonRpcClient extends Worker
 {
@@ -83,21 +84,31 @@ class JsonRpcClient extends Worker
     }
 
     /**
-     * Handle response
-     * @param string        $context
-     * @param TCPConnection $client
+     * Reconnect all RPC services
      * @return void
      */
-    public function onMessage(string $context, TCPConnection $client): void
+    public function connectAll(): void
     {
-        echo 123;
-        /**
-         * @var Build $build
-         */
-        $build = unserialize($context);
-        $this->resume($build->source, $build->data);
+        if ($this->isFork) {
+            foreach (JsonRpcServices::$jsonRpcServices as $name => $jsonRpcService) {
+                if ($serverSocket = $jsonRpcService->connect()) {
+                    $client = $this->addSocket($serverSocket, SocketUnix::class);
+                    $client->setIdentity(Worker::IDENTITY_RPC_SERVER);
+                    $jsonRpcService->tcpConnection = $client;
+                }
+            }
+        }
     }
 
+    /**
+     * Get an Rpc connection
+     * @param string $serviceName
+     * @return JsonRpcConnection|null
+     */
+    public function use(string $serviceName): JsonRpcConnection|null
+    {
+        return JsonRpcServices::$jsonRpcServices[$serviceName] ?? null;
+    }
 
     /**
      * The child process has its own RPC service connection
@@ -108,62 +119,22 @@ class JsonRpcClient extends Worker
         parent::forkPassive();
         $this->clientId = posix_getpid();
         $this->connectAll();
+
+        try {
+            JsonRpcFacade::getInstance()
+                ->use(ProcessTree::class)
+                ->call('setProcessId', posix_getpid());
+        } catch (RpcException $exception) {
+            Output::printException($exception);
+        }
     }
 
     /**
-     * Reconnect all RPC services
      * @return void
      */
-    public function connectAll(): void
+    public function forking(): void
     {
-        if ($this->isFork) {
-            foreach (RpcServices::$jsonRpcServices as $jsonRpcServiceName => $jsonRpcService) {
-                $jsonRpcService->connect();
-            }
-        }
-    }
-
-    /**
-     * Connect to RPC service
-     * @param string $serviceName
-     * @param string $addressFull
-     * @return bool
-     */
-    public function connect(string $serviceName, string $addressFull): bool
-    {
-        try {
-            [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($addressFull);
-            switch ($type) {
-                case SocketInet::class:
-                    $this->socketType = SocketInet::class;
-                    $serverSocket     = SocketInet::connect($address, $port);
-                    break;
-                case SocketUnix::class:
-                    $this->socketType = SocketInet::class;
-                    $serverSocket     = SocketUnix::connect($address);
-                    break;
-                default:
-                    return false;
-            }
-            $this->bindAddressHashMap[$addressFull] = $serverSocket;
-            $this->subscribeSocket($serverSocket);
-            $client                                = $this->addSocket($serverSocket);
-            $this->rpcServiceSockets[$serviceName] = $client;
-            $client->setIdentity(Worker::IDENTITY_RPC);
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Get an Rpc connection
-     * @param string $serviceName
-     * @return JsonRpcConnection|null
-     */
-    public function use(string $serviceName): JsonRpcConnection|null
-    {
-        return RpcServices::$jsonRpcServices[$serviceName] ?? null;
+        parent::forking();
+        $this->forkPassive();
     }
 }

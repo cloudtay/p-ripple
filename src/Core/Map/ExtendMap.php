@@ -39,10 +39,12 @@
 
 namespace Core\Map;
 
+use Core\MapInterface;
+
 /**
  * Class ExtendMap
  */
-class ExtendMap
+class ExtendMap implements MapInterface
 {
     /**
      * @var array

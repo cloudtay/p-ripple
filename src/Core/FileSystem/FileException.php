@@ -45,7 +45,7 @@ use Exception;
 use Throwable;
 
 /**
- * 文件异常
+ * The file is abnormal
  */
 class FileException extends Exception implements Throwable
 {
