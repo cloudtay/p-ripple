@@ -41,11 +41,10 @@ namespace Facade;
 
 use Core\Std\FacadeStd;
 use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\JsonRpc\JsonRpcConnection;
 use Worker\Worker;
 
 /**
- * @method static JsonRpcConnection|null use (string $name)
+ * @method static mixed call(string $workerName, string $method, mixed ...$params)
  * @method static void connectAll();
  */
 class JsonRpc extends FacadeStd

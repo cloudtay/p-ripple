@@ -43,7 +43,6 @@ use Core\Output;
 use Facade\JsonRpc;
 use Support\PDOProxy\PDOProxy;
 use Worker\Built\JsonRpc\Exception\RpcException;
-use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 use function PRipple\async;
@@ -83,12 +82,7 @@ class TestTCP extends Worker
             });
         } else {
             $processId = intval(str_replace("\n", '', $context));
-            try {
-//                JsonRpc::use(ProcessManager::class)?->call('commandToObserver', 'signal', $processId, SIGKILL);
-                signal($processId, SIGKILL);
-            } catch (RpcException $exception) {
-                Output::printException($exception);
-            }
+            signal($processId, SIGKILL);
         }
     }
 }

@@ -79,11 +79,11 @@ class CollaborativeFiberMap implements MapInterface
 
     /**
      * @param string $hash
-     * @return CollaborativeFiberStd
+     * @return CollaborativeFiberStd|null
      */
-    public static function getCollaborativeFiber(string $hash): CollaborativeFiberStd
+    public static function getCollaborativeFiber(string $hash): CollaborativeFiberStd|null
     {
-        return CollaborativeFiberMap::$collaborativeFiberMap[$hash];
+        return CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null;
     }
 
     /**

@@ -44,7 +44,6 @@ namespace Core;
 use Core\Map\EventMap;
 use Core\Map\SocketMap;
 use Core\Map\WorkerMap;
-use Facade\JsonRpc;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
@@ -109,7 +108,6 @@ class Kernel
                 Output::printException($exception);
             }
         }
-        JsonRpc::getInstance()->connectAll();
         $this->loop();
     }
 
@@ -142,8 +140,8 @@ class Kernel
     }
 
     /**
-     * 初始化在该阶段应确保RPC/监听等服务已经注册到对应列表
-     * 保证在Launch时支持不同类型的服务启动模式都能顺利建立连接
+     * Initialization: At this stage, you should ensure that services such as RPC/listeners are registered with the corresponding list
+     * Ensure that different types of service startup modes are supported during Launch, and the connection can be established smoothly
      * @return void
      */
     private function initialize(): void
@@ -167,7 +165,7 @@ class Kernel
     }
 
     /**
-     * 插入服务,该方法会直接执行服务的初始化
+     * Insert a service, which directly performs the initialization of the service
      * @param Worker ...$workers
      * @return Kernel
      */
@@ -296,7 +294,6 @@ class Kernel
                 }
                 $this->adjustRate();
             }
-
         }
     }
 
@@ -340,7 +337,7 @@ class Kernel
     }
 
     /**
-     * 服务请求分生
+     * 消费所有事件
      * @return void
      */
     public function consumption(): void

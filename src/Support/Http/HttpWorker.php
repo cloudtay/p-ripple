@@ -44,6 +44,7 @@ namespace Support\Http;
 use Closure;
 use Core\FileSystem\FileException;
 use Core\Map\CollaborativeFiberMap;
+use Core\Map\EventMap;
 use Core\Output;
 use InvalidArgumentException;
 use PRipple;
@@ -199,9 +200,7 @@ class HttpWorker extends Worker
      */
     private function recover(string $hash): void
     {
-        if ($this->requests[$hash]?->destroy()) {
-            unset($this->requests[$hash]);
-        }
+        CollaborativeFiberMap::getCollaborativeFiber($hash)?->destroy();
         unset($this->queue[$hash]);
     }
 

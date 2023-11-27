@@ -43,7 +43,6 @@ namespace Worker;
 
 use Closure;
 use Core\Constants;
-use Core\FileSystem\FileException;
 use Core\Map\CollaborativeFiberMap;
 use Core\Map\EventMap;
 use Core\Map\WorkerMap;
@@ -51,7 +50,6 @@ use Core\Output;
 use Core\Std\ProtocolStd;
 use Core\Std\WorkerInterface;
 use Exception;
-use Facade\JsonRpc as JsonRpcFacade;
 use Fiber;
 use JetBrains\PhpStorm\NoReturn;
 use PRipple;
@@ -61,12 +59,10 @@ use Socket;
 use Throwable;
 use Worker\Built\BufferWorker;
 use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Built\JsonRpc\JsonRpcBuild;
 use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Built\JsonRpc\JsonRpcServer;
 use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Built\Timer;
-use Worker\Map\JsonRpcServices;
 use Worker\Prop\Build;
 use Worker\Socket\SocketInet;
 use Worker\Socket\SocketUnix;
@@ -86,13 +82,6 @@ class Worker implements WorkerInterface
      * 独立运行模式
      */
     public const MODE_INDEPENDENT = 2;
-
-    /**
-     * 客户端身份
-     */
-    public const IDENTITY_USER       = 1;
-    public const IDENTITY_RPC_SERVER = 2;
-    public const IDENTITY_RPC_CLIENT = 3;
 
     /**
      * 运行模式
@@ -149,18 +138,6 @@ class Worker implements WorkerInterface
     public array $subscribes = [];
 
     /**
-     * Rpc服务连接
-     * @var array $rpcServiceSockets
-     */
-    public array $rpcServiceSockets = [];
-
-    /**
-     * 是否允许分生并行
-     * @var bool $allowFork
-     */
-    public bool $allowFork = true;
-
-    /**
      * 连接类型
      * @var string
      */
@@ -191,12 +168,6 @@ class Worker implements WorkerInterface
     public string $rpcServiceListenAddress;
 
     /**
-     * Rpc监听连接
-     * @var Socket $rpcServiceListenSocket
-     */
-    public Socket $rpcServiceListenSocket;
-
-    /**
      * 报文切割器
      * @var Slice $slice
      */
@@ -208,7 +179,16 @@ class Worker implements WorkerInterface
      */
     public static string $facadeClass;
 
+    /**
+     * 子进程ID列表
+     * @var array $childrenProcessIds
+     */
     public array $childrenProcessIds = [];
+
+    /**
+     * @var Worker $rpcService
+     */
+    public Worker $rpcService;
 
     /**
      * 构造函数
@@ -252,7 +232,7 @@ class Worker implements WorkerInterface
     public function initialize(): void
     {
         if ($this->checkRpcService()) {
-            JsonRpcServices::register($this);
+            JsonRpcClient::getInstance()->add($this);
             if ($this->mode === Worker::MODE_COLLABORATIVE) {
                 $this->initializeRpcService();
             }
@@ -278,26 +258,10 @@ class Worker implements WorkerInterface
      */
     public function initializeRpcService(): void
     {
-        try {
-            [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
-            switch ($type) {
-                case SocketInet::class:
-                    $this->socketType             = SocketInet::class;
-                    $this->rpcServiceListenSocket = SocketInet::create($address, $port, [SO_REUSEADDR => 1]);
-                    $this->subscribeSocket($this->rpcServiceListenSocket);
-                    break;
-                case SocketUnix::class:
-                    $this->socketType             = SocketInet::class;
-                    $this->rpcServiceListenSocket = SocketUnix::create($address, [SO_REUSEPORT => 1]);
-                    $this->subscribeSocket($this->rpcServiceListenSocket);
-                    break;
-                default:
-                    return;
-            }
-        } catch (Exception $exception) {
-            Output::printException($exception);
-        }
-//        $this->publishAsync(Build::new(Constants::EVENT_PUSH_SERVICE, JsonRpcServer::load($this), $this->name));
+        $this->publishAsync(Build::new(
+            Constants::EVENT_PUSH_SERVICE,
+            $this->rpcService = JsonRpcServer::load($this), $this->name)
+        );
     }
 
     /**
@@ -307,12 +271,10 @@ class Worker implements WorkerInterface
     public function getRpcServiceAddress(): string
     {
         if (!isset($this->rpcServiceListenAddress)) {
-            $address                       = str_replace(['\\', '/'], '_', $this->name);
+            $name                          = strtolower(str_replace(['\\', '/'], '_', $this->name));
             $this->rpcServiceListenAddress =
                 'unix://'
-                . PRipple::getArgument('RUNTIME_PATH', '/tmp') . FS
-                . Worker::IDENTITY_RPC_SERVER . UL
-                . $address . '.sock';
+                . PRipple::getArgument('RUNTIME_PATH', '/tmp') . FS . $name . '.rpc.sock';
         }
         return $this->rpcServiceListenAddress;
     }
@@ -420,22 +382,9 @@ class Worker implements WorkerInterface
     public function handleSocket(Socket $socket): void
     {
         if (in_array($socket, array_values($this->listenSocketHashMap), true)) {
-            // 服务类型客户端链接
-            if ($client = $this->accept($socket)) {
-                $client->setIdentity(Worker::IDENTITY_USER);
-            }
+            $this->accept($socket);
             return;
-        } elseif ($this->checkRpcService() && $socket === $this->rpcServiceListenSocket) {
-            // RPC客户端连接
-            if ($client = $this->accept($socket)) {
-                $client->setIdentity(Worker::IDENTITY_RPC_CLIENT);
-                $this->subscribeSocket($client->getSocket());
-            }
-            return;
-        }
-
-        // 将上下文读取到缓存
-        if (!$client = $this->getClientBySocket($socket)) {
+        } elseif (!$client = $this->getClientBySocket($socket)) {
             return;
         }
         if (!$context = $client->read(0, $_)) {
@@ -447,90 +396,15 @@ class Worker implements WorkerInterface
             }
         }
         $client->cache .= $context;
-        // 处理服务客户端连接
-        if ($client->getIdentity() === Worker::IDENTITY_USER) {
-            if (!$client->verify) {
-                if ($handshake = $this->protocol->handshake($client)) {
-                    $client->handshake($this->protocol);
-                    $this->onHandshake($client);
-                } elseif ($handshake === false) {
-                    $this->expectSocket($socket);
-                }
-            }
-            $this->splitMessage($client);
-        } elseif ($client->getIdentity() === Worker::IDENTITY_RPC_CLIENT) {
-            // 处理RPC客户端连接
-            while ($context = $this->slice->parse($client)) {
-                if ($result = json_decode($context)) {
-                    if (isset($result->method) && method_exists($this, $result->method)) {
-                        try {
-                            try {
-                                $result->params[] = $client;
-                                $this->slice->send($client, (new JsonRpcBuild($result->id))->result(
-                                    call_user_func_array([$this, $result->method], $result->params)
-                                ));
-                            } catch (Throwable $exception) {
-                                $this->slice->send($client, (new JsonRpcBuild($result->id))->error(
-                                    -32603,
-                                    $exception->getMessage()
-                                ));
-                            }
-                        } catch (FileException $exception) {
-                            Output::printException($exception);
-                        }
-                    }
-                }
-            }
-        } elseif ($client->getIdentity() === Worker::IDENTITY_RPC_SERVER) {
-            // 处理RPC服务端连接
-            while ($context = $this->slice->parse($client)) {
-                $response = json_decode($context);
-                if (isset($response->method)) {
-                    try {
-                        if (method_exists($this, $response->method)) {
-                            $response->params[] = $client;
-                            try {
-                                try {
-                                    $this->slice->send($client, $response->result(
-                                        call_user_func_array([$this, $response->method], $response->params)
-                                    ));
-                                } catch (Throwable $exception) {
-                                    $this->slice->send($client, $response->error(
-                                        $exception->getCode(),
-                                        $exception->getMessage()
-                                    ));
-                                }
-                            } catch (FileException $exception) {
-                                Output::printException($exception);
-                            }
-                        } elseif (function_exists($response->method)) {
-                            $this->slice->send($client,
-                                (new JsonRpcBuild($response->id))
-                                    ->method($response->method)
-                                    ->params($response->params)
-                                    ->result(call_user_func_array($response->method, $response->params)
-                                    ));
-                        }
-                    } catch (Throwable $exception) {
-                        Output::printException($exception);
-                    }
-                } elseif (isset($response->code)) {
-                    try {
-                        if ($fiber = CollaborativeFiberMap::getCollaborativeFiber($response->id)) {
-                            if (!$fiber->checkIfTerminated()) {
-                                $fiber->resumeFiberExecution($response->result);
-                            }
-                        }
-                    } catch (Throwable $exception) {
-                        Output::printException($exception);
-                    }
-                } else {
-                    CollaborativeFiberMap::getCollaborativeFiber($response->id)?->exceptionHandler(
-                        new Exception($response->error->message, $response->error->code)
-                    );
-                }
+        if (!$client->verify) {
+            if ($handshake = $this->protocol->handshake($client)) {
+                $client->handshake($this->protocol);
+                $this->onHandshake($client);
+            } elseif ($handshake === false) {
+                $this->expectSocket($socket);
             }
         }
+        $this->splitMessage($client);
     }
 
     /**
@@ -638,8 +512,6 @@ class Worker implements WorkerInterface
                 $type === SocketUnix::class && unlink($address);
             }
             if ($this->checkRpcService()) {
-                socket_close($this->rpcServiceListenSocket);
-
                 [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
                 $type === SocketUnix::class && unlink($address);
             }
@@ -773,7 +645,6 @@ class Worker implements WorkerInterface
      */
     public function fork(int|null $count = 1): int
     {
-        PRipple::kernel()->consumption();
         $successCount = 0;
         for ($index = 0; $index < $count; $index++) {
             $processId = $this->process(function () {
@@ -781,11 +652,9 @@ class Worker implements WorkerInterface
             if (0 < $processId) {
                 $successCount++;
             } elseif (0 === $processId) {
+                $builtServices = [ProcessTree::class, JsonRpcClient::class, BufferWorker::class, Timer::class];
                 foreach (WorkerMap::$workerMap as $worker) {
-                    if ($worker !== $this && !in_array(
-                            $worker->name,
-                            [ProcessTree::class, JsonRpcClient::class, BufferWorker::class, Timer::class]
-                        )) {
+                    if ($worker !== $this && !in_array($worker->name, $builtServices)) {
                         $worker->forkPassive();
                     }
                 }
@@ -821,7 +690,8 @@ class Worker implements WorkerInterface
     public function forking(): void
     {
         // 取消接管父进程的客户端连接
-        $this->isFork = true;
+        $this->isFork             = true;
+        $this->childrenProcessIds = [];
         foreach ($this->getClientHashMap() as $client) {
             $this->unsubscribeSocket($client->getSocket());
             unset($this->subscribes[$client->getHash()]);
@@ -844,10 +714,6 @@ class Worker implements WorkerInterface
             unset($this->clientHashMap[$client->getHash()]);
             unset($this->clientNameMap[$client->getName()]);
         }
-        $this->listenSocketHashMap = array_filter($this->listenSocketHashMap, function (Socket $socket) {
-            $this->unsubscribeSocket($socket);
-            return false;
-        });
     }
 
     /**
@@ -988,13 +854,11 @@ class Worker implements WorkerInterface
             }
         } elseif (0 < $childrenProcessId) {
             $this->childrenProcessIds[] = $childrenProcessId;
-            try {
-                JsonRpcFacade::getInstance()
-                    ->use(ProcessTree::class)
-                    ->call('setObserverProcessId', $childrenProcessId, posix_getpid());
-            } catch (Built\JsonRpc\Exception\RpcException $exception) {
-                Output::printException($exception);
-            }
+            JsonRpcClient::getInstance()->call(
+                ProcessTree::class,
+                'setObserverProcessId',
+                $childrenProcessId, posix_getpid()
+            );
         }
         return $childrenProcessId;
     }

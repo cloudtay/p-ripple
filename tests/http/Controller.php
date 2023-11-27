@@ -45,6 +45,7 @@ use Generator;
 use Support\Http\Request;
 use Support\PDOProxy\PDOProxy;
 use Worker\Built\JsonRpc\Exception\RpcException;
+use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Built\ProcessManager\ProcessTree;
 
 class Controller
@@ -63,13 +64,16 @@ class Controller
     /**
      * @param Request $request
      * @return Generator
-     * @throws RpcException
      */
     public static function data(Request $request): Generator
     {
         yield $request->respondJson([
                 'processId' => posix_getpid(),
-                JsonRpc::use(PDOProxy::class)?->call('prepare', 'SELECT * FROM `user` where `idf` = ?;', [17], [])
+                JsonRpcClient::getInstance()->call(
+                    PDOProxy::class,
+                    'prepare',
+                    'SELECT * FROM `user` where `id` = ?;', [17], []
+                )
             ]
         );
     }
@@ -94,11 +98,10 @@ class Controller
     /**
      * @param Request $request
      * @return Generator
-     * @throws RpcException
      */
     public static function kill(Request $request): Generator
     {
-        JsonRpc::use(ProcessTree::class)->call('signal', intval($request->query['processId']), SIGKILL);
+        JsonRpc::getInstance()->call(ProcessTree::class, 'signal', intval($request->query['processId']), SIGKILL);
         yield $request->respondJson(
             ['myProcessId' => getmypid(),
              'processId'   => $request->query['processId']]

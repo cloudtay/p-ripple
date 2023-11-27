@@ -164,6 +164,7 @@ class Timer extends Worker
         $this->subscribe(Timer::EVENT_TIMER_EVENT);
         $this->subscribe(Timer::EVENT_TIMER_LOOP);
         $this->subscribe(Timer::EVENT_TIMER_SLEEP);
+        parent::initialize();
     }
 
     /**

@@ -39,13 +39,16 @@
 
 namespace Worker\Built\JsonRpc;
 
-use Core\Constants;
+use Core\FileSystem\FileException;
+use Core\Output;
 use Protocol\Slice;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
 class JsonRpcServer extends Worker
 {
+    private Worker $worker;
+
     /**
      * 加载
      * @param Worker $worker
@@ -53,18 +56,57 @@ class JsonRpcServer extends Worker
      */
     public static function load(Worker $worker): Worker
     {
-        $worker = new JsonRpcServer("{$worker->name}.rpc");
-        $worker->protocol(Slice::class)->bind($worker->getRpcServiceAddress());
-        return $worker;
+        return new JsonRpcServer($worker);
     }
 
     /**
+     * JsonRpcServer constructor.
+     * @param Worker $worker
+     */
+    public function __construct(Worker $worker)
+    {
+        $this->worker = $worker;
+        parent::__construct("{$this->worker->name}.rpc");
+    }
+
+    /**
+     * 初始化
+     * @return void
+     */
+    public function initialize(): void
+    {
+        $this->protocol(Slice::class)->bind($this->worker->getRpcServiceAddress());
+        parent::initialize();
+    }
+
+    /**
+     * RPC客户端消息到达
      * @param string        $context
      * @param TCPConnection $client
      * @return void
      */
     public function onMessage(string $context, TCPConnection $client): void
     {
-        var_dump($context);
+        if ($info = json_decode($context)) {
+            if (isset($info->method)) {
+                $info->params[] = $client;
+                if (method_exists($this->worker, $info->method)) {
+                    $result = call_user_func_array([$this->worker, $info->method], $info->params);
+                } elseif (function_exists($info->method)) {
+                    $result = call_user_func_array($info->method, $info->params);
+                } else {
+                    $result = null;
+                }
+                try {
+                    $this->slice->send($client, json_encode([
+                        'code'   => 0,
+                        'result' => $result,
+                        'id'     => $info->id,
+                    ]));
+                } catch (FileException $exception) {
+                    Output::printException($exception);
+                }
+            }
+        }
     }
 }

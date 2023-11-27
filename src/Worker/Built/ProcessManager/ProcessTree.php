@@ -44,9 +44,9 @@ namespace Worker\Built\ProcessManager;
 use Core\FileSystem\FileException;
 use Core\Output;
 use Facade\Process;
+use Socket;
 use Worker\Built\JsonRpc\Attribute\Rpc;
 use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Built\JsonRpc\JsonRpcBuild;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
@@ -106,12 +106,11 @@ class ProcessTree extends Worker
             if ($observerProcessId === posix_getpid()) {
                 return posix_kill($processId, $signal);
             } elseif ($tcpConnection = $this->getClientByName("process:{$observerProcessId}")) {
-                echo 'find observer process:' . $observerProcessId . PHP_EOL;
                 try {
-                    $jsonRpcBuild = (new JsonRpcBuild('anonymous'))
-                        ->method('posix_kill')
-                        ->params([$processId, $signal]);
-                    $this->slice->send($tcpConnection, $jsonRpcBuild->request());
+                    $this->slice->send($tcpConnection, json_encode([
+                        'method' => 'posix_kill',
+                        'params' => [$processId, $signal]
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 } catch (FileException $exception) {
                     Output::printException($exception);
                 }
@@ -126,8 +125,11 @@ class ProcessTree extends Worker
     public function forking(): void
     {
         parent::forking();
-        $this->forkPassive();
-        //TODO: 重构矫正
-//        $this->unsubscribeSocket($this->rpcServiceListenSocket);
+        parent::forkPassive();
+        $this->rpcService->listenSocketHashMap = array_filter($this->rpcService->listenSocketHashMap, function (Socket $socket) {
+            $this->unsubscribeSocket($socket);
+            socket_close($socket);
+            return false;
+        });
     }
 }

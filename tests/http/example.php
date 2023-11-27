@@ -52,6 +52,7 @@ use Tests\http\Controller;
 use Tests\rpc\TestWS;
 
 use function PRipple\async;
+use function PRipple\delay;
 
 $kernel = PRipple::configure([
     'RUNTIME_PATH'     => '/tmp',
@@ -73,7 +74,6 @@ $router->define(Route::GET, '/fork', [Controller::class, 'fork']);
 $router->define(Route::GET, '/kill', [Controller::class, 'kill']);
 $httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options);
 WebApplication::inject($httpWorker, $router, []);
-
 $pdo = PDOProxy::new(PDOProxy::class)->connect([
     'driver'   => 'mysql',
     'hostname' => '127.0.0.1',
@@ -86,7 +86,7 @@ $pdo = PDOProxy::new(PDOProxy::class)->connect([
 ]);
 
 async(function () use ($httpWorker) {
-    $httpWorker->fork(1);
+    $httpWorker->fork(10);
 });
 
 # 启动服务

@@ -42,13 +42,13 @@ declare(strict_types=1);
 namespace Facade;
 
 use Core\Std\FacadeStd;
+use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Built\ProcessManager\ProcessTree;
 use Worker\Worker;
 
 /**
  * 进程管理器门面
- * @method static void signal(int $processId, int $signal)
- * @method static int|false fork(callable $callback, bool|null $exit = true)
+ * @method static int process(callable $callback, bool|null $exit = true)
  */
 class Process extends FacadeStd
 {
@@ -83,5 +83,20 @@ class Process extends FacadeStd
     {
         Process::$instance = $worker;
         return Process::$instance;
+    }
+
+    /**
+     * @param int $processId
+     * @param int $signalNo
+     * @return bool
+     */
+    public static function signal(int $processId, int $signalNo): bool
+    {
+        return JsonRpcClient::getInstance()->call(
+            Process::class,
+            'signal',
+            $processId,
+            $signalNo
+        );
     }
 }
