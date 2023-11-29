@@ -41,16 +41,19 @@ namespace Support\PDOProxy;
 
 use PDO;
 use Protocol\TCPProtocol;
-use Worker\Built\JsonRpc\Attribute\Rpc;
+use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
+use Worker\Prop\Build;
+use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
 class PDOProxy extends Worker
 {
     use JsonRpc;
 
-    private PDO  $pdo;
-    private bool $isTransaction = false;
+    private PDO   $pdo;
+    private bool  $isTransaction = false;
+    private array $config;
 
     /**
      * PDOProxy constructor.
@@ -62,18 +65,23 @@ class PDOProxy extends Worker
         parent::__construct($name, $protocol);
     }
 
+    public function config(array $config): PDOProxy
+    {
+        $this->config = $config;
+        return $this;
+    }
+
     /**
      * Connect native PDO
-     * @param array $config
      * @return $this
      */
-    public function connect(array $config): PDOProxy
+    public function connect(): PDOProxy
     {
         $this->pdo = new PDO(
-            "{$config['driver']}:host={$config['hostname']};dbname={$config['database']}",
-            $config['username'],
-            $config['password'],
-            $config['options']
+            "{$this->config['driver']}:host={$this->config['hostname']};dbname={$this->config['database']}",
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['options']
         );
         return $this;
     }
@@ -85,7 +93,7 @@ class PDOProxy extends Worker
      * @param array|null $bindParams
      * @return false|array
      */
-    #[Rpc('数据库查询')] public function prepare(string $query, array|null $bindings = [], array|null $bindParams = []): false|array
+    #[RPC('数据库查询')] public function prepare(string $query, array|null $bindings = [], array|null $bindParams = []): false|array
     {
         $pdoStatement = $this->pdo->prepare($query);
         foreach ($bindings as $key => $value) {
@@ -122,7 +130,7 @@ class PDOProxy extends Worker
      * 开始数据库事务
      * @return bool
      */
-    #[Rpc('开始数据库事务')] public function beginTransaction(): bool
+    #[RPC('开始数据库事务')] public function beginTransaction(): bool
     {
         if (!$this->isTransaction) {
             return $this->isTransaction = $this->pdo->beginTransaction();
@@ -134,7 +142,7 @@ class PDOProxy extends Worker
      * 提交事务查询
      * @return bool
      */
-    #[Rpc('提交事务查询')] public function commit(): bool
+    #[RPC('提交事务查询')] public function commit(): bool
     {
         if ($this->pdo->commit()) {
             $this->isTransaction = false;
@@ -147,12 +155,72 @@ class PDOProxy extends Worker
      * 回滚事务查询
      * @return bool
      */
-    #[Rpc('回滚事务查询')] public function rollBack(): bool
+    #[RPC('回滚事务查询')] public function rollBack(): bool
     {
         if ($this->pdo->rollBack()) {
             $this->isTransaction = false;
             return true;
         }
         return false;
+    }
+
+    /**
+     * @return void
+     */
+    public function forkPassive(): void
+    {
+        parent::forkPassive();
+//        unset($this->pdo);
+    }
+
+    /**
+     * @return void
+     */
+    public function forking(): void
+    {
+        parent::forking();
+        $this->connect();
+    }
+
+    /**
+     * @return void
+     */
+    public function forkAfter(): void
+    {
+        $this->connect();
+    }
+
+    /**
+     * @param TCPConnection $client
+     * @return void
+     */
+    public function onConnect(TCPConnection $client): void
+    {
+        // TODO: Implement onConnect() method.
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+        // TODO: Implement onMessage() method.
+    }
+
+    public function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
     }
 }

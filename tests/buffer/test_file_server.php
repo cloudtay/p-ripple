@@ -44,6 +44,7 @@ namespace Tests\buffer;
 use Core\FileSystem\FileException;
 use Core\Output;
 use PRipple;
+use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
@@ -121,6 +122,20 @@ class test_file_server extends Worker
         echo PHP_EOL . 'client is disconnected.' . PHP_EOL;
     }
 
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+        // TODO: Implement onMessage() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
+    }
 }
 
 $kernel = PRipple::configure([

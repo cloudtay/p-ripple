@@ -42,8 +42,7 @@ declare(strict_types=1);
 namespace Facade;
 
 use Core\Std\FacadeStd;
-use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\ProcessManager\ProcessTree;
+use Worker\Built\ProcessManager;
 use Worker\Worker;
 
 /**
@@ -68,18 +67,18 @@ class Process extends FacadeStd
     }
 
     /**
-     * @return ProcessTree
+     * @return ProcessManager
      */
-    public static function getInstance(): ProcessTree
+    public static function getInstance(): ProcessManager
     {
         return Process::$instance;
     }
 
     /**
      * @param Worker $worker
-     * @return ProcessTree
+     * @return ProcessManager
      */
-    public static function setInstance(Worker $worker): ProcessTree
+    public static function setInstance(Worker $worker): ProcessManager
     {
         Process::$instance = $worker;
         return Process::$instance;
@@ -92,11 +91,24 @@ class Process extends FacadeStd
      */
     public static function signal(int $processId, int $signalNo): bool
     {
-        return JsonRpcClient::getInstance()->call(
+        return JsonRpc::call(
             Process::class,
             'signal',
             $processId,
             $signalNo
+        );
+    }
+
+    /**
+     * @param int $processId
+     * @return bool
+     */
+    public static function kill(int $processId): bool
+    {
+        return JsonRpc::call(
+            Process::class,
+            'kill',
+            $processId,
         );
     }
 }

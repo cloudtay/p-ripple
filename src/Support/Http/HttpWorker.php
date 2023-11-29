@@ -44,7 +44,6 @@ namespace Support\Http;
 use Closure;
 use Core\FileSystem\FileException;
 use Core\Map\CollaborativeFiberMap;
-use Core\Map\EventMap;
 use Core\Output;
 use InvalidArgumentException;
 use PRipple;
@@ -224,13 +223,6 @@ class HttpWorker extends Worker
     }
 
     /**
-     * @return void
-     */
-    public function destroy(): void
-    {
-    }
-
-    /**
      * 创建请求工厂
      * @return void
      */
@@ -331,11 +323,16 @@ class HttpWorker extends Worker
      */
     public function forking(): void
     {
+        parent::forking();
         foreach ($this->requests as $request) {
             $request->destroy();
             unset($this->requests[$request->hash]);
             unset($this->queue[$request->hash]);
         }
-        parent::forking();
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
     }
 }

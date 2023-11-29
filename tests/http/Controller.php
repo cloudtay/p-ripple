@@ -43,10 +43,9 @@ use Core\Map\WorkerMap;
 use Facade\JsonRpc;
 use Generator;
 use Support\Http\Request;
-use Support\PDOProxy\PDOProxy;
-use Worker\Built\JsonRpc\Exception\RpcException;
+use Support\PDOProxy\PDOPRoxyPoolMap;
 use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\ProcessManager\ProcessTree;
+use Worker\Built\ProcessManager;
 
 class Controller
 {
@@ -56,9 +55,7 @@ class Controller
      */
     public static function index(Request $request): Generator
     {
-        yield $request->respondJson(
-            ['name' => 'cc']
-        );
+        yield $request->respondBody('hello,world');
     }
 
     /**
@@ -70,7 +67,7 @@ class Controller
         yield $request->respondJson([
                 'processId' => posix_getpid(),
                 JsonRpcClient::getInstance()->call(
-                    PDOProxy::class,
+                    PDOPRoxyPoolMap::$pools['DEFAULT']->range()->name,
                     'prepare',
                     'SELECT * FROM `user` where `id` = ?;', [17], []
                 )
@@ -82,17 +79,27 @@ class Controller
      * @param Request $request
      * @return Generator
      */
+    public static function send(Request $request): Generator
+    {
+        yield $request->respondJson([
+            'processId' => posix_getpid(),
+            'result'    => JsonRpc::call('ws', 'sendMessageToClients', posix_getpid())
+        ]);
+    }
+
+    /**
+     * @param Request $request
+     * @return Generator
+     */
     public static function fork(Request $request): Generator
     {
-        $processId = WorkerMap::$workerMap['http']->process(function () {
-            sleep(1000);
-        });
-        yield $request->respondJson(
-            [
-                'myProcessId' => getmypid(),
-                'processId'   => $processId
-            ]
-        );
+        if (WorkerMap::$workerMap['http']->fork() === 0) {
+            yield $request->respondJson(
+                [
+                    'myProcessId' => getmypid(),
+                ]
+            );
+        }
     }
 
     /**
@@ -101,11 +108,21 @@ class Controller
      */
     public static function kill(Request $request): Generator
     {
-        JsonRpc::getInstance()->call(ProcessTree::class, 'signal', intval($request->query['processId']), SIGKILL);
+        JsonRpc::getInstance()->call(ProcessManager::class, 'kill', intval($request->query['processId']));
         yield $request->respondJson(
             ['myProcessId' => getmypid(),
              'processId'   => $request->query['processId']]
         );
+    }
 
+    /**
+     * @param Request $request
+     * @return Generator
+     */
+    public static function connect(Request $request): Generator
+    {
+        yield $request->respondJson(
+            ['myProcessId' => getmypid()]
+        );
     }
 }

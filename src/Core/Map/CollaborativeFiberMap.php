@@ -91,7 +91,10 @@ class CollaborativeFiberMap implements MapInterface
      */
     public static function current(): CollaborativeFiberStd|null
     {
-        return CollaborativeFiberMap::$collaborativeFiberMap[spl_object_hash(Fiber::getCurrent())];
+        if ($fiber = Fiber::getCurrent()) {
+            return CollaborativeFiberMap::$collaborativeFiberMap[spl_object_hash($fiber)] ?? null;
+        }
+        return null;
     }
 
     /**

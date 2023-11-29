@@ -42,12 +42,14 @@ namespace Worker\Built\JsonRpc;
 use Core\FileSystem\FileException;
 use Core\Output;
 use Protocol\Slice;
+use Throwable;
+use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
 class JsonRpcServer extends Worker
 {
-    private Worker $worker;
+    public Worker $worker;
 
     /**
      * 加载
@@ -90,23 +92,69 @@ class JsonRpcServer extends Worker
         if ($info = json_decode($context)) {
             if (isset($info->method)) {
                 $info->params[] = $client;
-                if (method_exists($this->worker, $info->method)) {
-                    $result = call_user_func_array([$this->worker, $info->method], $info->params);
-                } elseif (function_exists($info->method)) {
-                    $result = call_user_func_array($info->method, $info->params);
-                } else {
-                    $result = null;
-                }
                 try {
-                    $this->slice->send($client, json_encode([
-                        'code'   => 0,
-                        'result' => $result,
-                        'id'     => $info->id,
-                    ]));
-                } catch (FileException $exception) {
-                    Output::printException($exception);
+                    if (method_exists($this->worker, $info->method)) {
+                        $result = call_user_func_array([$this->worker, $info->method], $info->params);
+                    } elseif (function_exists($info->method)) {
+                        $result = call_user_func_array($info->method, $info->params);
+                    } else {
+                        $result = null;
+                    }
+                    try {
+                        $this->slice->send($client, json_encode([
+                            'version' => '2.0',
+                            'code'    => 0,
+                            'result'  => $result,
+                            'id'      => $info->id,
+                        ]));
+                    } catch (FileException $exception) {
+                        Output::printException($exception);
+                    }
+                } catch (Throwable $exception) {
+                    try {
+                        $this->slice->send($client, json_encode([
+                            'version' => '2.0',
+                            'error'   => [
+                                'code'    => -32603,
+                                'message' => $exception->getMessage(),
+                                'data'    => $exception->getTraceAsString(),
+                            ],
+                            'id'      => $info->id,
+                        ]));
+                    } catch (FileException $exception) {
+                        Output::printException($exception);
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * @param TCPConnection $client
+     * @return void
+     */
+    public function onConnect(TCPConnection $client): void
+    {
+        socket_set_option($client->getSocket(), SOL_SOCKET, SO_KEEPALIVE, 1);
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
     }
 }

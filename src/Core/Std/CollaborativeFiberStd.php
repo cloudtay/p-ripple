@@ -66,6 +66,11 @@ abstract class CollaborativeFiberStd
     public Fiber $fiber;
 
     /**
+     * @var Closure $closure
+     */
+    public Closure $closure;
+
+    /**
      * 关联映射
      * @var array $dependenceMap
      */
@@ -77,8 +82,9 @@ abstract class CollaborativeFiberStd
      */
     public function setupWithCallable(Closure $callable): CollaborativeFiberStd
     {
-        $this->fiber = new Fiber($callable);
-        $this->hash  = spl_object_hash($this->fiber);
+        $this->fiber   = new Fiber($callable);
+        $this->hash    = spl_object_hash($this->fiber);
+        $this->closure = $callable;
         CollaborativeFiberMap::addCollaborativeFiber($this);
         return $this;
     }
@@ -236,8 +242,8 @@ abstract class CollaborativeFiberStd
      */
     public function exceptionHandler(Throwable $exception): true
     {
-        $this->destroy();
         Output::printException($exception);
+        $this->destroy();
         return true;
     }
 }

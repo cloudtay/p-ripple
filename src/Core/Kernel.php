@@ -44,13 +44,15 @@ namespace Core;
 use Core\Map\EventMap;
 use Core\Map\SocketMap;
 use Core\Map\WorkerMap;
+use Facade\JsonRpc;
 use Fiber;
 use Generator;
 use JetBrains\PhpStorm\NoReturn;
 use Throwable;
 use Worker\Built\BufferWorker;
 use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\ProcessManager\ProcessTree;
+use Worker\Built\JsonRpc\JsonRpcServer;
+use Worker\Built\ProcessManager;
 use Worker\Built\Timer;
 use Worker\Prop\Build;
 use Worker\Worker;
@@ -60,6 +62,8 @@ use Worker\Worker;
  */
 class Kernel
 {
+    public const BUILT_SERVICES = [ProcessManager::class, JsonRpcClient::class, BufferWorker::class, Timer::class];
+
     /**
      * 处理速率
      * @var int
@@ -92,23 +96,36 @@ class Kernel
      */
     #[NoReturn] public function launch(): void
     {
-        $this->consumption();
         foreach (WorkerMap::$workerMap as $worker) {
-            WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
-                $worker->launch();
-            });
-            try {
-                if ($response = WorkerMap::$fiberMap[$worker->name]->start()) {
-                    EventMap::push($response);
-                }
-                if ($this->isFork()) {
-                    break;
-                }
-            } catch (Throwable $exception) {
-                Output::printException($exception);
+            $this->launchWorker($worker);
+            if ($this->isFork()) {
+                break;
             }
         }
+        $this->consumption();
+        if (!$this->isFork()) {
+            Output::info('', '-----------------------------------------');
+            Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
+        }
         $this->loop();
+    }
+
+    /**
+     * @param Worker $worker
+     * @return void
+     */
+    public function launchWorker(Worker $worker): void
+    {
+        WorkerMap::$fiberMap[$worker->name] = new Fiber(function () use ($worker) {
+            $worker->launch();
+        });
+        try {
+            if ($response = WorkerMap::$fiberMap[$worker->name]->start()) {
+                EventMap::push($response);
+            }
+        } catch (Throwable $exception) {
+            Output::printException($exception);
+        }
     }
 
     /**
@@ -158,7 +175,7 @@ class Kernel
     {
         $this->push(
             $timer = Timer::new(Timer::class),
-            $processManager = ProcessTree::new(ProcessTree::class),
+            $processManager = ProcessManager::new(ProcessManager::class),
             $bufferWorker = BufferWorker::new(BufferWorker::class),
             $jsonRpcClientWorker = JsonRpcClient::new(JsonRpcClient::class)
         );
@@ -173,7 +190,7 @@ class Kernel
     {
         foreach ($workers as $worker) {
             try {
-                Output::info("[{$worker->name}]");
+                Output::info('Initialize: ', $worker->name);
                 WorkerMap::addWorker($worker)->initialize();
             } catch (Throwable $exception) {
                 Output::printException($exception);
@@ -193,7 +210,6 @@ class Kernel
         pcntl_signal(SIGINT, [$this, 'signalHandler']);
         pcntl_signal(SIGTERM, [$this, 'signalHandler']);
         pcntl_signal(SIGQUIT, [$this, 'signalHandler']);
-        pcntl_signal(SIGUSR1, [$this, 'signalHandler']);
         pcntl_signal(SIGUSR2, [$this, 'signalHandler']);
     }
 
@@ -251,6 +267,12 @@ class Kernel
                 break;
             case Constants::EVENT_PUSH_SERVICE:
                 $this->push($event->data);
+                if ($this->isFork && $event->data instanceof JsonRpcServer) {
+                    JsonRpc::call(
+                        ProcessManager::class,
+                        'rpcServiceIsOnline',
+                        $event->data->worker->name);
+                }
                 break;
             default:
                 $this->distribute($event);
@@ -306,7 +328,7 @@ class Kernel
     {
         if ($subscriber = SocketMap::$worker[$event->name] ?? null) {
             try {
-                if ($event = WorkerMap::$fiberMap[$subscriber]->resume($event)) {
+                if ($event = WorkerMap::$fiberMap[$subscriber]?->resume($event)) {
                     EventMap::push($event);
                 }
             } catch (Throwable $exception) {

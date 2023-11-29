@@ -43,6 +43,8 @@ namespace Worker;
 
 use Closure;
 use Core\Constants;
+use Core\FileSystem\FileException;
+use Core\Kernel;
 use Core\Map\CollaborativeFiberMap;
 use Core\Map\EventMap;
 use Core\Map\WorkerMap;
@@ -57,12 +59,11 @@ use Protocol\Slice;
 use Protocol\TCPProtocol;
 use Socket;
 use Throwable;
-use Worker\Built\BufferWorker;
+use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
 use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Built\JsonRpc\JsonRpcServer;
-use Worker\Built\ProcessManager\ProcessTree;
-use Worker\Built\Timer;
+use Worker\Built\ProcessManager;
 use Worker\Prop\Build;
 use Worker\Socket\SocketInet;
 use Worker\Socket\SocketUnix;
@@ -71,7 +72,7 @@ use Worker\Socket\TCPConnection;
 /**
  * WorkerInterface
  */
-class Worker implements WorkerInterface
+abstract class Worker implements WorkerInterface
 {
     /**
      * 协同工作模式
@@ -151,7 +152,7 @@ class Worker implements WorkerInterface
 
     /**
      * 监听地址列表
-     * @var array[] $listenAddressList
+     * @var array $listenAddressList
      */
     public array $listenAddressList = [];
 
@@ -186,9 +187,16 @@ class Worker implements WorkerInterface
     public array $childrenProcessIds = [];
 
     /**
+     * Rpc服务
      * @var Worker $rpcService
      */
     public Worker $rpcService;
+
+    /**
+     * 服务是否已启动
+     * @var bool $launched
+     */
+    public bool $launched = false;
 
     /**
      * 构造函数
@@ -231,13 +239,13 @@ class Worker implements WorkerInterface
      */
     public function initialize(): void
     {
-        if ($this->checkRpcService()) {
-            JsonRpcClient::getInstance()->add($this);
-            if ($this->mode === Worker::MODE_COLLABORATIVE) {
+        if ($this->mode === Worker::MODE_COLLABORATIVE) {
+            if ($this->checkRpcService()) {
+                JsonRpcClient::getInstance()->add($this);
                 $this->initializeRpcService();
             }
+            $this->listen();
         }
-        $this->listen();
         if (isset(static::$facadeClass)) {
             call_user_func([static::$facadeClass, 'setInstance'], $this);
         }
@@ -341,6 +349,7 @@ class Worker implements WorkerInterface
      */
     public function launchCollaborative(): void
     {
+        $this->launched = true;
         while (true) {
             while ($build = array_shift($this->queue)) {
                 $this->consumption($build);
@@ -455,15 +464,6 @@ class Worker implements WorkerInterface
         return (spl_object_hash($socket));
     }
 
-    /**
-     * 有连接到达到达
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onConnect(TCPConnection $client): void
-    {
-
-    }
 
     /**
      * 通过连接获取客户端
@@ -507,14 +507,11 @@ class Worker implements WorkerInterface
     public function destroy(): void
     {
         try {
-            foreach ($this->listenAddressList as $address) {
-                [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
+            foreach ($this->listenAddressList as $address => $options) {
+                [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($address);
                 $type === SocketUnix::class && unlink($address);
             }
-            if ($this->checkRpcService()) {
-                [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($this->getRpcServiceAddress());
-                $type === SocketUnix::class && unlink($address);
-            }
+            $this->sigusr2();
         } catch (Exception $exception) {
             Output::printException($exception);
         }
@@ -534,25 +531,6 @@ class Worker implements WorkerInterface
         }
     }
 
-    /**
-     * 关闭一个连接
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onClose(TCPConnection $client): void
-    {
-
-    }
-
-    /**
-     * 握手成功
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onHandshake(TCPConnection $client): void
-    {
-
-    }
 
     /**
      * 处理异常连接
@@ -576,34 +554,6 @@ class Worker implements WorkerInterface
         }
     }
 
-    /**
-     * 接收到一个报文
-     * @param string        $context
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-
-    }
-
-    /**
-     * 发送一个报文
-     * @return void
-     */
-    public function heartbeat(): void
-    {
-
-    }
-
-    /**
-     * 必须处理事件
-     * @param Build $event
-     * @return void
-     */
-    public function handleEvent(Build $event): void
-    {
-    }
 
     /**
      * 等待驱动
@@ -631,9 +581,6 @@ class Worker implements WorkerInterface
     public function launchIndependent(): void
     {
         if ($this->fork() === 0) {
-            if ($this->checkRpcService()) {
-                $this->initializeRpcService();
-            }
             $this->launchCollaborative();
         }
     }
@@ -652,7 +599,7 @@ class Worker implements WorkerInterface
             if (0 < $processId) {
                 $successCount++;
             } elseif (0 === $processId) {
-                $builtServices = [ProcessTree::class, JsonRpcClient::class, BufferWorker::class, Timer::class];
+                $builtServices = Kernel::BUILT_SERVICES;
                 foreach (WorkerMap::$workerMap as $worker) {
                     if ($worker !== $this && !in_array($worker->name, $builtServices)) {
                         $worker->forkPassive();
@@ -677,7 +624,7 @@ class Worker implements WorkerInterface
      * 获取客户端列表
      * @return TCPConnection[]
      */
-    public function getClientHashMap(): array
+    public function getClients(): array
     {
         return $this->clientHashMap ?? [];
     }
@@ -692,7 +639,14 @@ class Worker implements WorkerInterface
         // 取消接管父进程的客户端连接
         $this->isFork             = true;
         $this->childrenProcessIds = [];
-        foreach ($this->getClientHashMap() as $client) {
+        if (!$this->launched && $this->mode === Worker::MODE_INDEPENDENT) {
+            $this->listen();
+            if ($this->checkRpcService()) {
+                $this->initializeRpcService();
+            }
+            return;
+        }
+        foreach ($this->getClients() as $client) {
             $this->unsubscribeSocket($client->getSocket());
             unset($this->subscribes[$client->getHash()]);
             unset($this->clientHashMap[$client->getHash()]);
@@ -708,7 +662,7 @@ class Worker implements WorkerInterface
     {
         // 取消接管父进程的客户端连接
         $this->isFork = true;
-        foreach ($this->getClientHashMap() as $client) {
+        foreach ($this->getClients() as $client) {
             $this->unsubscribeSocket($client->getSocket());
             unset($this->subscribes[$client->getHash()]);
             unset($this->clientHashMap[$client->getHash()]);
@@ -835,10 +789,14 @@ class Worker implements WorkerInterface
     {
         PRipple::kernel()->consumption();
         $childrenProcessId = pcntl_fork();
-        if (0 === $childrenProcessId) {
+        if ($childrenProcessId === 0) {
             PRipple::kernel()->isFork = true;
             foreach (WorkerMap::$workerMap as $worker) {
-                $worker->forking();
+                if ($worker === $this) {
+                    $worker->forking();
+                } else {
+                    $worker->forkPassive();
+                }
             }
             $this->registerProcessSignalHandler();
             try {
@@ -847,15 +805,17 @@ class Worker implements WorkerInterface
                     exit(0);
                 }
             } catch (Built\JsonRpc\Exception\RpcException $exception) {
-                if (!CollaborativeFiberMap::current()?->exceptionHandler($exception)) {
+                if ($collaborativeFiber = CollaborativeFiberMap::current()) {
+                    $collaborativeFiber->exceptionHandler($exception);
+                } else {
                     Output::printException($exception);
                 }
                 exit(0);
             }
-        } elseif (0 < $childrenProcessId) {
+        } elseif ($childrenProcessId > 0) {
             $this->childrenProcessIds[] = $childrenProcessId;
             JsonRpcClient::getInstance()->call(
-                ProcessTree::class,
+                ProcessManager::class,
                 'setObserverProcessId',
                 $childrenProcessId, posix_getpid()
             );
@@ -894,7 +854,6 @@ class Worker implements WorkerInterface
         pcntl_signal(SIGINT, [$this, 'processSignalHandler']);
         pcntl_signal(SIGTERM, [$this, 'processSignalHandler']);
         pcntl_signal(SIGQUIT, [$this, 'processSignalHandler']);
-        pcntl_signal(SIGUSR1, [$this, 'processSignalHandler']);
         pcntl_signal(SIGUSR2, [$this, 'processSignalHandler']);
     }
 
@@ -903,6 +862,9 @@ class Worker implements WorkerInterface
      */
     #[NoReturn] public function processSignalHandler(): void
     {
+        foreach (WorkerMap::$workerMap as $worker) {
+            $worker->sigusr2();
+        }
         exit(0);
     }
 
@@ -953,4 +915,78 @@ class Worker implements WorkerInterface
     {
         return new static($name);
     }
+
+    /**
+     * @return void
+     */
+    public function sigusr2(): void
+    {
+        foreach ($this->childrenProcessIds as $processId) {
+            posix_kill($processId, SIGUSR2);
+        }
+    }
+
+    /**
+     * @param string $workerName
+     * @return void
+     */
+    #[RPC('服务上线')] public function rpcServiceIsOnline(string $workerName): void
+    {
+        JsonRpcClient::getInstance()->add(WorkerMap::get($workerName), true);
+        if (!$this->isFork) {
+            foreach (ProcessManager::getInstance()->rpcService->getClients() as $client) {
+                try {
+                    $this->slice->send($client, json_encode([
+                        'version' => '2.0',
+                        'method'  => 'rpcServiceIsOnline',
+                        'params'  => [$workerName]
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                } catch (FileException $exception) {
+                    Output::printException($exception);
+                }
+            }
+        }
+    }
+
+    /**
+     * 有连接到达到达
+     * @param TCPConnection $client
+     * @return void
+     */
+    abstract public function onConnect(TCPConnection $client): void;
+
+    /**
+     * 关闭一个连接
+     * @param TCPConnection $client
+     * @return void
+     */
+    abstract public function onClose(TCPConnection $client): void;
+
+    /**
+     * 握手成功
+     * @param TCPConnection $client
+     * @return void
+     */
+    abstract public function onHandshake(TCPConnection $client): void;
+
+    /**
+     * 接收到一个报文
+     * @param string        $context
+     * @param TCPConnection $client
+     * @return void
+     */
+    abstract public function onMessage(string $context, TCPConnection $client): void;
+
+    /**
+     * 发送一个报文
+     * @return void
+     */
+    abstract public function heartbeat(): void;
+
+    /**
+     * 必须处理事件
+     * @param Build $event
+     * @return void
+     */
+    abstract public function handleEvent(Build $event): void;
 }

@@ -43,6 +43,7 @@ include_once __DIR__ . '/../vendor/autoload.php';
 use Core\Map\ExtendMap;
 use Support\Http\HttpWorker;
 use Support\PDOProxy\PDOProxy;
+use Support\PDOProxy\PDOProxyPool;
 use Support\WebApplication\Extends\Laravel;
 use Support\WebApplication\Route;
 use Support\WebApplication\RouteMap;
@@ -50,9 +51,7 @@ use Support\WebApplication\WebApplication;
 use Support\WebSocket\WebSocket;
 use Tests\http\Controller;
 use Tests\rpc\TestWS;
-
-use function PRipple\async;
-use function PRipple\delay;
+use Worker\Worker;
 
 $kernel = PRipple::configure([
     'RUNTIME_PATH'     => '/tmp',
@@ -63,31 +62,33 @@ $kernel = PRipple::configure([
 $options = [SO_REUSEPORT => 1];
 
 # 构建WebSocketWorker
-$wsWorker = TestWs::new('ws')->bind('tcp://127.0.0.1:8001', $options)->protocol(WebSocket::class);
+$wsWorker = TestWs::new('ws')->bind('tcp://127.0.0.1:8001', $options)
+    ->protocol(WebSocket::class)
+    ->mode(Worker::MODE_INDEPENDENT);
 
 # 构建HttpWorker并使用注入框架
 ExtendMap::set(Laravel::class, new Laravel());
 $router = new RouteMap();
-$router->define(Route::GET, '/', [Controller::class, 'index'])->middlewares([]);
-$router->define(Route::GET, '/data', [Controller::class, 'data'])->middlewares([]);
+$router->define(Route::GET, '/', [Controller::class, 'index']);
+$router->define(Route::GET, '/send', [Controller::class, 'send']);
+$router->define(Route::GET, '/data', [Controller::class, 'data']);
 $router->define(Route::GET, '/fork', [Controller::class, 'fork']);
 $router->define(Route::GET, '/kill', [Controller::class, 'kill']);
-$httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options);
+$router->define(Route::GET, '/connect', [Controller::class, 'connect']);
+
+$httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options)->mode(Worker::MODE_INDEPENDENT);
 WebApplication::inject($httpWorker, $router, []);
-$pdo = PDOProxy::new(PDOProxy::class)->connect([
+
+$pool = new PDOProxyPool('DEFAULT', [
     'driver'   => 'mysql',
     'hostname' => '127.0.0.1',
     'database' => 'lav',
     'username' => 'root',
     'password' => '123456',
-    'options'  => [
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ
-    ]
+    'options'  => [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]
 ]);
 
-async(function () use ($httpWorker) {
-    $httpWorker->fork(10);
-});
+$pool->run(10);
 
 # 启动服务
-$kernel->push($httpWorker, $pdo, $wsWorker)->launch();
+$kernel->push($httpWorker, $wsWorker)->launch();

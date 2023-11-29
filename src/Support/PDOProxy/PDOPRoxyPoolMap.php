@@ -37,72 +37,14 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
+namespace Support\PDOProxy;
 
-namespace Tests\rpc;
+use Core\MapInterface;
 
-use Worker\Built\JsonRpc\Attribute\RPC;
-use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
-use Worker\Worker;
-
-class TestWS extends Worker
+class PDOPRoxyPoolMap implements MapInterface
 {
-    use JsonRpc;
-
     /**
-     * @return void
+     * @var PDOProxyPool[] $pools
      */
-    public function heartbeat(): void
-    {
-
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onConnect(TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param string        $context
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onClose(TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param string $message
-     * @return mixed
-     */
-    #[RPC("向所有客户端发送消息")] public function sendMessageToClients(string $message): mixed
-    {
-        foreach ($this->getClients() as $client) {
-            $client->send($message);
-        }
-        return true;
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
-    }
+    public static array $pools = [];
 }

@@ -45,7 +45,7 @@ use Closure;
 use Core\Constants;
 use Core\Map\EventMap;
 use Core\Std\CollaborativeFiberStd;
-use Worker\Built\ProcessManager\ProcessTree;
+use Facade\Process;
 use Worker\Built\Timer;
 use Worker\Prop\Build;
 
@@ -89,7 +89,17 @@ function loop(int $second, Closure $callable): void
  */
 function signal(int $processId, int $signalNo): void
 {
-    ProcessTree::getInstance()->signal($processId, $signalNo);
+    Process::signal($processId, $signalNo);
+}
+
+/**
+ * 关闭某个进程
+ * @param int $processId
+ * @return void
+ */
+function kill(int $processId): void
+{
+    Process::kill($processId);
 }
 
 /**
@@ -100,7 +110,7 @@ function signal(int $processId, int $signalNo): void
  */
 function process(Closure $closure, bool|null $exit = true): bool|int
 {
-    return ProcessTree::getInstance()->process($closure, $exit);
+    return Process::process($closure, $exit);
 }
 
 /**

@@ -41,12 +41,15 @@ namespace Worker\Built\JsonRpc;
 
 use Core\FileSystem\FileException;
 use Core\Map\CollaborativeFiberMap;
+use Core\Map\WorkerMap;
 use Core\Output;
 use Exception;
 use Facade\JsonRpc;
 use Protocol\Slice;
 use Throwable;
-use Worker\Built\ProcessManager\ProcessTree;
+use Worker\Built\JsonRpc\Exception\RpcException;
+use Worker\Built\ProcessManager;
+use Worker\Prop\Build;
 use Worker\Socket\SocketInet;
 use Worker\Socket\SocketUnix;
 use Worker\Socket\TCPConnection;
@@ -95,13 +98,14 @@ class JsonRpcClient extends Worker
     }
 
     /**
-     * @param Worker $worker
+     * @param Worker    $worker
+     * @param bool|null $connect
      * @return void
      */
-    public function add(Worker $worker): void
+    public function add(Worker $worker, bool|null $connect = false): void
     {
         $this->rpcServices[$worker->name] = $worker;
-        if ($this->isFork) {
+        if ($this->isFork || $connect) {
             try {
                 [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($worker->getRpcServiceAddress());
                 match ($type) {
@@ -109,6 +113,7 @@ class JsonRpcClient extends Worker
                     SocketInet::class => $serverSocket = SocketInet::connect($address, $port),
                     default => throw new Exception("Unsupported socket type: {$type}")
                 };
+                socket_set_option($serverSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
                 $this->rpcServiceConnections[$worker->name] = $this->addSocket($serverSocket, $type);
                 $this->rpcServiceConnections[$worker->name]->setName($worker->name);
             } catch (Exception $exception) {
@@ -125,17 +130,17 @@ class JsonRpcClient extends Worker
      */
     public function call(string $serviceName, string $methodName, mixed ...$arguments): mixed
     {
-        if (!$this->isFork) {
+        if (!$this->isFork && $this->rpcServices[$serviceName]->mode === Worker::MODE_COLLABORATIVE) {
             return call_user_func_array([$this->rpcServices[$serviceName], $methodName], $arguments);
         } else {
             $context = json_encode([
                 'method' => $methodName,
                 'params' => $arguments,
-                'id'     => CollaborativeFiberMap::current()->hash,
+                'id'     => CollaborativeFiberMap::current()?->hash ?? 'anonymous',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             try {
                 $this->slice->send($this->rpcServiceConnections[$serviceName], $context);
-                return CollaborativeFiberMap::current()->publishAwait('suspend', []);
+                return CollaborativeFiberMap::current()?->publishAwait('suspend', []);
             } catch (Throwable $exception) {
                 Output::printException($exception);
             }
@@ -154,6 +159,14 @@ class JsonRpcClient extends Worker
         if (property_exists($info, 'result')) {
             try {
                 CollaborativeFiberMap::getCollaborativeFiber($info->id)?->resumeFiberExecution($info->result);
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+            }
+        } elseif (property_exists($info, 'error')) {
+            try {
+                CollaborativeFiberMap::getCollaborativeFiber($info->id)?->exceptionHandler(
+                    new RpcException($info->error->message, $info->error->code)
+                );
             } catch (Throwable $exception) {
                 Output::printException($exception);
             }
@@ -188,18 +201,33 @@ class JsonRpcClient extends Worker
         parent::forkPassive();
         $this->clientId              = posix_getpid();
         $this->rpcServiceConnections = [];
-        foreach ($this->rpcServices as $rpcService) {
-            $this->add($rpcService);
-        }
-        $this->call(ProcessTree::class, 'setProcessId', posix_getpid());
+        $this->rpcServices           = [];
+        $this->add(WorkerMap::get(ProcessManager::class));
+        $this->call(ProcessManager::class, 'setProcessId', posix_getpid());
     }
 
-    /**
-     * @return void
-     */
-    public function forking(): void
+    public function onConnect(TCPConnection $client): void
     {
-        parent::forking();
-        $this->forkPassive();
+        // TODO: Implement onConnect() method.
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
     }
 }

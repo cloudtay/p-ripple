@@ -39,14 +39,16 @@
 
 declare(strict_types=1);
 
-namespace Worker\Built\ProcessManager;
+namespace Worker\Built;
 
 use Core\FileSystem\FileException;
 use Core\Output;
 use Facade\Process;
 use Socket;
-use Worker\Built\JsonRpc\Attribute\Rpc;
+use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
+use Worker\Built\JsonRpc\JsonRpcClient;
+use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
@@ -56,7 +58,7 @@ use Worker\Worker;
  * When passively forking, the Worker should be actively uninstalled and the heartbeat/Socket listening subscription-
  * should be logged out to ensure the normal operation of the process manager.
  */
-class ProcessTree extends Worker
+class ProcessManager extends Worker
 {
     use JsonRpc;
 
@@ -78,9 +80,10 @@ class ProcessTree extends Worker
      * @param int $observerProcessId
      * @return void
      */
-    #[Rpc('设置守护进程ID')] public function setObserverProcessId(int $processId, int $observerProcessId): void
+    #[RPC('设置守护进程ID')] public function setObserverProcessId(int $processId, int $observerProcessId): void
     {
         $this->processObserverIdMap[$processId] = $observerProcessId;
+        Output::info('Process: ', 'launch ' . $processId . ' => ' . $observerProcessId);
     }
 
     /**
@@ -89,8 +92,19 @@ class ProcessTree extends Worker
      * @param TCPConnection $tcpConnection
      * @return void
      */
-    #[Rpc('设置进程ID')] public function setProcessId(int $processId, TCPConnection $tcpConnection): void
+    #[RPC('设置进程ID')] public function setProcessId(int $processId, TCPConnection $tcpConnection): void
     {
+        foreach (JsonRpcClient::getInstance()->rpcServices as $rpcService) {
+            try {
+                $this->slice->send($tcpConnection, json_encode([
+                    'version' => '2.0',
+                    'method'  => 'rpcServiceIsOnline',
+                    'params'  => [$rpcService->name]
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            } catch (FileException $exception) {
+                Output::printException($exception);
+            }
+        }
         $this->setClientName($tcpConnection, "process:{$processId}");
     }
 
@@ -100,7 +114,7 @@ class ProcessTree extends Worker
      * @param int $signal
      * @return bool
      */
-    #[Rpc('向指定进程发送信号')] public function signal(int $processId, int $signal): bool
+    #[RPC('向指定进程发送信号')] public function signal(int $processId, int $signal): bool
     {
         if ($observerProcessId = $this->processObserverIdMap[$processId] ?? null) {
             if ($observerProcessId === posix_getpid()) {
@@ -108,8 +122,9 @@ class ProcessTree extends Worker
             } elseif ($tcpConnection = $this->getClientByName("process:{$observerProcessId}")) {
                 try {
                     $this->slice->send($tcpConnection, json_encode([
-                        'method' => 'posix_kill',
-                        'params' => [$processId, $signal]
+                        'version' => '2.0',
+                        'method'  => 'posix_kill',
+                        'params'  => [$processId, $signal]
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 } catch (FileException $exception) {
                     Output::printException($exception);
@@ -120,16 +135,95 @@ class ProcessTree extends Worker
     }
 
     /**
+     * 关闭进程
+     * @param int $processId
+     * @return bool
+     */
+    #[RPC('关闭进程')] public function kill(int $processId): bool
+    {
+        $result = $this->signal($processId, SIGUSR2);
+        unset($this->processObserverIdMap[$processId]);
+        return $result;
+    }
+
+    /**
+     * 进程退出
+     * @param int $processId
      * @return void
      */
-    public function forking(): void
+    #[RPC('进程退出')] public function isDie(int $processId): void
     {
-        parent::forking();
+        unset($this->processObserverIdMap[$processId]);
+        Output::info('Process:', 'Exit:' . $processId);
+    }
+
+    /**
+     * @return void
+     */
+    public function forkPassive(): void
+    {
         parent::forkPassive();
+        $this->registerSignalHandler();
         $this->rpcService->listenSocketHashMap = array_filter($this->rpcService->listenSocketHashMap, function (Socket $socket) {
             $this->unsubscribeSocket($socket);
             socket_close($socket);
             return false;
         });
+    }
+
+    /**
+     * @return void
+     */
+    public function initialize(): void
+    {
+        parent::initialize();
+        $this->registerSignalHandler();
+    }
+
+    /**
+     * @return void
+     */
+    public function registerSignalHandler(): void
+    {
+        pcntl_signal(SIGCHLD, function () {
+            while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
+                if ($this->isFork) {
+                    JsonRpcClient::getInstance()->call(ProcessManager::class, 'isDie', $childrenProcessId);
+                } else {
+                    $this->isDie($childrenProcessId);
+                }
+                unset($this->childrenProcessIds[array_search($childrenProcessId, $this->childrenProcessIds)]);
+            }
+        });
+    }
+
+    public function onConnect(TCPConnection $client): void
+    {
+        // TODO: Implement onConnect() method.
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+        // TODO: Implement onMessage() method.
+    }
+
+    public function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
     }
 }

@@ -48,7 +48,9 @@ use Exception;
 use SplPriorityQueue;
 use Throwable;
 use Worker\Prop\Build;
+use Worker\Socket\TCPConnection;
 use Worker\Worker;
+use function PRipple\async;
 
 /**
  * Timer is a process-level service that provides timing services for the current process and does not support uninstallation.
@@ -87,8 +89,11 @@ class Timer extends Worker
                         $this->publishAsync($event->data['data']);
                         break;
                     case Timer::EVENT_TIMER_LOOP:
-                        call_user_func($event->data['data']);
-                        $this->loop($event->data['time'], $event->data['data']);
+                        async(function () use ($event) {
+                            if (call_user_func($event->data['data'])) {
+                                $this->loop($event->data['time'], $event->data['data']);
+                            }
+                        });
                         break;
                     case Timer::EVENT_TIMER_SLEEP:
                         try {
@@ -188,17 +193,29 @@ class Timer extends Worker
      */
     public function forkPassive(): void
     {
+        parent::forkPassive();
         while (!$this->taskQueue->isEmpty()) {
             $this->taskQueue->extract();
         }
-        parent::forkPassive();
     }
 
-    /**
-     * @return void
-     */
-    public function forking(): void
+    public function onConnect(TCPConnection $client): void
     {
-        parent::forking();
+        // TODO: Implement onConnect() method.
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+        // TODO: Implement onMessage() method.
     }
 }

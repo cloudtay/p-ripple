@@ -37,72 +37,54 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
+namespace Support\PDOProxy;
 
-namespace Tests\rpc;
-
-use Worker\Built\JsonRpc\Attribute\RPC;
-use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
+use PRipple;
 use Worker\Worker;
 
-class TestWS extends Worker
+class PDOProxyPool
 {
-    use JsonRpc;
+    /**
+     * @var PDOProxy[] $connections
+     */
+    private array $connections = [];
 
     /**
-     * @return void
+     * @param string $name
+     * @param array  $config
      */
-    public function heartbeat(): void
+    public function __construct(private readonly string $name, private readonly array $config)
     {
-
+        PDOPRoxyPoolMap::$pools[$name] = $this;
     }
 
     /**
-     * @param TCPConnection $client
-     * @return void
+     * @param int $number
+     * @return $this
      */
-    public function onConnect(TCPConnection $client): void
+    public function run(int $number): PDOProxyPool
     {
-    }
-
-    /**
-     * @param string        $context
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onClose(TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param string $message
-     * @return mixed
-     */
-    #[RPC("向所有客户端发送消息")] public function sendMessageToClients(string $message): mixed
-    {
-        foreach ($this->getClients() as $client) {
-            $client->send($message);
+        for ($i = 1; $i <= $number; $i++) {
+            $this->connections["PDOProxyPool.{$this->name}.{$i}"] = PDOProxy::new("database-$i")->config($this->config)->mode(Worker::MODE_INDEPENDENT);
+            PRipple::kernel()->push($this->connections["PDOProxyPool.{$this->name}.{$i}"]);
         }
-        return true;
+        return $this;
     }
 
-    public function onHandshake(TCPConnection $client): void
+    /**
+     * @param string $name
+     * @return PDOProxy
+     */
+    public function get(string $name): PDOProxy
     {
-        // TODO: Implement onHandshake() method.
+        return PDOPRoxyPoolMap::$pools[$this->name][$name];
     }
 
-    public function handleEvent(Build $event): void
+    /**
+     * @return PDOProxy
+     */
+    public function range(): PDOProxy
     {
-        // TODO: Implement handleEvent() method.
+        return $this->connections[array_rand($this->connections)];
     }
 }

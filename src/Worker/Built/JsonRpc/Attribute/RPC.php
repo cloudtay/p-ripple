@@ -42,7 +42,7 @@ namespace Worker\Built\JsonRpc\Attribute;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_METHOD)]
-class Rpc
+class RPC
 {
     public function __construct(
         public string      $name,

@@ -327,7 +327,6 @@ class Request extends CollaborativeFiberStd
     public function exceptionHandler(Throwable $exception): true
     {
         if (isset($this->exceptionHandler)) {
-            Output::printException($exception);
             call_user_func_array($this->exceptionHandler, [$exception]);
             $this->destroy();
             return true;
