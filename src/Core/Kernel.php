@@ -190,7 +190,9 @@ class Kernel
     {
         foreach ($workers as $worker) {
             try {
-                Output::info('Initialize: ', $worker->name);
+                if (!$this->isFork()) {
+                    Output::info('Initialize: ', $worker->name);
+                }
                 WorkerMap::addWorker($worker)->initialize();
             } catch (Throwable $exception) {
                 Output::printException($exception);

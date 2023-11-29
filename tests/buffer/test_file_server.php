@@ -39,7 +39,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\buffer;
+namespace Tests\http\buffer;
 
 use Core\FileSystem\FileException;
 use Core\Output;

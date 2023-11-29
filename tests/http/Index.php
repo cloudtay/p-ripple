@@ -1,64 +1,6 @@
-### 项目介绍
-
-太强大了,暂时无法介绍.
-
-### create `main.php`
-
-```php
 <?php
-include_once __DIR__ . '/vendor/autoload.php';
 
-use Support\Http\HttpWorker;
-use Support\PDOProxy\PDOProxyPool;
-use Support\WebApplication\Route;
-use Support\WebApplication\RouteMap;
-use Support\WebApplication\WebApplication;
-use Support\WebSocket\WebSocket;
-use Worker\Worker;
-
-$kernel = PRipple::configure([
-    'RUNTIME_PATH'     => '/tmp',
-    'HTTP_UPLOAD_PATH' => '/tmp',
-    'PP_RUNTIME_PATH'  => '/tmp'
-]);
-
-$options = [SO_REUSEPORT => 1];
-
-# 构建WebSocketWorker
-$wsWorker = TestWS::new('ws')->bind('tcp://127.0.0.1:8001', $options)
-    ->protocol(WebSocket::class)
-    ->mode(Worker::MODE_INDEPENDENT);
-
-# 构建HttpWorker并使用注入框架
-$router = new RouteMap;
-$router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
-$router->define(Route::GET, '/download', [Index::class, 'download']);
-$router->define(Route::GET, '/upload', [Index::class, 'upload']);
-$router->define(Route::POST, '/upload', [Index::class, 'upload']);
-$router->define(Route::GET, '/data', [Index::class, 'data']);
-$httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options)->mode(Worker::MODE_INDEPENDENT);
-WebApplication::inject($httpWorker, $router, []);
-
-$pool = new PDOProxyPool([
-    'driver'   => 'mysql',
-    'hostname' => '127.0.0.1',
-    'database' => 'lav',
-    'username' => 'root',
-    'password' => '123456',
-    'options'  => [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]
-]);
-
-$pool->run(10);
-
-# 启动服务
-$kernel->push($httpWorker, $wsWorker)->launch();
-
-```
-
-### create you Controller `Index.php`
-
-```php
-<?php
+namespace Tests\http;
 
 use Generator;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +29,7 @@ class Index
         /**
          * 你可以通过 WorkerMap::get 获取已经启动的Worker
          * 内置的Worker都是单例模式运行并以className命名
-         * @var TestWS $ws
+         * @var TestWs $ws
          */
         JsonRpcClient::getInstance()->call(
             'ws',
@@ -112,7 +54,7 @@ class Index
             yield $request->respondBody('文件上传中,请勿关闭页面.');
             $request->async(Request::EVENT_UPLOAD, function (array $info) {
                 /**
-                 * @var TestWS $ws
+                 * @var TestWs $ws
                  */
                 JsonRpcClient::getInstance()->call(
                     'ws',
@@ -174,78 +116,3 @@ class Index
 //        ]);
     }
 }
-```
-
-### create WSService `TestWS.php`
-
-```php
-<?php
-declare(strict_types=1);
-
-use Worker\Built\JsonRpc\Attribute\RPC;
-use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
-use Worker\Worker;
-
-class TestWS extends Worker
-{
-    use JsonRpc;
-
-    /**
-     * @return void
-     */
-    public function heartbeat(): void
-    {
-
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onConnect(TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param string        $context
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onClose(TCPConnection $client): void
-    {
-    }
-
-    /**
-     * @param string $message
-     * @return mixed
-     */
-    #[RPC("向所有客户端发送消息")] public function sendMessageToClients(string $message): mixed
-    {
-        foreach ($this->getClients() as $client) {
-            $client->send($message);
-        }
-        return true;
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
-    }
-}
-
-```

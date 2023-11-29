@@ -40,16 +40,13 @@
 
 include_once __DIR__ . '/../vendor/autoload.php';
 
-use Core\Map\ExtendMap;
 use Support\Http\HttpWorker;
-use Support\PDOProxy\PDOProxy;
 use Support\PDOProxy\PDOProxyPool;
-use Support\WebApplication\Extends\Laravel;
 use Support\WebApplication\Route;
 use Support\WebApplication\RouteMap;
 use Support\WebApplication\WebApplication;
 use Support\WebSocket\WebSocket;
-use Tests\http\Controller;
+use Tests\http\Index;
 use Tests\rpc\TestWS;
 use Worker\Worker;
 
@@ -67,19 +64,17 @@ $wsWorker = TestWs::new('ws')->bind('tcp://127.0.0.1:8001', $options)
     ->mode(Worker::MODE_INDEPENDENT);
 
 # 构建HttpWorker并使用注入框架
-ExtendMap::set(Laravel::class, new Laravel());
-$router = new RouteMap();
-$router->define(Route::GET, '/', [Controller::class, 'index']);
-$router->define(Route::GET, '/send', [Controller::class, 'send']);
-$router->define(Route::GET, '/data', [Controller::class, 'data']);
-$router->define(Route::GET, '/fork', [Controller::class, 'fork']);
-$router->define(Route::GET, '/kill', [Controller::class, 'kill']);
-$router->define(Route::GET, '/connect', [Controller::class, 'connect']);
+$router = new RouteMap;
+$router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
+$router->define(Route::GET, '/download', [Index::class, 'download']);
+$router->define(Route::GET, '/upload', [Index::class, 'upload']);
+$router->define(Route::POST, '/upload', [Index::class, 'upload']);
+$router->define(Route::GET, '/data', [Index::class, 'data']);
 
 $httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options)->mode(Worker::MODE_INDEPENDENT);
 WebApplication::inject($httpWorker, $router, []);
 
-$pool = new PDOProxyPool('DEFAULT', [
+$pool = new PDOProxyPool([
     'driver'   => 'mysql',
     'hostname' => '127.0.0.1',
     'database' => 'lav',

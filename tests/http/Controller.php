@@ -37,14 +37,14 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Tests\http;
+namespace Tests\http\http;
 
 use Core\Map\WorkerMap;
 use Facade\JsonRpc;
 use Generator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 use Support\Http\Request;
-use Support\PDOProxy\PDOPRoxyPoolMap;
-use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Built\ProcessManager;
 
 class Controller
@@ -55,7 +55,7 @@ class Controller
      */
     public static function index(Request $request): Generator
     {
-        yield $request->respondBody('hello,world');
+        yield $request->respondBody(View::make('upload', ['title' => 'upload'])->render());
     }
 
     /**
@@ -64,15 +64,7 @@ class Controller
      */
     public static function data(Request $request): Generator
     {
-        yield $request->respondJson([
-                'processId' => posix_getpid(),
-                JsonRpcClient::getInstance()->call(
-                    PDOPRoxyPoolMap::$pools['DEFAULT']->range()->name,
-                    'prepare',
-                    'SELECT * FROM `user` where `id` = ?;', [17], []
-                )
-            ]
-        );
+        yield $request->respondJson(DB::table('user')->first());
     }
 
     /**

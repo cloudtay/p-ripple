@@ -37,16 +37,21 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
+declare(strict_types=1);
+
 namespace Support\WebApplication\Extends;
 
 use Illuminate\Container\Container;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 use Illuminate\View\Compilers\BladeCompiler;
 use Illuminate\View\Engines\CompilerEngine as ViewCompilerEngine;
 use Illuminate\View\Engines\EngineResolver as ViewEngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use Illuminate\View\FileViewFinder as ViewFileFinder;
+use Illuminate\Database\Capsule\Manager;
 
 /**
  * 模板引擎只在WebApplication中使用,要单拎
@@ -79,6 +84,12 @@ class Laravel
     public array $dependencyInjectionList = [];
 
     /**
+     * @var Manager $databaseManager
+     */
+    public Manager $databaseManager;
+
+
+    /**
      * 初始化Laravel设计模式底层依赖
      */
     public function __construct()
@@ -86,6 +97,8 @@ class Laravel
         $this->container       = new Container();
         $this->filesystem      = new Filesystem();
         $this->eventDispatcher = new Dispatcher($this->container);
+        $this->databaseManager = new Manager($this->container);
+        $this->initEloquent();
     }
 
     /**
@@ -104,5 +117,39 @@ class Laravel
         $viewFileFinder                                    = new ViewFileFinder($this->filesystem, $viewPaths);
         $factory                                           = new ViewFactory($viewEngineResolver, $viewFileFinder, $this->eventDispatcher);
         $this->dependencyInjectionList[ViewFactory::class] = $factory;
+        View::setFacadeApplication($this->container);
+        $this->container->singleton('view', function (Container $container) use ($factory) {
+            return $factory;
+        });
+    }
+
+    /**
+     * @return void
+     */
+    public function initEloquent(): void
+    {
+        $this->databaseManager->setAsGlobal();
+        $this->databaseManager->bootEloquent();
+        DB::setFacadeApplication($this->container);
+        $this->container->singleton('db', function (Container $container) {
+            return $this->databaseManager;
+        });
+
+    }
+
+    /**
+     * @var Laravel $instance
+     */
+    public static Laravel $instance;
+
+    /**
+     * @return Laravel
+     */
+    public static function getInstance(): Laravel
+    {
+        if (!isset(Laravel::$instance)) {
+            Laravel::$instance = new Laravel();
+        }
+        return Laravel::$instance;
     }
 }

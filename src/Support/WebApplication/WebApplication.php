@@ -39,7 +39,6 @@
 
 namespace Support\WebApplication;
 
-use Core\Map\ExtendMap;
 use Generator;
 use Illuminate\View\Factory;
 use PRipple;
@@ -84,11 +83,8 @@ class WebApplication
             $viewPaths[] = $viewPath;
         }
         $cachePath = PP_RUNTIME_PATH . '/cache';
-        /**
-         * 注册模板引擎
-         * @var Laravel $laravel
-         */
-        $laravel = ExtendMap::get(Laravel::class);
+
+        $laravel = Laravel::getInstance();
         $laravel->initViewEngine($viewPaths, $cachePath);
     }
 
@@ -129,10 +125,7 @@ class WebApplication
     private function requestHandler(Request $request): Generator
     {
         $request->injectDependencies(Request::class, $request);
-        /**
-         * @var Laravel $laravel
-         */
-        $laravel = ExtendMap::get(Laravel::class);
+        $laravel = Laravel::getInstance();
         foreach ($laravel->dependencyInjectionList as $key => $value) {
             $request->injectDependencies($key, $value);
         }

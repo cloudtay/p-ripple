@@ -40,6 +40,7 @@
 namespace Support\PDOProxy;
 
 use PRipple;
+use Support\WebApplication\Extends\Laravel;
 use Worker\Worker;
 
 class PDOProxyPool
@@ -53,9 +54,13 @@ class PDOProxyPool
      * @param string $name
      * @param array  $config
      */
-    public function __construct(private readonly string $name, private readonly array $config)
+    public function __construct(private readonly array $config, private readonly string $name = 'default')
     {
         PDOPRoxyPoolMap::$pools[$name] = $this;
+        Laravel::getInstance()->databaseManager->addConnection(
+            $this->config,
+            $this->name
+        );
     }
 
     /**
