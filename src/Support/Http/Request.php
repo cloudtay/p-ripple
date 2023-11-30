@@ -260,7 +260,8 @@ class Request extends CollaborativeFiberStd
         $headers['Content-Disposition'] = "attachment; filename=\"{$filename}\"";
         $headers['Content-Length']      = $filesize;
         $headers['Accept-Length']       = $filesize;
-        $this->async(self::EVENT_DOWNLOAD, function () {
+        $this->async(Request::EVENT_DOWNLOAD, function () {
+
         });
         return $this->respondBody(File::open($path, 'r'), $headers);
     }
@@ -311,10 +312,10 @@ class Request extends CollaborativeFiberStd
      * @param Closure $callable
      * @return CollaborativeFiberStd
      */
-    public function setupWithCallable(Closure $callable): CollaborativeFiberStd
+    public function setup(Closure $callable): CollaborativeFiberStd
     {
-        $result = parent::setupWithCallable($callable);
-        $this->injectDependencies(Response::class, $this->response);
+        $result = parent::setup($callable);
+        $this->inject(Response::class, $this->response);
         $this->requestSingle->hash = $this->hash;
         return $result;
     }

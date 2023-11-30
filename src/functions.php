@@ -123,7 +123,12 @@ function async(Closure $callable): void
     EventMap::push(Build::new(Constants::EVENT_TEMP_FIBER, new class($callable) extends CollaborativeFiberStd {
         public function __construct(Closure $callable)
         {
-            $this->setupWithCallable($callable);
+            $this->setup($callable);
+        }
+
+        public function handleEvent(Build $event): void
+        {
+
         }
     }, 'anonymous'));
 }

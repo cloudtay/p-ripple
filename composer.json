@@ -9,6 +9,7 @@
       "src/functions.php"
     ]
   },
+  "license": "MIT",
   "authors": [
     {
       "name": "cclilshy",
@@ -24,6 +25,5 @@
     "cclilshy/p-ripple-plugins": "dev-main"
   },
   "minimum-stability": "dev",
-  "version": "dev-main",
-  "license": "MIT"
+  "version": "dev-main"
 }

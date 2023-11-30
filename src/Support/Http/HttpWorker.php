@@ -122,7 +122,7 @@ class HttpWorker extends Worker
     public function heartbeat(): void
     {
         while ($request = array_shift($this->requests)) {
-            $request->setupWithCallable(function () use ($request) {
+            $request->setup(function () use ($request) {
                 try {
                     $requesting = call_user_func($this->requestHandler, $request);
                     foreach ($requesting as $response) {
@@ -161,7 +161,7 @@ class HttpWorker extends Worker
             };
 
             try {
-                if ($request->executeFiber()) {
+                if ($request->execute()) {
                     CollaborativeFiberMap::$collaborativeFiberMap[$request->hash] = $request;
                 } else {
                     $this->recover($request->hash);
@@ -305,7 +305,7 @@ class HttpWorker extends Worker
         $hash = $event->source;
         if ($collaborativeFiber = CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null) {
             try {
-                if ($collaborativeFiber->checkIfTerminated()) {
+                if ($collaborativeFiber->terminated()) {
                     $this->recover($hash);
                 } else {
                     $this->resume($hash, $event);
@@ -331,6 +331,10 @@ class HttpWorker extends Worker
         }
     }
 
+    /**
+     * @param TCPConnection $client
+     * @return void
+     */
     public function onHandshake(TCPConnection $client): void
     {
         // TODO: Implement onHandshake() method.

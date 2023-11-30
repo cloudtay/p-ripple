@@ -54,10 +54,7 @@ class SessionManager
      */
     public function __construct(string $filePath)
     {
-        if (!is_dir($filePath)) {
-            mkdir($filePath, 0755, true);
-        }
-        if (!is_dir($filePath)) {
+        if (!is_dir($filePath) && !mkdir($filePath, 0755, true)) {
             throw new RuntimeException('Session directory does not exist: ' . $filePath);
         }
         $this->filePath = $filePath;

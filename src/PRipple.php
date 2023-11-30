@@ -136,7 +136,17 @@ class PRipple
         define('BS', '\\');
         define('PP_START_TIMESTAMP', time());
         define('PP_ROOT_PATH', __DIR__);
-        define('PP_RUNTIME_PATH', PRipple::getArgument('RUNTIME_PATH', '/tmp'));
+        define('PP_RUNTIME_PATH', PRipple::getArgument('PP_RUNTIME_PATH', '/tmp'));
         define('PP_MAX_FILE_HANDLE', 10240);
+    }
+
+    /**
+     * @param int|string $key
+     * @param mixed      $value
+     * @return void
+     */
+    public static function config(int|string $key, mixed $value): void
+    {
+        PRipple::$configureArguments[$key] = $value;
     }
 }

@@ -41,6 +41,7 @@ declare(strict_types=1);
 
 namespace Core;
 
+use Closure;
 use Core\Map\EventMap;
 use Core\Map\SocketMap;
 use Core\Map\WorkerMap;
@@ -92,20 +93,24 @@ class Kernel
 
     /**
      * 启动服务
+     * @param Closure|null $closure
      * @return void
      */
-    #[NoReturn] public function launch(): void
+    #[NoReturn] public function launch(Closure|null $closure = null): void
     {
+        $this->consumption();
         foreach (WorkerMap::$workerMap as $worker) {
             $this->launchWorker($worker);
             if ($this->isFork()) {
                 break;
             }
         }
-        $this->consumption();
         if (!$this->isFork()) {
             Output::info('', '-----------------------------------------');
             Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
+            if ($closure) {
+                call_user_func($closure);
+            }
         }
         $this->loop();
     }
@@ -251,7 +256,7 @@ class Kernel
                 break;
             case Constants::EVENT_TEMP_FIBER:
                 try {
-                    if ($response = $event->data->executeFiber()) {
+                    if ($response = $event->data->execute()) {
                         EventMap::push($response);
                     } else {
                         $event->data->destroy();
@@ -310,7 +315,7 @@ class Kernel
                     }
                     array_map(function (Worker $worker) {
                         if ($worker->busy) {
-                            $worker->heartbeat();
+                            $worker->callWorkerEvent('heartbeat');
                         }
                     }, WorkerMap::$workerMap);
                 } else {
@@ -346,7 +351,7 @@ class Kernel
     private function heartbeat(): void
     {
         foreach (WorkerMap::$workerMap as $worker) {
-            $worker->heartbeat();
+            $worker->callWorkerEvent('heartbeat');
         }
         gc_collect_cycles();
     }

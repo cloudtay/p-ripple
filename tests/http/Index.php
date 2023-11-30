@@ -2,6 +2,7 @@
 
 namespace Tests\http;
 
+use Core\Map\WorkerMap;
 use Generator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\Factory;
@@ -9,6 +10,7 @@ use Support\Http\Request;
 use Support\WebApplication\Route;
 use Tests\rpc\TestWS;
 use Worker\Built\JsonRpc\JsonRpcClient;
+use Worker\Worker;
 
 class Index
 {
@@ -114,5 +116,17 @@ class Index
 //            'update' => $updateData,
 //            'result' => $resultData,
 //        ]);
+    }
+
+    public static function fork(Request $request): Generator
+    {
+        yield $request->respondJson([
+            'processId' => WorkerMap::get('http')->fork()
+        ]);
+    }
+
+    public static function hello(Request $request): Generator
+    {
+        yield $request->respondBody('hello world');
     }
 }

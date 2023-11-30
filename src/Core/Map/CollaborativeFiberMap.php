@@ -106,7 +106,7 @@ class CollaborativeFiberMap implements MapInterface
     public static function resume(string $hash, mixed $data): mixed
     {
         if ($collaborativeFiber = CollaborativeFiberMap::$collaborativeFiberMap[$hash] ?? null) {
-            return $collaborativeFiber->resumeFiberExecution($data);
+            return $collaborativeFiber->resume($data);
         }
         return null;
     }

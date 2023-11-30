@@ -105,7 +105,7 @@ class JsonRpcClient extends Worker
     public function add(Worker $worker, bool|null $connect = false): void
     {
         $this->rpcServices[$worker->name] = $worker;
-        if ($this->isFork || $connect) {
+        if ($this->isFork() || $connect) {
             try {
                 [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($worker->getRpcServiceAddress());
                 match ($type) {
@@ -130,7 +130,7 @@ class JsonRpcClient extends Worker
      */
     public function call(string $serviceName, string $methodName, mixed ...$arguments): mixed
     {
-        if (!$this->isFork && $this->rpcServices[$serviceName]->mode === Worker::MODE_COLLABORATIVE) {
+        if (!$this->isFork() && $this->rpcServices[$serviceName]->mode === Worker::MODE_COLLABORATIVE) {
             return call_user_func_array([$this->rpcServices[$serviceName], $methodName], $arguments);
         } else {
             $context = json_encode([
@@ -158,7 +158,7 @@ class JsonRpcClient extends Worker
         $info = json_decode($context);
         if (property_exists($info, 'result')) {
             try {
-                CollaborativeFiberMap::getCollaborativeFiber($info->id)?->resumeFiberExecution($info->result);
+                CollaborativeFiberMap::getCollaborativeFiber($info->id)?->resume($info->result);
             } catch (Throwable $exception) {
                 Output::printException($exception);
             }

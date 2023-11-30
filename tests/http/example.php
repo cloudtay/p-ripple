@@ -1,43 +1,4 @@
 <?php
-/*
- * Copyright (c) 2023 cclilshy
- * Contact Information:
- * Email: jingnigg@gmail.com
- * Website: https://cc.cloudtay.com/
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * 版权所有 (c) 2023 cclilshy
- *
- * 特此免费授予任何获得本软件及相关文档文件（“软件”）副本的人，不受限制地处理
- * 本软件，包括但不限于使用、复制、修改、合并、出版、发行、再许可和/或销售
- * 软件副本的权利，并允许向其提供本软件的人做出上述行为，但须符合以下条件：
- *
- * 上述版权声明和本许可声明应包含在本软件的所有副本或主要部分中。
- *
- * 本软件按“原样”提供，不提供任何形式的保证，无论是明示或暗示的，
- * 包括但不限于适销性、特定目的的适用性和非侵权性的保证。在任何情况下，
- * 无论是合同诉讼、侵权行为还是其他方面，作者或版权持有人均不对
- * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
- */
-
-
 include_once __DIR__ . '/../vendor/autoload.php';
 
 use Support\Http\HttpWorker;
@@ -50,11 +11,7 @@ use Tests\http\Index;
 use Tests\rpc\TestWS;
 use Worker\Worker;
 
-$kernel = PRipple::configure([
-    'RUNTIME_PATH'     => '/tmp',
-    'HTTP_UPLOAD_PATH' => '/tmp',
-    'PP_RUNTIME_PATH'  => '/tmp'
-]);
+$kernel = PRipple::configure([]);
 
 $options = [SO_REUSEPORT => 1];
 
@@ -63,27 +20,36 @@ $wsWorker = TestWs::new('ws')->bind('tcp://127.0.0.1:8001', $options)
     ->protocol(WebSocket::class)
     ->mode(Worker::MODE_INDEPENDENT);
 
-# 构建HttpWorker并使用注入框架
-$router = new RouteMap;
-$router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
-$router->define(Route::GET, '/download', [Index::class, 'download']);
-$router->define(Route::GET, '/upload', [Index::class, 'upload']);
-$router->define(Route::POST, '/upload', [Index::class, 'upload']);
-$router->define(Route::GET, '/data', [Index::class, 'data']);
-
-$httpWorker = HttpWorker::new('http')->bind('tcp://127.0.0.1:8008', $options)->mode(Worker::MODE_INDEPENDENT);
-WebApplication::inject($httpWorker, $router, []);
-
-$pool = new PDOProxyPool([
+# 初始化PDOProxyPool
+PDOProxyPool::init([
     'driver'   => 'mysql',
     'hostname' => '127.0.0.1',
     'database' => 'lav',
     'username' => 'root',
     'password' => '123456',
     'options'  => [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]
-]);
+])->run(4);
 
-$pool->run(10);
+# 构建HttpWorker
+$httpWorker = HttpWorker::new('http')
+    ->bind('tcp://127.0.0.1:8008', $options)
+    ->mode(Worker::MODE_INDEPENDENT)
+    ->thread(10);
+
+# 初始化路由
+$GLOBALS['ROUTER'] = $router = new RouteMap;
+$router->define(Route::GET, '/', [Index::class, 'index'])->middlewares([]);
+$router->define(Route::GET, '/download', [Index::class, 'download']);
+$router->define(Route::GET, '/upload', [Index::class, 'upload']);
+$router->define(Route::POST, '/upload', [Index::class, 'upload']);
+$router->define(Route::GET, '/data', [Index::class, 'data']);
+$router->define(Route::GET, '/fork', [Index::class, 'fork']);
+$router->define(Route::GET, '/hello', [Index::class, 'hello']);
+
+# 使用WebApplication注入HttpWorker
+WebApplication::inject($httpWorker, $router, [
+    'HTTP_UPLOAD_PATH' => '/tmp'
+]);
 
 # 启动服务
 $kernel->push($httpWorker, $wsWorker)->launch();

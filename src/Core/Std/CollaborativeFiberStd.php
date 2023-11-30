@@ -80,7 +80,7 @@ abstract class CollaborativeFiberStd
      * @param Closure $callable
      * @return $this
      */
-    public function setupWithCallable(Closure $callable): CollaborativeFiberStd
+    public function setup(Closure $callable): CollaborativeFiberStd
     {
         $this->fiber   = new Fiber($callable);
         $this->hash    = spl_object_hash($this->fiber);
@@ -94,7 +94,7 @@ abstract class CollaborativeFiberStd
      * @return mixed
      * @throws Throwable
      */
-    public function executeFiber(): mixed
+    public function execute(): mixed
     {
         return $this->fiber->start();
     }
@@ -103,7 +103,7 @@ abstract class CollaborativeFiberStd
      * 验证纤程是否已终止
      * @return bool
      */
-    public function checkIfTerminated(): bool
+    public function terminated(): bool
     {
         return $this->fiber->isTerminated();
     }
@@ -114,7 +114,7 @@ abstract class CollaborativeFiberStd
      * @return mixed
      * @throws Throwable
      */
-    public function resumeFiberExecution(mixed $value = null): mixed
+    public function resume(mixed $value = null): mixed
     {
         return $this->fiber->resume($value);
     }
@@ -124,7 +124,7 @@ abstract class CollaborativeFiberStd
      * @param Throwable $exception
      * @return void
      */
-    public function throwExceptionInFiber(Throwable $exception): void
+    public function throw(Throwable $exception): void
     {
         try {
             $this->fiber->throw($exception);
@@ -134,7 +134,7 @@ abstract class CollaborativeFiberStd
     }
 
     /**
-     * 异步发出一个事件
+     * 同步发出一个事件,由最后一个调用者捕获
      * @param string $eventName
      * @param mixed  $eventData
      * @return mixed
@@ -146,7 +146,7 @@ abstract class CollaborativeFiberStd
     }
 
     /**
-     * 异步发出一个事件,由最后一个调用者捕获
+     * 异步发出一个事件
      * @param string $eventName
      * @param mixed  $eventData
      * @return void
@@ -166,19 +166,18 @@ abstract class CollaborativeFiberStd
      * @return false|object
      * @throws Throwable
      */
-    public function resolveDependencies(string $class): object|false
+    public function resolve(string $class): object|false
     {
         if ($object = $this->dependenceMap[$class] ?? null) {
-            $this->injectDependencies($class, $object);
             return $object;
         } elseif ($worker = WorkerMap::get($class)) {
-            $this->injectDependencies($class, $worker);
+            $this->inject($class, $worker);
             return $worker;
         } elseif ($constructor = (new ReflectionClass($class))->getConstructor()) {
             $params = [];
             foreach ($constructor->getParameters() as $parameter) {
                 if ($paramClass = $parameter->getType()?->getName()) {
-                    $paramObject = $this->resolveDependencies($paramClass);
+                    $paramObject = $this->resolve($paramClass);
                     if ($paramObject) {
                         $params[] = $paramObject;
                     } else {
@@ -201,18 +200,9 @@ abstract class CollaborativeFiberStd
      * @param object $instance
      * @return object
      */
-    public function injectDependencies(string $class, object $instance): object
+    public function inject(string $class, object $instance): object
     {
         return $this->dependenceMap[$class] = $instance;
-    }
-
-    /**
-     * @param string $class
-     * @return object|null
-     */
-    public function getDependencies(string $class): object|null
-    {
-        return $this->dependenceMap[$class] ?? null;
     }
 
     /**
@@ -226,16 +216,6 @@ abstract class CollaborativeFiberStd
     }
 
     /**
-     * 处理事件
-     * @param Build $event
-     * @return void
-     */
-    public function handleEvent(Build $event): void
-    {
-
-    }
-
-    /**
      * 向纤程抛出一个异常,由纤程自身处理
      * @param Throwable $exception
      * @return true
@@ -246,4 +226,11 @@ abstract class CollaborativeFiberStd
         $this->destroy();
         return true;
     }
+
+    /**
+     * 处理事件
+     * @param Build $event
+     * @return void
+     */
+    abstract public function handleEvent(Build $event): void;
 }

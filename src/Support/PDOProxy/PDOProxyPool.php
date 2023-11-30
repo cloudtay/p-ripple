@@ -41,6 +41,8 @@ namespace Support\PDOProxy;
 
 use PRipple;
 use Support\WebApplication\Extends\Laravel;
+use Worker\Built\JsonRpc\JsonRpcClient;
+use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
 class PDOProxyPool
@@ -64,13 +66,19 @@ class PDOProxyPool
     }
 
     /**
-     * @param int $number
+     * @param int|null $number
      * @return $this
      */
-    public function run(int $number): PDOProxyPool
+    public function run(int|null $number = 1): PDOProxyPool
     {
         for ($i = 1; $i <= $number; $i++) {
-            $this->connections["PDOProxyPool.{$this->name}.{$i}"] = PDOProxy::new("database-$i")->config($this->config)->mode(Worker::MODE_INDEPENDENT);
+            $this->connections["PDOProxyPool.{$this->name}.{$i}"] = PDOProxy::new("PDOProxyPool.{$this->name}.{$i}")
+                ->config($this->config)
+                ->mode(Worker::MODE_INDEPENDENT);
+            JsonRpcClient::getInstance()->hook('onClose', function (TCPConnection $connection) {
+                unset($this->connections[$connection->getName()]);
+                echo $connection->getName() . ' closed.' . PHP_EOL;
+            });
             PRipple::kernel()->push($this->connections["PDOProxyPool.{$this->name}.{$i}"]);
         }
         return $this;
@@ -82,7 +90,7 @@ class PDOProxyPool
      */
     public function get(string $name): PDOProxy
     {
-        return PDOPRoxyPoolMap::$pools[$this->name][$name];
+        return $this->connections['PDOProxyPool' . $name];
     }
 
     /**
@@ -91,5 +99,15 @@ class PDOProxyPool
     public function range(): PDOProxy
     {
         return $this->connections[array_rand($this->connections)];
+    }
+
+    /**
+     * @param array  $config
+     * @param string $name
+     * @return PDOProxyPool
+     */
+    public static function init(array $config, string $name = 'default'): PDOProxyPool
+    {
+        return new PDOProxyPool($config, $name);
     }
 }

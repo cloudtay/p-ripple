@@ -83,7 +83,7 @@ class ProcessManager extends Worker
     #[RPC('设置守护进程ID')] public function setObserverProcessId(int $processId, int $observerProcessId): void
     {
         $this->processObserverIdMap[$processId] = $observerProcessId;
-        Output::info('Process: ', 'launch ' . $processId . ' => ' . $observerProcessId);
+        Output::info('Process running: ', $processId . ' [Guard:' . $observerProcessId . ']');
     }
 
     /**
@@ -187,7 +187,7 @@ class ProcessManager extends Worker
     {
         pcntl_signal(SIGCHLD, function () {
             while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
-                if ($this->isFork) {
+                if ($this->isFork()) {
                     JsonRpcClient::getInstance()->call(ProcessManager::class, 'isDie', $childrenProcessId);
                 } else {
                     $this->isDie($childrenProcessId);

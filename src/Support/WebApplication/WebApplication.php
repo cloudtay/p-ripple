@@ -64,6 +64,7 @@ class WebApplication
     private HttpWorker     $httpWorker;
     private RouteMap       $routeMap;
     private SessionManager $sessionManager;
+    private array          $config;
 
     /**
      * WebApplication constructor.
@@ -75,6 +76,10 @@ class WebApplication
     {
         $this->httpWorker = $httpWorker;
         $this->routeMap   = $routeMap;
+        $this->config     = $config;
+        foreach ($this->config as $key => $value) {
+            PRipple::config($key, $value);
+        }
         if ($sessionPath = $config['SESSION_PATH'] ?? null) {
             $this->sessionManager = new SessionManager($sessionPath);
         }
@@ -124,17 +129,17 @@ class WebApplication
      */
     private function requestHandler(Request $request): Generator
     {
-        $request->injectDependencies(Request::class, $request);
+        $request->inject(Request::class, $request);
         $laravel = Laravel::getInstance();
         foreach ($laravel->dependencyInjectionList as $key => $value) {
-            $request->injectDependencies($key, $value);
+            $request->inject($key, $value);
         }
         if (!$router = $this->routeMap->match($request->method, trim($request->path, '/'))) {
             throw new RouteExcept('404 Not Found', 404);
         }
         $this->initSession($request);
         foreach ($router->getMiddlewares() as $middleware) {
-            if (!$middlewareObject = $request->resolveDependencies($middleware)) {
+            if (!$middlewareObject = $request->resolve($middleware)) {
                 throw new WebException('500 Internal Server Error: class does not exist', 500);
             }
             /**
@@ -167,7 +172,7 @@ class WebApplication
         $params           = [];
         foreach ($parameters as $parameter) {
             $types = $parameter->getType()?->getName() ?? [];
-            if (!$params[] = $request->resolveDependencies($types)) {
+            if (!$params[] = $request->resolve($types)) {
                 throw new WebException('500 Internal Server Error: class does not exist', 500);
             }
         }
@@ -183,7 +188,7 @@ class WebApplication
      */
     private function exceptionHandler(mixed $error, Request $request): void
     {
-        $blade = $request->resolveDependencies(Factory::class);
+        $blade = $request->resolve(Factory::class);
         /**
          * @var Factory $blade
          */
@@ -193,7 +198,11 @@ class WebApplication
             'file'   => $error->getFile(),
             'line'   => $error->getLine(),
         ])->render();
-        $request->client->send($request->response->setStatusCode(500)->setBody($html)->__toString());
+        try {
+            $request->client->send($request->response->setStatusCode(500)->setBody($html)->__toString());
+        } catch (Throwable $exception) {
+
+        }
     }
 
     /**
@@ -210,7 +219,7 @@ class WebApplication
             } else {
                 $session = $this->sessionManager->buildSession($sessionID);
             }
-            $request->injectDependencies(Session::class, $session);
+            $request->inject(Session::class, $session);
         }
     }
 }
