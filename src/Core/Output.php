@@ -41,6 +41,7 @@ declare(strict_types=1);
 
 namespace Core;
 
+use PRipple;
 use Throwable;
 
 /**
@@ -54,6 +55,9 @@ class Output
      */
     public static function printException(Throwable $exception): void
     {
+        if (!PRipple::isConsole()) {
+            return;
+        }
         echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
         echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
         echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
@@ -74,6 +78,9 @@ class Output
      */
     public static function info(string $title, string ...$contents): void
     {
+        if (!PRipple::isConsole()) {
+            return;
+        }
         echo "\033[1;32m" . $title . "\033[0m";
         foreach ($contents as $content) {
             echo "\033[1;33m" . $content . "\033[0m";

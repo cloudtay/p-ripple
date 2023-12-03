@@ -49,6 +49,7 @@ class PRipple
     private static Kernel $kernel;
     private static int    $index              = 0;
     private static array  $configureArguments = [];
+    private static bool   $isConsole;
 
     /**
      * 初次装配内核
@@ -57,6 +58,7 @@ class PRipple
      */
     public static function configure(array $arguments): Kernel
     {
+        PRipple::$isConsole          = PHP_SAPI === 'cli';
         PRipple::$configureArguments = $arguments;
         PRipple::initEnvConfig();
         PRipple::initConstant();
@@ -108,15 +110,6 @@ class PRipple
     }
 
     /**
-     * 获取客户端ID
-     * @return int
-     */
-    public static function getClientId(): int
-    {
-        return posix_getpid();
-    }
-
-    /**
      * 初始化环境配置
      */
     private static function initEnvConfig(): void
@@ -148,5 +141,13 @@ class PRipple
     public static function config(int|string $key, mixed $value): void
     {
         PRipple::$configureArguments[$key] = $value;
+    }
+
+    /**
+     * @return bool
+     */
+    public static function isConsole(): bool
+    {
+        return PRipple::$isConsole;
     }
 }

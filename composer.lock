@@ -137,12 +137,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/cclilshy/illuminate-database-p-ripple.git",
-        "reference": "7fed572aea74c725990aaaef1d31b309976f6395"
+        "reference": "600eac96cffd8d3751e96efc5855dc0f97cc4cd0"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/cclilshy/illuminate-database-p-ripple/zipball/7fed572aea74c725990aaaef1d31b309976f6395",
-        "reference": "7fed572aea74c725990aaaef1d31b309976f6395",
+        "url": "https://api.github.com/repos/cclilshy/illuminate-database-p-ripple/zipball/600eac96cffd8d3751e96efc5855dc0f97cc4cd0",
+        "reference": "600eac96cffd8d3751e96efc5855dc0f97cc4cd0",
         "shasum": ""
       },
       "require": {
@@ -168,14 +168,9 @@
       },
       "default-branch": true,
       "type": "library",
-      "extra": {
-        "branch-alias": {
-          "dev-master": "10.x-dev"
-        }
-      },
       "autoload": {
         "psr-4": {
-          "Illuminate\\Database\\": ""
+          "PRipple\\Illuminate\\Database\\": ""
         }
       },
       "notification-url": "https://packagist.org/downloads/",
@@ -200,7 +195,7 @@
         "issues": "https://github.com/laravel/framework/issues",
         "source": "https://github.com/laravel/framework"
       },
-      "time": "2023-11-29T10:15:17+00:00"
+      "time": "2023-12-03T01:28:01+00:00"
     },
     {
       "name": "cclilshy/p-ripple-plugins",
@@ -804,12 +799,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/illuminate/support.git",
-        "reference": "88960c790553fb24aa0c52b9a0b58fab04ea6fc3"
+        "reference": "4eeecb17a5a798556b573843e8964faaf7dba290"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/illuminate/support/zipball/88960c790553fb24aa0c52b9a0b58fab04ea6fc3",
-        "reference": "88960c790553fb24aa0c52b9a0b58fab04ea6fc3",
+        "url": "https://api.github.com/repos/illuminate/support/zipball/4eeecb17a5a798556b573843e8964faaf7dba290",
+        "reference": "4eeecb17a5a798556b573843e8964faaf7dba290",
         "shasum": ""
       },
       "require": {
@@ -867,7 +862,7 @@
         "issues": "https://github.com/laravel/framework/issues",
         "source": "https://github.com/laravel/framework"
       },
-      "time": "2023-11-27T16:17:31+00:00"
+      "time": "2023-11-30T22:33:19+00:00"
     },
     {
       "name": "illuminate/view",
@@ -875,12 +870,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/illuminate/view.git",
-        "reference": "b4898bf7023da601d59bd2ac7805b8c59646e2d3"
+        "reference": "ce59846a4476666da70aeab10e0c8ab7206e3f0f"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/illuminate/view/zipball/b4898bf7023da601d59bd2ac7805b8c59646e2d3",
-        "reference": "b4898bf7023da601d59bd2ac7805b8c59646e2d3",
+        "url": "https://api.github.com/repos/illuminate/view/zipball/ce59846a4476666da70aeab10e0c8ab7206e3f0f",
+        "reference": "ce59846a4476666da70aeab10e0c8ab7206e3f0f",
         "shasum": ""
       },
       "require": {
@@ -921,7 +916,7 @@
         "issues": "https://github.com/laravel/framework/issues",
         "source": "https://github.com/laravel/framework"
       },
-      "time": "2023-11-28T14:39:53+00:00"
+      "time": "2023-12-01T22:04:08+00:00"
     },
     {
       "name": "nesbot/carbon",
@@ -929,12 +924,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/briannesbitt/Carbon.git",
-        "reference": "9051283ef6398c349ef1a5283f3d95c561115db3"
+        "reference": "87baf0e6ff475f2add18a9f5f839ea0a8178f533"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/briannesbitt/Carbon/zipball/9051283ef6398c349ef1a5283f3d95c561115db3",
-        "reference": "9051283ef6398c349ef1a5283f3d95c561115db3",
+        "url": "https://api.github.com/repos/briannesbitt/Carbon/zipball/87baf0e6ff475f2add18a9f5f839ea0a8178f533",
+        "reference": "87baf0e6ff475f2add18a9f5f839ea0a8178f533",
         "shasum": ""
       },
       "require": {
@@ -1029,7 +1024,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2023-11-18T15:41:24+00:00"
+      "time": "2023-12-01T22:30:17+00:00"
     },
     {
       "name": "psr/clock",

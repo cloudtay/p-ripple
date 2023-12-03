@@ -41,6 +41,7 @@ declare(strict_types=1);
 
 namespace Support\WebApplication\Extends;
 
+
 use Illuminate\Container\Container;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Filesystem\Filesystem;
@@ -51,7 +52,7 @@ use Illuminate\View\Engines\CompilerEngine as ViewCompilerEngine;
 use Illuminate\View\Engines\EngineResolver as ViewEngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use Illuminate\View\FileViewFinder as ViewFileFinder;
-use Illuminate\Database\Capsule\Manager;
+use PRipple\Illuminate\Database\Capsule\Manager;
 
 /**
  * 模板引擎只在WebApplication中使用,要单拎

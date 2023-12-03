@@ -40,7 +40,7 @@
 include __DIR__ . '/../vendor/autoload.php';
 
 use Support\PDOProxy\PDOProxy;
-use Tests\rpc\TestTCP;
+use Tests\http\rpc\TestTCP;
 
 $kernel = PRipple::configure([
     'RUNTIME_PATH'     => '/tmp',
