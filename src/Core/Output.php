@@ -58,6 +58,7 @@ class Output
         if (!PRipple::isConsole()) {
             return;
         }
+        echo "\033[1;31mProcess: " . posix_getpid() . "=>" . posix_getppid() . "\033[0m\n";
         echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
         echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
         echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";

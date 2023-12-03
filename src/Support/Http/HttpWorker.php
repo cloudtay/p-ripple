@@ -127,6 +127,7 @@ class HttpWorker extends Worker
                     $requesting = call_user_func($this->requestHandler, $request);
                     foreach ($requesting as $response) {
                         if ($response instanceof Response) {
+                            $response->headers['Server'] = 'PRipple';
                             if ($request->keepAlive) {
                                 $response->headers['Connection'] = 'Keep-Alive';
                             }
@@ -139,10 +140,11 @@ class HttpWorker extends Worker
                                     $request->hash
                                 );
                             } elseif (!$request->keepAlive) {
-                                $this->removeClient($request->client);
+                                $this->closeClient($request->client);
                             }
                         }
                     }
+                    $this->recover($request->hash);
                 } catch (SocketTunnelException|FileException $exception) {
                     $this->recover($request->hash);
                 } catch (Throwable $exception) {
@@ -228,10 +230,10 @@ class HttpWorker extends Worker
      */
     public function initialize(): void
     {
+        parent::initialize();
         $this->subscribe(Request::EVENT_UPLOAD);
         $this->subscribe(Request::EVENT_DOWNLOAD);
         $this->requestFactory = new RequestFactory($this);
-        parent::initialize();
         if (!$uploadPath = PRipple::getArgument('HTTP_UPLOAD_PATH')) {
             Output::printException(new InvalidArgumentException('HTTP_UPLOAD_PATH is not defined'));
             exit(0);
@@ -247,7 +249,8 @@ class HttpWorker extends Worker
     public function onConnect(TCPConnection $client): void
     {
         $client->setNoBlock();
-        $client->setReceiveBufferSize(8192);
+        $client->setReceiveBufferSize(81920);
+        $client->setSendBufferSize(81920);
     }
 
     /**

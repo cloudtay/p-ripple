@@ -41,13 +41,10 @@ declare(strict_types=1);
 
 namespace Core\Map;
 
-use Core\Constants;
 use Core\MapInterface;
-use Core\Output;
 use Core\Std\CollaborativeFiberStd;
 use Fiber;
 use Throwable;
-use Worker\Prop\Build;
 
 /**
  *
@@ -109,22 +106,5 @@ class CollaborativeFiberMap implements MapInterface
             return $collaborativeFiber->resume($data);
         }
         return null;
-    }
-
-    /**
-     * @param Throwable $exception
-     * @return void
-     */
-    public static function currentThrowExceptionInFiber(Throwable $exception): void
-    {
-        try {
-            Fiber::suspend(Build::new(
-                Constants::EVENT_FIBER_THROW_EXCEPTION,
-                $exception,
-                CollaborativeFiberMap::current())
-            );
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-        }
     }
 }

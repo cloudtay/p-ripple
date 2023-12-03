@@ -49,7 +49,7 @@ use Worker\Worker;
  * 进程管理器门面
  * @method static int process(callable $callback, bool|null $exit = true)
  */
-class Process extends FacadeStd
+class Process implements FacadeStd
 {
     /**
      * @var mixed

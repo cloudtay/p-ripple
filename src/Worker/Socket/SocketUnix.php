@@ -65,6 +65,7 @@ class SocketUnix
         if (!$socket) {
             throw new Exception('Unable to create Unix socket, probably process is occupied');
         }
+        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
         foreach ($options as $option => $value) {
             if ($option === 'nonblock') {
                 socket_set_nonblock($socket);

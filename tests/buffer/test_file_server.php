@@ -39,7 +39,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\http\buffer;
+namespace Tests\buffer;
 
 use Core\FileSystem\FileException;
 use Core\Output;
@@ -144,5 +144,6 @@ $kernel = PRipple::configure([
 ]);
 
 $server = test_file_server::new('test_file_server')->bind('tcp://127.0.0.1:3002', [SO_REUSEADDR => true]);
-PRipple::kernel()->push($server)->launch();
+PRipple::kernel()->push($server);
+$kernel->launch();
 

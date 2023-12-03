@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error - {{ $title }}</title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <title>Warning - {{ $title }}</title>
+    <link href="/trace.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -78,12 +78,12 @@
     </div>
     <div class="trace">
         @foreach ($traces as $trace)
-        @if( $trace['file'] && $trace['line'])
-        <p>{{ $trace['file'] }} : {{$trace['line']}}</p>
-        @endif
+            @if( $trace['file'] && $trace['line'])
+                <p>{{ $trace['file'] }} : {{$trace['line']}}</p>
+            @endif
         @endforeach
     </div>
-    <a href="javascript:history.back()" class="back-link">Go Back</a>
+    <a href="javascript:history.back();" class="back-link">Go Back</a>
 </div>
 </body>
 </html>

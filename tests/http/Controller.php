@@ -37,7 +37,7 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Tests\http\http;
+namespace Tests\http;
 
 use Core\Map\WorkerMap;
 use Facade\JsonRpc;
@@ -100,7 +100,7 @@ class Controller
      */
     public static function kill(Request $request): Generator
     {
-        JsonRpc::getInstance()->call(ProcessManager::class, 'kill', intval($request->query['processId']));
+        JsonRpc::call(ProcessManager::class, 'kill', intval($request->query['processId']));
         yield $request->respondJson(
             ['myProcessId' => getmypid(),
              'processId'   => $request->query['processId']]

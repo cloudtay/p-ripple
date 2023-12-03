@@ -45,9 +45,10 @@ use Worker\Worker;
 
 /**
  * @method static mixed call(string $workerName, string $method, mixed ...$params)
- * @method static void connectAll();
+ * @method static void connect(string $serviceName, string $address, string $type)
+ * @method static void addService(string $serviceName, string $address, string $type)
  */
-class JsonRpc extends FacadeStd
+class JsonRpc implements FacadeStd
 {
     /**
      * 单例实体

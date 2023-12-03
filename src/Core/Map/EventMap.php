@@ -65,4 +65,29 @@ class EventMap implements MapInterface
         EventMap::$eventMap[] = $event;
         EventMap::$count++;
     }
+
+    /**
+     * 异步发布一条启动事件
+     * @param Build $event
+     * @return void
+     */
+    public static function launchEvent(Build $event): void
+    {
+        foreach (EventMap::$eventMap as $event) {
+            EventMap::$eventMap[] = $event;
+            EventMap::$count++;
+        }
+    }
+
+    /**
+     * @return Build|null
+     */
+    public static function arrayShift(): Build|null
+    {
+        if (EventMap::$count > 0) {
+            EventMap::$count--;
+            return array_shift(EventMap::$eventMap);
+        }
+        return null;
+    }
 }

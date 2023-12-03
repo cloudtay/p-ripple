@@ -80,10 +80,9 @@ class Timer extends Worker
      */
     public function heartbeat(): void
     {
-        $now = time();
         while (!$this->taskQueue->isEmpty()) {
             $task = $this->taskQueue->top();
-            if ($task['expire'] <= $now && $event = $task['event']) {
+            if ($task['expire'] <= time() && $event = $task['event']) {
                 switch ($event->name) {
                     case Timer::EVENT_TIMER_EVENT:
                         $this->publishAsync($event->data['data']);
@@ -145,6 +144,9 @@ class Timer extends Worker
      */
     public function sleep(int $second): void
     {
+        if (!CollaborativeFiberMap::current()) {
+            sleep($second);
+        }
         $event     = Build::new(Timer::EVENT_TIMER_SLEEP, [
             'time' => $second,
             'data' => CollaborativeFiberMap::current()->hash

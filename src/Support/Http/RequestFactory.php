@@ -114,7 +114,7 @@ class RequestFactory
                 unset($this->singles[$clientHash]);
                 return $single->build();
             case RequestFactory::INVALID:
-                $this->httpService->removeClient($client);
+                $this->httpService->closeClient($client);
                 unset($this->singles[$clientHash]);
                 break;
             case RequestFactory::INCOMPLETE:

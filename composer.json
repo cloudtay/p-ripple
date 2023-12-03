@@ -22,7 +22,8 @@
     "ext-pcntl": "*",
     "ext-posix": "*",
     "ext-pdo": "*",
-    "cclilshy/p-ripple-plugins": "dev-main"
+    "cclilshy/p-ripple-plugins": "dev-main",
+    "firebase/php-jwt": "dev-main"
   },
   "minimum-stability": "dev",
   "version": "dev-main"

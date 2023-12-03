@@ -68,12 +68,15 @@ class PRipple
 
     /**
      * 获取装配参数
-     * @param string      $name
+     * @param string|null $name
      * @param string|null $default
      * @return mixed
      */
-    public static function getArgument(string $name, mixed $default = null): mixed
+    public static function getArgument(string|null $name = null, mixed $default = null): mixed
     {
+        if ($name === null) {
+            return PRipple::$configureArguments;
+        }
         if ($value = PRipple::$configureArguments[$name] ?? null) {
             return $value;
         } elseif ($default) {

@@ -77,8 +77,8 @@ class JsonRpcServer extends Worker
      */
     public function initialize(): void
     {
-        $this->protocol(Slice::class)->bind($this->worker->getRpcServiceAddress());
         parent::initialize();
+        $this->protocol(Slice::class)->bind($this->worker->getRpcServiceAddress());
     }
 
     /**

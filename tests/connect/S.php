@@ -8,6 +8,7 @@ file_exists('/tmp/test.sock') && unlink('/tmp/test.sock');
 $s = SocketUnix::create('/tmp/test.sock');
 socket_set_nonblock($s);
 $cs = [];
+sleep(10);
 while (true) {
     $_rs   = $cs;
     $_rs[] = $s;

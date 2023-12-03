@@ -50,6 +50,7 @@ class Route
     public const OPTIONS = 'OPTIONS';
     public const TRACE   = 'TRACE';
     public const CONNECT = 'CONNECT';
+    public const STATIC = 'STATIC';
 
     /**
      * @var string $method

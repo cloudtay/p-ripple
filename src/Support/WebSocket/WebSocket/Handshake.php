@@ -70,8 +70,7 @@ class Handshake
      */
     public static function accept(TCPConnection $client): bool|null
     {
-        $buffer       = $client->cache;
-        $identityInfo = Handshake::verify($buffer);
+        $identityInfo = Handshake::verify($client->cache);
         if ($identityInfo === null) {
             return null;
         } elseif ($identityInfo === false) {
@@ -90,9 +89,9 @@ class Handshake
      * @param string $buffer
      * @return array|false|null
      */
-    public static function verify(string $buffer): array|false|null
+    public static function verify(string &$buffer): array|false|null
     {
-        if (str_contains($buffer, "\r\n\r\n")) {
+        if ($index = strpos($buffer, "\r\n\r\n")) {
             $verify = Handshake::NEED_HEAD;
             $lines  = explode("\r\n", $buffer);
             $header = array();
@@ -115,6 +114,7 @@ class Handshake
             if (count($verify) > 0) {
                 return false;
             } else {
+                $buffer = substr($buffer, $index + 4);
                 return $header;
             }
         } else {

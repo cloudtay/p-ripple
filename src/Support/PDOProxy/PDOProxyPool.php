@@ -41,47 +41,31 @@ namespace Support\PDOProxy;
 
 use PRipple;
 use Support\WebApplication\Extends\Laravel;
-use Worker\Built\JsonRpc\JsonRpcClient;
+use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
-class PDOProxyPool
+class PDOProxyPool extends Worker
 {
     /**
      * @var PDOProxy[] $connections
      */
-    private array $connections = [];
+    private array $connections        = [];
+    private array $connectionRpcNames = [];
+
 
     /**
-     * @param string $name
      * @param array  $config
+     * @param string $databaseName
      */
-    public function __construct(private readonly array $config, private readonly string $name = 'default')
+    public function __construct(
+        private readonly array $config,
+        public string          $databaseName = 'default',
+    )
     {
-        PDOPRoxyPoolMap::$pools[$name] = $this;
-        Laravel::getInstance()->databaseManager->addConnection(
-            $this->config,
-            $this->name
-        );
-    }
-
-    /**
-     * @param int|null $number
-     * @return $this
-     */
-    public function run(int|null $number = 1): PDOProxyPool
-    {
-        for ($i = 1; $i <= $number; $i++) {
-            $this->connections["PDOProxyPool.{$this->name}.{$i}"] = PDOProxy::new("PDOProxyPool.{$this->name}.{$i}")
-                ->config($this->config)
-                ->mode(Worker::MODE_INDEPENDENT);
-            JsonRpcClient::getInstance()->hook('onClose', function (TCPConnection $connection) {
-                unset($this->connections[$connection->getName()]);
-                echo $connection->getName() . ' closed.' . PHP_EOL;
-            });
-            PRipple::kernel()->push($this->connections["PDOProxyPool.{$this->name}.{$i}"]);
-        }
-        return $this;
+        parent::__construct(PDOProxyPool::class . '.' . $databaseName);
+        PDOPRoxyPoolMap::$pools[$databaseName] = $this;
+        Laravel::getInstance()->databaseManager->addConnection($this->config, $databaseName);
     }
 
     /**
@@ -90,7 +74,7 @@ class PDOProxyPool
      */
     public function get(string $name): PDOProxy
     {
-        return $this->connections['PDOProxyPool' . $name];
+        return $this->connections[$name];
     }
 
     /**
@@ -102,12 +86,75 @@ class PDOProxyPool
     }
 
     /**
-     * @param array  $config
-     * @param string $name
-     * @return PDOProxyPool
+     * @return string
      */
-    public static function init(array $config, string $name = 'default'): PDOProxyPool
+    public function rangeRpc(): string
     {
-        return new PDOProxyPool($config, $name);
+        return $this->connectionRpcNames[array_rand($this->connectionRpcNames)];
+    }
+
+    /**
+     * @param int $number
+     * @return $this
+     */
+    public function run(int $number): PDOProxyPool
+    {
+        for ($i = 1; $i <= $number; $i++) {
+            $worker = PDOProxy::new("database-{$this->databaseName}-{$i}")
+                ->config($this->config, $this)
+                ->mode(Worker::MODE_INDEPENDENT);
+            PRipple::kernel()->push($worker);
+        }
+        return $this;
+    }
+
+    /**
+     * @param string $name
+     * @return void
+     */
+    public function addRpcService(string $name): void
+    {
+        $this->connectionRpcNames[] = $name;
+    }
+
+    /**
+     * @param array $data
+     * @return void
+     */
+    public function rpcServiceOnline(array $data): void
+    {
+        if ($data['type'] === PDOProxy::class) {
+            $this->addRpcService($data['name']);
+        }
+    }
+
+    public function onConnect(TCPConnection $client): void
+    {
+        // TODO: Implement onConnect() method.
+    }
+
+    public function onClose(TCPConnection $client): void
+    {
+        // TODO: Implement onClose() method.
+    }
+
+    public function onHandshake(TCPConnection $client): void
+    {
+        // TODO: Implement onHandshake() method.
+    }
+
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+        // TODO: Implement onMessage() method.
+    }
+
+    public function handleEvent(Build $event): void
+    {
+        // TODO: Implement handleEvent() method.
+    }
+
+    public function heartbeat(): void
+    {
+        // TODO: Implement heartbeat() method.
     }
 }

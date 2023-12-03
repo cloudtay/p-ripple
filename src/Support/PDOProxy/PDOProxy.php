@@ -40,20 +40,23 @@
 namespace Support\PDOProxy;
 
 use PDO;
+use PDOException;
 use Protocol\TCPProtocol;
 use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
 use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
+use function PRipple\loop;
 
 class PDOProxy extends Worker
 {
     use JsonRpc;
 
-    private PDO   $pdo;
-    private bool  $isTransaction = false;
-    private array $config;
+    private PDO          $pdo;
+    private bool         $isTransaction = false;
+    private array        $config;
+    private PDOProxyPool $pool;
 
     /**
      * PDOProxy constructor.
@@ -65,9 +68,25 @@ class PDOProxy extends Worker
         parent::__construct($name, $protocol);
     }
 
-    public function config(array $config): PDOProxy
+    /**
+     * @return void
+     */
+    public function initialize(): void
+    {
+        parent::initialize();
+        $this->connect();
+        loop(30, function () {
+            if (!$this->pdo->query('SELECT 1')) {
+                $this->connect();
+            }
+            return true;
+        });
+    }
+
+    public function config(array $config, PDOProxyPool $pool): PDOProxy
     {
         $this->config = $config;
+        $this->pool   = $pool;
         return $this;
     }
 
@@ -95,33 +114,39 @@ class PDOProxy extends Worker
      */
     #[RPC('数据库查询')] public function prepare(string $query, array|null $bindings = [], array|null $bindParams = []): false|array
     {
-        $pdoStatement = $this->pdo->prepare($query);
-        foreach ($bindings as $key => $value) {
-            $pdoStatement->bindValue(
-                is_string($key) ? $key : $key + 1,
-                $value,
-                match (true) {
-                    is_int($value) => PDO::PARAM_INT,
-                    is_resource($value) => PDO::PARAM_LOB,
-                    default => PDO::PARAM_STR
-                },
-            );
-        }
-        foreach ($bindParams as $key => $value) {
-            $pdoStatement->bindParam(
-                is_string($key) ? $key : $key + 1,
-                $value,
-                match (true) {
-                    is_int($value) => PDO::PARAM_INT,
-                    is_resource($value) => PDO::PARAM_LOB,
-                    default => PDO::PARAM_STR
-                },
-            );
-        }
-        if ($pdoStatement->execute()) {
-            $result = $pdoStatement->fetchAll();
-        } else {
-            $result = false;
+        $result = false;
+        try {
+            $pdoStatement = $this->pdo->prepare($query);
+            foreach ($bindings as $key => $value) {
+                $pdoStatement->bindValue(
+                    is_string($key) ? $key : $key + 1,
+                    $value,
+                    match (true) {
+                        is_int($value) => PDO::PARAM_INT,
+                        is_resource($value) => PDO::PARAM_LOB,
+                        default => PDO::PARAM_STR
+                    },
+                );
+            }
+            foreach ($bindParams as $key => $value) {
+                $pdoStatement->bindParam(
+                    is_string($key) ? $key : $key + 1,
+                    $value,
+                    match (true) {
+                        is_int($value) => PDO::PARAM_INT,
+                        is_resource($value) => PDO::PARAM_LOB,
+                        default => PDO::PARAM_STR
+                    },
+                );
+            }
+            if ($pdoStatement->execute()) {
+                $result = $pdoStatement->fetchAll();
+            }
+        } catch (PDOException $exception) {
+            if ($exception->getCode() === 2006) {
+                $this->connect();
+                return $this->prepare($query, $bindings, $bindParams);
+            }
         }
         return $result;
     }
@@ -162,15 +187,6 @@ class PDOProxy extends Worker
             return true;
         }
         return false;
-    }
-
-    /**
-     * @return void
-     */
-    public function forkPassive(): void
-    {
-        parent::forkPassive();
-//        unset($this->pdo);
     }
 
     /**

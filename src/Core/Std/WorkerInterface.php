@@ -63,9 +63,10 @@ interface WorkerInterface
     /**
      * 处理套接字
      * @param Socket $socket
+     * @param string $event
      * @return void
      */
-    public function handleSocket(Socket $socket): void;
+    public function handleSocket(Socket $socket, string $event): void;
 
     /**
      * 处理异常套接字

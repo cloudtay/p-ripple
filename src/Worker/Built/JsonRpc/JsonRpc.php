@@ -44,5 +44,4 @@ namespace Worker\Built\JsonRpc;
  */
 trait JsonRpc
 {
-
 }

@@ -134,26 +134,44 @@ class WebApplication
         foreach ($laravel->dependencyInjectionList as $key => $value) {
             $request->inject($key, $value);
         }
-        if (!$router = $this->routeMap->match($request->method, trim($request->path, '/'))) {
-            throw new RouteExcept('404 Not Found', 404);
-        }
-        $this->initSession($request);
-        foreach ($router->getMiddlewares() as $middleware) {
-            if (!$middlewareObject = $request->resolve($middleware)) {
-                throw new WebException('500 Internal Server Error: class does not exist', 500);
+        $target = trim($request->path, FS);
+        if (!$router = $this->routeMap->match($request->method, $target)) {
+            if ($publicPath = PRipple::getArgument('HTTP_PUBLIC')) {
+                if (is_dir($publicPath) && is_file($publicPath . FS . $target)) {
+                    $body = file_get_contents($publicPath . FS . $target);
+                    $mime = match (pathinfo($target, PATHINFO_EXTENSION)) {
+                        'css' => 'text/css',
+                        'js' => 'application/javascript',
+                        'html' => 'text/html',
+                        'png' => 'image/png',
+                        'jpg', 'jpeg' => 'image/jpeg',
+                        'gif' => 'image/gif',
+                        default => 'text/plain',
+                    };
+                    return $this->generateStaticResponse($request, $mime, $body);
+                } else {
+                    throw new RouteExcept('404 Not Found', 404);
+                }
             }
-            /**
-             * @var MiddlewareStd $middlewareObject
-             */
-            $middlewareObject->handle($request);
+        } else {
+            $this->initSession($request);
+            foreach ($router->getMiddlewares() as $middleware) {
+                if (!$middlewareObject = $request->resolve($middleware)) {
+                    throw new WebException('500 Internal Server Error: class does not exist', 500);
+                }
+                /**
+                 * @var MiddlewareStd $middlewareObject
+                 */
+                $middlewareObject->handle($request);
+            }
+            if (!class_exists($router->getPath())) {
+                throw new RouteExcept("500 Internal Server Error: class {$router->getPath()} does not exist", 500);
+            } elseif (!method_exists($router->getPath(), $router->getMethod())) {
+                throw new RouteExcept("500 Internal Server Error: method {$router->getMethod()} does not exist", 500);
+            }
+            $params = $this->resolveRouteParams($router->getPath(), $router->getMethod(), $request);
+            return call_user_func_array([$router->getPath(), $router->getMethod()], $params);
         }
-        if (!class_exists($router->getPath())) {
-            throw new RouteExcept("500 Internal Server Error: class {$router->getPath()} does not exist", 500);
-        } elseif (!method_exists($router->getPath(), $router->getMethod())) {
-            throw new RouteExcept("500 Internal Server Error: method {$router->getMethod()} does not exist", 500);
-        }
-        $params = $this->resolveRouteParams($router->getPath(), $router->getMethod(), $request);
-        return call_user_func_array([$router->getPath(), $router->getMethod()], $params);
     }
 
     /**
@@ -199,7 +217,7 @@ class WebApplication
             'line'   => $error->getLine(),
         ])->render();
         try {
-            $request->client->send($request->response->setStatusCode(500)->setBody($html)->__toString());
+            $request->client->send($request->response->setStatusCode($error->getCode())->setBody($html)->__toString());
         } catch (Throwable $exception) {
 
         }
@@ -221,5 +239,16 @@ class WebApplication
             }
             $request->inject(Session::class, $session);
         }
+    }
+
+    /**
+     * @param $request
+     * @param $mime
+     * @param $body
+     * @return Generator
+     */
+    private function generateStaticResponse($request, $mime, $body): Generator
+    {
+        yield $request->response->setStatusCode(200)->setHeader('Content-Type', $mime)->setBody($body);
     }
 }

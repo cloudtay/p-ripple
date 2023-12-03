@@ -136,4 +136,16 @@ use Worker\Tunnel\SocketTunnel;
             }
         }
     }
+
+    /**
+     * 读取到缓冲区
+     * @return int|false
+     */
+    public function readToCache(): string|false
+    {
+        if ($context = $this->read(0, $resultLength)) {
+            return $this->cache($context);
+        }
+        return false;
+    }
 }

@@ -64,27 +64,9 @@ class WorkerMap implements MapInterface
      * @param Worker $worker
      * @return Worker
      */
-    public static function addWorker(Worker $worker): Worker
+    public static function add(Worker $worker): Worker
     {
         return WorkerMap::$workerMap[$worker->name] = $worker;
-    }
-
-    /**
-     * @param string $name
-     * @return Worker|null
-     */
-    public static function getWorker(string $name): Worker|null
-    {
-        return WorkerMap::$workerMap[$name] ?? null;
-    }
-
-    /**
-     * @param string $name
-     * @return Fiber|null
-     */
-    public static function getFiber(string $name): Fiber|null
-    {
-        return WorkerMap::$fiberMap[$name] ?? null;
     }
 
     /**
@@ -97,15 +79,11 @@ class WorkerMap implements MapInterface
     }
 
     /**
-     * 卸载一个服务
-     * @param Worker    $worker
-     * @param bool|null $isFork
-     * @return void
+     * @param string $name
+     * @return Fiber|null
      */
-    public static function unload(Worker $worker, bool|null $isFork = false): void
+    public static function getFiber(string $name): Fiber|null
     {
-        unset(WorkerMap::$workerMap[$worker->name]);
-        unset(WorkerMap::$fiberMap[$worker->name]);
-        $worker->unload($isFork);
+        return WorkerMap::$fiberMap[$name] ?? null;
     }
 }

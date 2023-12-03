@@ -62,7 +62,8 @@ class SocketTunnel implements TunnelStd
     public const EXT = '.tunnel';
 
     /**
-     * 弃用的连接
+     * 已经弃用的连接,无需多余处理
+     * 所有资源已被抛弃并释放对应文件,但该对象依然在某地方的内存空间被保留
      * @var bool
      */
     public bool $deprecated = false;
@@ -554,32 +555,27 @@ class SocketTunnel implements TunnelStd
      */
     public function read(int $length, int|null &$resultLength): string|false
     {
-        if ($length === 0) {
-            $length = $this->receiveBufferSize;
-            $target = false;
-        } else {
-            // 严格接收模式
-            $target = true;
-        }
-        $data         = '';
+        $result    = '';
         $resultLength = 0;
-        if (!$recLength = socket_recv($this->socket, $_buffer, min($length, $this->receiveBufferSize), 0)) {
+        $recLength = socket_recv($this->socket, $context, $this->receiveBufferSize, 0);
+        if ($recLength === false || $recLength === 0) {
             return false;
         }
         $length                 -= $recLength;
-        $data                   .= $_buffer;
+        $result .= $context;
         $resultLength           += $recLength;
         $this->receiveFlowCount += $recLength;
-        while ($target && $length > 0) {
-            if (!$recLength = socket_recv($this->socket, $_buffer, min($length, $this->receiveBufferSize), 0)) {
+        while ($length > 0) {
+            $recLength = socket_recv($this->socket, $context, $this->receiveBufferSize, 0);
+            if ($recLength === false) {
                 return false;
             }
             $length                 -= $recLength;
-            $data                   .= $_buffer;
+            $result .= $context;
             $resultLength           += $recLength;
             $this->receiveFlowCount += $recLength;
         }
-        return $data;
+        return $result;
     }
 
     /**

@@ -51,7 +51,7 @@ use Worker\Worker;
  * @method static void loop(int $seconds, callable $callback)
  * @method static void event(int $seconds, Build $event)
  */
-class Timer extends FacadeStd
+class Timer implements FacadeStd
 {
     /**
      * @var mixed
