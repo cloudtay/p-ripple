@@ -233,7 +233,7 @@ class ProcessManager extends Worker
         pcntl_signal(SIGCHLD, function () {
             while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
                 if ($this->isFork()) {
-                    JsonRpc::call(ProcessManager::class, 'isDie', $childrenProcessId);
+                    JsonRpc::call([ProcessManager::class, 'isDie'], $childrenProcessId);
                 } else {
                     $this->isDie($childrenProcessId);
                 }

@@ -137,14 +137,19 @@ class JsonRpcClient extends Worker
     }
 
     /**
-     * @param string $serviceName
-     * @param string $methodName
-     * @param mixed  ...$arguments
+     * @param array $route
+     * @param mixed ...$arguments
      * @return mixed
-     * @throws Exception
+     * @throws RpcException
      */
-    public function call(string $serviceName, string $methodName, mixed ...$arguments): mixed
+    public function call(array $route, mixed ...$arguments): mixed
     {
+        if (count($route) !== 2) {
+            throw new RpcException('Invalid router');
+        }
+        $serviceName = $route[0];
+        $methodName  = $route[1];
+
         $context = json_encode([
             'method' => $methodName,
             'params' => $arguments,
@@ -251,7 +256,7 @@ class JsonRpcClient extends Worker
         }
         if ($connectionState) {
             async(function () {
-                $rpcServiceList = $this->call(ProcessManager::class, 'setProcessId', posix_getpid());
+                $rpcServiceList = $this->call([ProcessManager::class, 'setProcessId'], posix_getpid());
                 foreach ($rpcServiceList as $rpcService) {
                     $this->publishAsync(Build::new('rpcServiceOnline', [
                         'name'    => $rpcService->name,

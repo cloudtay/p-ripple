@@ -158,9 +158,7 @@ class Kernel
                     EventMap::push($response);
                 }
                 if ($worker instanceof JsonRpcServer) {
-                    JsonRpc::call(
-                        ProcessManager::class,
-                        'registerRpcService',
+                    JsonRpc::call([ProcessManager::class, 'registerRpcService'],
                         $worker->worker->name,
                         $worker->worker->getRpcServiceAddress(),
                         get_class($worker->worker)
@@ -405,11 +403,7 @@ class Kernel
             }
         } elseif ($processId > 0) {
             if ($this->isFork()) {
-                JsonRpc::call(
-                    ProcessManager::class,
-                    'setObserverProcessId',
-                    $processId, posix_getpid()
-                );
+                JsonRpc::call([ProcessManager::class, 'setObserverProcessId'], $processId, posix_getpid());
             } else {
                 ProcessManager::getInstance()->setObserverProcessId($processId, posix_getpid());
             }

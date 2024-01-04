@@ -262,10 +262,7 @@ abstract class Worker implements WorkerInterface
         if (!$this->isFork()) {
             Output::info('Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']');
         } else {
-            \Facade\JsonRpc::call(
-                ProcessManager::class,
-                'output',
-                'Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']'
+            \Facade\JsonRpc::call([ProcessManager::class, 'output'], 'Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']'
             );
         }
     }
@@ -321,11 +318,7 @@ abstract class Worker implements WorkerInterface
                 if (!$this->isFork()) {
                     Output::info("    |_ ", $addressFull);
                 } else {
-                    \Facade\JsonRpc::call(
-                        ProcessManager::class,
-                        'output',
-                        "    |_ ", $addressFull
-                    );
+                    \Facade\JsonRpc::call([ProcessManager::class, 'output'], "    |_ ", $addressFull);
                 }
             }
         } catch (Exception $exception) {

@@ -91,12 +91,7 @@ class Process implements FacadeStd
      */
     public static function signal(int $processId, int $signalNo): bool
     {
-        return JsonRpc::call(
-            Process::class,
-            'signal',
-            $processId,
-            $signalNo
-        );
+        return JsonRpc::call([Process::class, 'signal'], $processId, $signalNo);
     }
 
     /**
@@ -105,10 +100,6 @@ class Process implements FacadeStd
      */
     public static function kill(int $processId): bool
     {
-        return JsonRpc::call(
-            Process::class,
-            'kill',
-            $processId,
-        );
+        return JsonRpc::call([Process::class, 'kill'], $processId);
     }
 }

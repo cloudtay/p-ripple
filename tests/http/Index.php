@@ -74,7 +74,7 @@ class Index
     public static function notice(Request $request): Generator
     {
         if ($message = $request->query['message'] ?? null) {
-            JsonRpc::call('ws', 'sendMessageToAll', $message);
+            JsonRpc::call(['ws', 'sendMessageToAll'], $message);
             yield $request->respondJson([
                 'code' => 0,
                 'msg'  => 'success',

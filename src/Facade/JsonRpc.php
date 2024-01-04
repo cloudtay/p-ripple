@@ -44,7 +44,7 @@ use Worker\Built\JsonRpc\JsonRpcClient;
 use Worker\Worker;
 
 /**
- * @method static mixed call(string $workerName, string $method, mixed ...$params)
+ * @method static mixed call(array $route, mixed ...$arguments)
  * @method static void connect(string $serviceName, string $address, string $type)
  * @method static void addService(string $serviceName, string $address, string $type)
  */

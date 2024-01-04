@@ -75,7 +75,7 @@ class Controller
     {
         yield $request->respondJson([
             'processId' => posix_getpid(),
-            'result'    => JsonRpc::call('ws', 'sendMessageToClients', posix_getpid())
+            'result'    => JsonRpc::call(['ws', 'sendMessageToClients'], posix_getpid())
         ]);
     }
 
@@ -100,7 +100,7 @@ class Controller
      */
     public static function kill(Request $request): Generator
     {
-        JsonRpc::call(ProcessManager::class, 'kill', intval($request->query['processId']));
+        JsonRpc::call([ProcessManager::class, 'kill'], intval($request->query['processId']));
         yield $request->respondJson(
             ['myProcessId' => getmypid(),
              'processId'   => $request->query['processId']]
