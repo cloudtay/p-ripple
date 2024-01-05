@@ -127,14 +127,16 @@ class HttpWorker extends Worker
                     $requesting = call_user_func($this->requestHandler, $request);
                     foreach ($requesting as $response) {
                         if ($response instanceof Response) {
-                            $response->headers['Server'] = 'PRipple';
+                            $response->setHeader('Server', 'PRipple');
                             if ($request->keepAlive) {
-                                $response->headers['Connection'] = 'Keep-Alive';
+                                $response->setHeader('Connection', 'Keep-Alive');
+                                $response->setHeader('Keep-Alive', 'timeout=5, max=1000');
                             }
                             $request->client->send($response->__toString());
                             if ($response->isFile) {
-                                $response->headers['Connection'] = 'Keep-Alive';
-                                $this->queue[$request->hash]     = Build::new(
+                                $response->setHeader('Connection', 'Keep-Alive');
+                                $response->setHeader('Keep-Alive', 'timeout=5, max=1000');
+                                $this->queue[$request->hash] = Build::new(
                                     Request::EVENT_DOWNLOAD,
                                     $response,
                                     $request->hash
@@ -185,14 +187,17 @@ class HttpWorker extends Worker
                         if (!$content = $response->file->readWithTrace($response->client->getSendBufferSize())) {
                             $this->recover($hash);
                             break;
+                        } elseif (!$response->client->send($content)) {
+                            $this->recover($hash);
+                            break;
                         }
-                    } while ($response->client->send($content));
+                    } while (true);
                     break;
                 default:
                     break;
             }
         }
-        $this->busy = false;
+        $this->busy = true;
     }
 
     /**
@@ -267,10 +272,7 @@ class HttpWorker extends Worker
             }
         } catch (RequestSingleException $exception) {
             $client->send(
-                (new Response())
-                    ->setStatusCode(400)
-                    ->setBody($exception->getMessage())
-                    ->__toString()
+                (new Response())->setStatusCode(400)->setBody($exception->getMessage())->__toString()
             );
         }
     }

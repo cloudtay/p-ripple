@@ -82,6 +82,30 @@ class SocketUnix
 
     /**
      * @param string     $socketFile
+     * @param array|null $options
+     * @return resource
+     * @throws Exception
+     */
+    public static function createStream(string $socketFile, array|null $options = [])
+    {
+        $stream = stream_socket_server("unix://{$socketFile}", $errno, $errorMessages, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
+        if (!$stream) {
+            throw new Exception('Unable to create Unix socket, probably process is occupied');
+        }
+        $socket = socket_import_stream($stream);
+        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+        foreach ($options as $option => $value) {
+            if ($option === 'nonblock') {
+                socket_set_nonblock($socket);
+            } else {
+                socket_set_option($socket, SOL_SOCKET, $option, $value);
+            }
+        }
+        return $stream;
+    }
+
+    /**
+     * @param string     $socketFile
      * @param int|null   $bufferSize
      * @param array|null $options
      * @return Socket|false

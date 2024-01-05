@@ -44,7 +44,10 @@ namespace Core;
 use Closure;
 use Core\Map\EventMap;
 use Core\Map\SocketMap;
+use Core\Map\StreamMap;
 use Core\Map\WorkerMap;
+use Event;
+use EventBase;
 use Exception;
 use Facade\JsonRpc;
 use Fiber;
@@ -64,6 +67,9 @@ use Worker\Worker;
  */
 class Kernel
 {
+    private const LOOP_MODE_SELECT = 1;
+    private const LOOP_MODE_EVENT  = 2;
+
     /**
      * 内置服务
      */
@@ -91,6 +97,24 @@ class Kernel
      * @var Worker $masterWorker
      */
     private Worker $masterWorker;
+
+    /**
+     * 循环模式
+     * @var int $loopMode
+     */
+    private int $loopMode = Kernel::LOOP_MODE_SELECT;
+
+    /**
+     * event扩展支持
+     * @var EventBase $eventBase
+     */
+    private EventBase $eventBase;
+
+    /**
+     * 事件列表
+     * @var Event[] $eventList
+     */
+    private array $eventList = [];
 
     /**
      * 构造函数
@@ -173,7 +197,11 @@ class Kernel
             Output::info('', '-----------------------------------------');
             Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
         }
-        $this->loop();
+        if ($this->loopMode === Kernel::LOOP_MODE_EVENT) {
+            $this->eventLoop();
+        } else {
+            $this->loop();
+        }
     }
 
     /**
@@ -209,12 +237,30 @@ class Kernel
     }
 
     /**
+     * @return void
+     */
+    #[NoReturn] private function eventLoop(): void
+    {
+        while (true) {
+            $this->consumption();
+            match ($this->eventBase->loop()) {
+                true => $this->busyHeartbeat(),
+                false => $this->heartbeat()
+            };
+            usleep($this->rate);
+        }
+    }
+
+    /**
      * Initialization: At this stage, you should ensure that services such as RPC/listeners are registered with the corresponding list
      * Ensure that different types of service startup modes are supported during Launch, and the connection can be established smoothly
      * @return void
      */
     private function initialize(): void
     {
+        if ($this->loopMode === Kernel::LOOP_MODE_EVENT) {
+            $this->eventBase = new EventBase();
+        }
         $this->registerSignalHandler();
         $this->loadBuiltInServices();
     }
@@ -260,18 +306,25 @@ class Kernel
             case Constants::EVENT_SOCKET_WRITE:
                 $socketHash = spl_object_hash($event->data);
                 if ($workerName = SocketMap::$worker[$socketHash] ?? null) {
-                    WorkerMap::$workerMap[$workerName]->handleSocket($event->data, $event->name);
+                    WorkerMap::get($workerName)->handleSocket($event->data, $event->name);
+                } else {
+                    if ($stream = StreamMap::getStreamBySocket($event->data)) {
+                        StreamMap::removeStreamSocket($stream);
+                    } else {
+                        SocketMap::removeSocket($event->data);
+                    }
                 }
                 break;
             case Constants::EVENT_SOCKET_SUBSCRIBE:
-                $socketHash                      = spl_object_hash($event->data);
-                SocketMap::$worker[$socketHash]  = $event->source;
-                SocketMap::$sockets[$socketHash] = $event->data;
+                $socketHash                     = spl_object_hash($event->data);
+                SocketMap::$worker[$socketHash] = $event->source;
                 break;
             case Constants::EVENT_SOCKET_UNSUBSCRIBE:
-                $socketHash = spl_object_hash($event->data);
-                unset(SocketMap::$worker[$socketHash]);
-                unset(SocketMap::$sockets[$socketHash]);
+                if ($stream = StreamMap::getStreamBySocket($event->data)) {
+                    StreamMap::removeStreamSocket($stream);
+                } else {
+                    SocketMap::removeSocket($event->data);
+                }
                 break;
             case Constants::EVENT_EVENT_SUBSCRIBE:
                 SocketMap::$worker[$event->data] = $event->source;
@@ -442,6 +495,7 @@ class Kernel
             $readSockets = SocketMap::$sockets;
             if (count($readSockets) === 0) {
                 usleep($this->rate);
+                $this->heartbeat();
             } else {
                 $writeSockets  = [];
                 $exceptSockets = SocketMap::$sockets;
@@ -459,9 +513,9 @@ class Kernel
                 } else {
                     $this->heartbeat();
                 }
-                pcntl_signal_dispatch();
-                $this->adjustRate();
             }
+            pcntl_signal_dispatch();
+            $this->adjustRate();
         }
     }
 }

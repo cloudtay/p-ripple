@@ -112,10 +112,10 @@ $pool = new PDOProxyPool([
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ
     ]
 ]);
-$pool->run(4);
+$pool->run(1);
 
 # 构建HTTP服务
-$httpWorker = HttpWorker::new('http')->bind('tcp://0.0.0.0:8008', $options)->mode(Worker::MODE_INDEPENDENT, 4);
+$httpWorker = HttpWorker::new('http')->bind('tcp://0.0.0.0:8008', $options)->mode(Worker::MODE_INDEPENDENT, 1);
 // 为WebApplication应用处理器构建路由并注入到HttpWorker中
 $router = new RouteMap();
 $router->define(Route::GET, '', [Index::class, 'index']);

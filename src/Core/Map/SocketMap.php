@@ -55,12 +55,63 @@ class SocketMap implements MapInterface
     public static array $sockets = [];
 
     /**
-     * @var array $socketHashMap
+     * @var array $worker
      */
     public static array $worker = [];
+
+    /**
+     * @var array $socketIdMap
+     */
+    public static array $socketIdMap = [];
 
     /**
      * @var int
      */
     public static int $count = 0;
+
+    /**
+     * @param Socket   $socket
+     * @param int|null $streamId
+     * @return string
+     */
+    public static function removeSocket(Socket $socket, int|null $streamId = null): string
+    {
+        $hash = spl_object_hash($socket);
+        unset(SocketMap::$sockets[$hash]);
+        unset(SocketMap::$worker[$hash]);
+        SocketMap::$count--;
+        if ($streamId) {
+            unset(SocketMap::$socketIdMap[$streamId]);
+        }
+        return $hash;
+    }
+
+    /**
+     * @param int $streamId
+     * @return string|null
+     */
+    public static function removeSocketByStreamId(int $streamId): string|null
+    {
+        if ($socket = SocketMap::$socketIdMap[$streamId]) {
+            unset(SocketMap::$socketIdMap[$streamId]);
+            return SocketMap::removeSocket($socket, $streamId);
+        }
+        return null;
+    }
+
+    /**
+     * @param Socket   $socket
+     * @param int|null $streamId
+     * @return string
+     */
+    public static function addSocket(Socket $socket, int|null $streamId = null): string
+    {
+        $hash                      = spl_object_hash($socket);
+        SocketMap::$sockets[$hash] = $socket;
+        SocketMap::$count++;
+        if ($streamId) {
+            SocketMap::$socketIdMap[$streamId] = $socket;
+        }
+        return $hash;
+    }
 }

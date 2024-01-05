@@ -196,6 +196,7 @@ class ProcessManager extends Worker
 
     #[RPC('子进程输出')] private function outputInfo(...$arguments): void
     {
+        array_pop($arguments);
         call_user_func_array([Output::class, 'info'], $arguments);
     }
 

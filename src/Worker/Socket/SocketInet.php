@@ -77,6 +77,31 @@ class SocketInet
      * @param string     $address
      * @param int        $port
      * @param array|null $options
+     * @return resource
+     * @throws Exception
+     */
+    public static function createStream(string $address, int $port, array|null $options = [])
+    {
+        $stream = stream_socket_server("tcp://{$address}:{$port}", $errno, $errorMessages, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
+        if (!$stream) {
+            throw new Exception('Unable to create Unix socket, probably process is occupied');
+        }
+        $socket = socket_import_stream($stream);
+        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+        foreach ($options as $option => $value) {
+            if ($option === 'nonblock') {
+                socket_set_nonblock($socket);
+            } else {
+                socket_set_option($socket, SOL_SOCKET, $option, $value);
+            }
+        }
+        return $stream;
+    }
+
+    /**
+     * @param string     $address
+     * @param int        $port
+     * @param array|null $options
      * @return Socket|false
      */
     public static function connect(string $address, int $port, array|null $options = []): Socket|false

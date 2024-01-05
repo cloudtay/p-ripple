@@ -46,6 +46,8 @@ use Core\Constants;
 use Core\Kernel;
 use Core\Map\CollaborativeFiberMap;
 use Core\Map\EventMap;
+use Core\Map\SocketMap;
+use Core\Map\StreamMap;
 use Core\Map\WorkerMap;
 use Core\Output;
 use Core\Std\ProtocolStd;
@@ -262,8 +264,7 @@ abstract class Worker implements WorkerInterface
         if (!$this->isFork()) {
             Output::info('Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']');
         } else {
-            \Facade\JsonRpc::call([ProcessManager::class, 'output'], 'Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']'
-            );
+            \Facade\JsonRpc::call([ProcessManager::class, 'outputInfo'], 'Initialize: ', $this->name . ' [Process:' . posix_getpid() . ']');
         }
     }
 
@@ -302,23 +303,23 @@ abstract class Worker implements WorkerInterface
                 switch ($type) {
                     case SocketInet::class:
                         $this->socketType = SocketInet::class;
-                        $listenSocket     = SocketInet::create($address, $port, $options);
+                        $stream = SocketInet::createStream($address, $port, $options);
                         break;
                     case SocketUnix::class:
                         unlink($address);
                         $this->socketType = SocketInet::class;
-                        $listenSocket     = SocketUnix::create($address, $options);
+                        $stream = SocketUnix::createStream($address, $options);
                         break;
                     default:
                         return;
                 }
+                $listenSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($stream)];
                 $this->listenSocketHashMap[$addressFull] = $listenSocket;
                 $this->subscribeSocket($listenSocket);
-
                 if (!$this->isFork()) {
                     Output::info("    |_ ", $addressFull);
                 } else {
-                    \Facade\JsonRpc::call([ProcessManager::class, 'output'], "    |_ ", $addressFull);
+                    \Facade\JsonRpc::call([ProcessManager::class, 'outputInfo'], "    |_ ", $addressFull);
                 }
             }
         } catch (Exception $exception) {
@@ -397,12 +398,10 @@ abstract class Worker implements WorkerInterface
             $this->expectSocket($socket);
             return;
         }
-
         $this->handleClientWrite($client);
         if (!$client->readToCache()) {
             if (!$client->cache()) {
                 $this->closeClient($client);
-                return;
             }
         } elseif (!$client->verify) {
             if ($handshake = $this->protocol->handshake($client)) {
@@ -428,21 +427,39 @@ abstract class Worker implements WorkerInterface
 
     /**
      * 同意一个连接
-     * @param Socket $listenSocket
+     * @param Socket $socket
      * @return TCPConnection|false
      */
-    public function accept(Socket $listenSocket): TCPConnection|false
+    public function accept(Socket $socket): TCPConnection|false
     {
-        try {
-            if ($socket = socket_accept($listenSocket)) {
-                socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
-                if ($this->socketType === SocketInet::class) {
-                    socket_set_option($socket, SOL_TCP, TCP_NODELAY, 1);
-                }
-                return $this->addSocket($socket, $this->socketType);
+        if (!$stream = StreamMap::getStreamBySocket($socket)) {
+            return false;
+        }
+        if ($clientStreamSocket = stream_socket_accept($stream)) {
+            $clientSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($clientStreamSocket)];
+            socket_set_option($clientSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
+            if ($this->socketType === SocketInet::class) {
+                socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
             }
-        } catch (Exception $exception) {
-            Output::printException($exception);
+            return $this->addSocket($clientSocket, $this->socketType);
+        }
+        return false;
+    }
+
+    /**
+     * 同意一个StreamSocket连接
+     * @param mixed $stream
+     * @return TCPConnection|false
+     */
+    public function acceptStreamSocket(mixed $stream): TCPConnection|false
+    {
+        if ($clientStream = stream_socket_accept($stream)) {
+            $clientSocket = socket_import_stream($clientStream);
+            socket_set_option($clientSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
+            if ($this->socketType === SocketInet::class) {
+                socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
+            }
+            return $this->addSocket($clientSocket, $this->socketType);
         }
         return false;
     }
@@ -458,6 +475,24 @@ abstract class Worker implements WorkerInterface
         $name                       = Worker::getHashBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clientHashMap[$name] = $client = new TCPConnection($socket, $type);
+        $this->clientHashMap[$name]->setNoBlock();
+        $this->callWorkerEvent(Worker::HOOK_ON_CONNECT, $this->clientHashMap[$name]);
+        $this->subscribeSocket($socket);
+        return $client;
+    }
+
+    /**
+     * @param mixed  $stream
+     * @param string $type
+     * @return TCPConnection
+     */
+    public function addStreamSocket(mixed $stream, string $type): TCPConnection
+    {
+        $socket                     = socket_import_stream($stream);
+        $streamId                   = intval($stream);
+        $name                       = Worker::getHashBySocket($socket);
+        $this->clientSockets[$name] = $socket;
+        $this->clientHashMap[$name] = $client = new TCPConnection($socket, $type, $streamId);
         $this->clientHashMap[$name]->setNoBlock();
         $this->callWorkerEvent(Worker::HOOK_ON_CONNECT, $this->clientHashMap[$name]);
         $this->subscribeSocket($socket);
