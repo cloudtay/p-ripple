@@ -303,17 +303,17 @@ abstract class Worker implements WorkerInterface
                 switch ($type) {
                     case SocketInet::class:
                         $this->socketType = SocketInet::class;
-                        $stream = SocketInet::createStream($address, $port, $options);
+                        $stream           = SocketInet::createStream($address, $port, $options);
                         break;
                     case SocketUnix::class:
                         unlink($address);
                         $this->socketType = SocketInet::class;
-                        $stream = SocketUnix::createStream($address, $options);
+                        $stream           = SocketUnix::createStream($address, $options);
                         break;
                     default:
                         return;
                 }
-                $listenSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($stream)];
+                $listenSocket                            = SocketMap::$socketIdMap[StreamMap::addStreamSocket($stream)];
                 $this->listenSocketHashMap[$addressFull] = $listenSocket;
                 $this->subscribeSocket($listenSocket);
                 if (!$this->isFork()) {

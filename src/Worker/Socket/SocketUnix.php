@@ -130,4 +130,30 @@ class SocketUnix
             throw new Exception("Unable to connect Unix socket, {$socketFile}");
         }
     }
+
+    /**
+     * @param string     $socketFile
+     * @param int|null   $bufferSize
+     * @param array|null $options
+     * @return resource
+     * @throws Exception
+     */
+    public static function connectStream(string $socketFile, int|null $bufferSize = 1024 * 1024, array|null $options = [])
+    {
+        $stream = stream_socket_client("unix://{$socketFile}", $errno, $errorMessages, 0);
+        if (!$stream) {
+            throw new Exception('Unable to create Unix socket, probably process is occupied');
+        }
+        $socket = socket_import_stream($stream);
+        socket_set_option($socket, SOL_SOCKET, SO_SNDBUF, $bufferSize);
+        socket_set_option($socket, SOL_SOCKET, SO_RCVBUF, $bufferSize);
+        foreach ($options as $option => $value) {
+            if ($option === 'nonblock') {
+                socket_set_nonblock($socket);
+            } else {
+                socket_set_option($socket, SOL_SOCKET, $option, $value);
+            }
+        }
+        return $stream;
+    }
 }

@@ -114,7 +114,6 @@ class PDOProxy extends Worker
      */
     #[RPC('数据库查询')] public function prepare(string $query, array|null $bindings = [], array|null $bindParams = []): false|array
     {
-        $result = false;
         try {
             $pdoStatement = $this->pdo->prepare($query);
             foreach ($bindings as $key => $value) {
@@ -140,15 +139,17 @@ class PDOProxy extends Worker
                 );
             }
             if ($pdoStatement->execute()) {
-                $result = $pdoStatement->fetchAll();
+                return $pdoStatement->fetchAll();
             }
+            return false;
         } catch (PDOException $exception) {
             if ($exception->getCode() === 2006) {
                 $this->connect();
                 return $this->prepare($query, $bindings, $bindParams);
+            } else {
+                throw $exception;
             }
         }
-        return $result;
     }
 
     /**

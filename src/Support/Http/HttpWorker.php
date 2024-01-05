@@ -197,7 +197,7 @@ class HttpWorker extends Worker
                     break;
             }
         }
-        $this->busy = true;
+        $this->busy = false;
     }
 
     /**

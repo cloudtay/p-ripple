@@ -120,4 +120,28 @@ class SocketInet
         return $socket;
 
     }
+
+    /**
+     * @param string     $address
+     * @param int        $port
+     * @param array|null $options
+     * @return resource
+     * @throws Exception
+     */
+    public static function connectStream(string $address, int $port, array|null $options = [])
+    {
+        $stream = stream_socket_client("tcp://{$address}:{$port}", $errno, $errorMessages);
+        if (!$stream) {
+            throw new Exception('Unable to create Unix socket, probably process is occupied');
+        }
+        $socket = socket_import_stream($stream);
+        foreach ($options as $option => $value) {
+            if ($option === 'nonblock') {
+                socket_set_nonblock($socket);
+            } else {
+                socket_set_option($socket, SOL_SOCKET, $option, $value);
+            }
+        }
+        return $stream;
+    }
 }

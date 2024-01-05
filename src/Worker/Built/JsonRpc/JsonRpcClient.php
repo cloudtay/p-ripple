@@ -40,6 +40,8 @@
 namespace Worker\Built\JsonRpc;
 
 use Core\Map\CollaborativeFiberMap;
+use Core\Map\SocketMap;
+use Core\Map\StreamMap;
 use Core\Map\WorkerMap;
 use Core\Output;
 use Exception;
@@ -108,6 +110,7 @@ class JsonRpcClient extends Worker
      * @param string $address
      * @param string $type
      * @return void
+     * @throws Exception
      */
     public function addService(string $name, string $address, string $type): void
     {
@@ -127,10 +130,11 @@ class JsonRpcClient extends Worker
         $this->addService($name, $address, $type);
         [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($address);
         match ($type) {
-            SocketUnix::class => $serverSocket = SocketUnix::connect($address, null, ['nonblock' => true]),
-            SocketInet::class => $serverSocket = SocketInet::connect($address, $port, ['nonblock' => true]),
+            SocketUnix::class => $serverStreamSocket = SocketUnix::connectStream($address, null, ['nonblock' => true]),
+            SocketInet::class => $serverStreamSocket = SocketInet::connectStream($address, $port, ['nonblock' => true]),
             default => throw new Exception("Unsupported socket type: {$type}")
         };
+        $serverSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($serverStreamSocket)];
         socket_set_option($serverSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
         $this->rpcServiceConnections[$name] = $this->addSocket($serverSocket, $type);
         $this->rpcServiceConnections[$name]->setName($name);
@@ -141,6 +145,7 @@ class JsonRpcClient extends Worker
      * @param mixed ...$arguments
      * @return mixed
      * @throws RpcException
+     * @throws Exception
      */
     public function call(array $route, mixed ...$arguments): mixed
     {

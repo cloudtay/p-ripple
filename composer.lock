@@ -4,7 +4,7 @@
     "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
     "This file is @generated automatically"
   ],
-  "content-hash": "8d75c5f5df89c67fd90f589650259dce",
+  "content-hash": "3ec3df7bcf239440d0fba7afbed4449d",
   "packages": [
     {
       "name": "brick/math",
@@ -137,12 +137,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/cclilshy/illuminate-database-p-ripple.git",
-        "reference": "77d3f1ed6590fc229a7bf216028be91cb10e67ae"
+        "reference": "68665862cb10dd5de470552807d581158bbd2570"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/cclilshy/illuminate-database-p-ripple/zipball/77d3f1ed6590fc229a7bf216028be91cb10e67ae",
-        "reference": "77d3f1ed6590fc229a7bf216028be91cb10e67ae",
+        "url": "https://api.github.com/repos/cclilshy/illuminate-database-p-ripple/zipball/68665862cb10dd5de470552807d581158bbd2570",
+        "reference": "68665862cb10dd5de470552807d581158bbd2570",
         "shasum": ""
       },
       "require": {
@@ -175,7 +175,7 @@
       },
       "autoload": {
         "psr-4": {
-          "Illuminate\\Database\\": ""
+          "PRipple\\Illuminate\\Database\\": ""
         }
       },
       "notification-url": "https://packagist.org/downloads/",
@@ -200,7 +200,7 @@
         "issues": "https://github.com/laravel/framework/issues",
         "source": "https://github.com/laravel/framework"
       },
-      "time": "2023-12-29T06:17:06+00:00"
+      "time": "2024-01-05T03:38:26+00:00"
     },
     {
       "name": "cclilshy/p-ripple-plugins",
@@ -871,12 +871,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/illuminate/support.git",
-        "reference": "bd0a7829e0f122ee039a5ec2f7246c8e77369f13"
+        "reference": "bb91752dc667c7e68c6e9eff6db390c7ce1c6fc0"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/illuminate/support/zipball/bd0a7829e0f122ee039a5ec2f7246c8e77369f13",
-        "reference": "bd0a7829e0f122ee039a5ec2f7246c8e77369f13",
+        "url": "https://api.github.com/repos/illuminate/support/zipball/bb91752dc667c7e68c6e9eff6db390c7ce1c6fc0",
+        "reference": "bb91752dc667c7e68c6e9eff6db390c7ce1c6fc0",
         "shasum": ""
       },
       "require": {
@@ -934,7 +934,7 @@
         "issues": "https://github.com/laravel/framework/issues",
         "source": "https://github.com/laravel/framework"
       },
-      "time": "2023-12-29T22:41:12+00:00"
+      "time": "2024-01-04T13:29:26+00:00"
     },
     {
       "name": "illuminate/view",
@@ -1258,12 +1258,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/symfony/deprecation-contracts.git",
-        "reference": "7c3aff79d10325257a001fcf92d991f24fc967cf"
+        "reference": "2c438b99bb2753c1628c1e6f523991edea5b03a4"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/7c3aff79d10325257a001fcf92d991f24fc967cf",
-        "reference": "7c3aff79d10325257a001fcf92d991f24fc967cf",
+        "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/2c438b99bb2753c1628c1e6f523991edea5b03a4",
+        "reference": "2c438b99bb2753c1628c1e6f523991edea5b03a4",
         "shasum": ""
       },
       "require": {
@@ -1273,7 +1273,7 @@
       "type": "library",
       "extra": {
         "branch-alias": {
-          "dev-main": "3.4-dev"
+          "dev-main": "3.5-dev"
         },
         "thanks": {
           "name": "symfony/contracts",
@@ -1302,7 +1302,7 @@
       "description": "A generic function and convention to trigger deprecation notices",
       "homepage": "https://symfony.com",
       "support": {
-        "source": "https://github.com/symfony/deprecation-contracts/tree/v3.4.0"
+        "source": "https://github.com/symfony/deprecation-contracts/tree/main"
       },
       "funding": [
         {
@@ -1318,7 +1318,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2023-05-23T14:45:45+00:00"
+      "time": "2024-01-02T14:07:37+00:00"
     },
     {
       "name": "symfony/finder",
@@ -1653,12 +1653,12 @@
       "source": {
         "type": "git",
         "url": "https://github.com/symfony/translation-contracts.git",
-        "reference": "06450585bf65e978026bda220cdebca3f867fde7"
+        "reference": "81a962876d52adf8ca7020f49e48f6f88cd5eddd"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/symfony/translation-contracts/zipball/06450585bf65e978026bda220cdebca3f867fde7",
-        "reference": "06450585bf65e978026bda220cdebca3f867fde7",
+        "url": "https://api.github.com/repos/symfony/translation-contracts/zipball/81a962876d52adf8ca7020f49e48f6f88cd5eddd",
+        "reference": "81a962876d52adf8ca7020f49e48f6f88cd5eddd",
         "shasum": ""
       },
       "require": {
@@ -1668,7 +1668,7 @@
       "type": "library",
       "extra": {
         "branch-alias": {
-          "dev-main": "3.4-dev"
+          "dev-main": "3.5-dev"
         },
         "thanks": {
           "name": "symfony/contracts",
@@ -1708,7 +1708,7 @@
         "standards"
       ],
       "support": {
-        "source": "https://github.com/symfony/translation-contracts/tree/v3.4.1"
+        "source": "https://github.com/symfony/translation-contracts/tree/main"
       },
       "funding": [
         {
@@ -1724,7 +1724,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2023-12-26T14:02:43+00:00"
+      "time": "2024-01-02T14:07:37+00:00"
     },
     {
       "name": "voku/portable-ascii",
@@ -1815,7 +1815,8 @@
     "ext-sockets": "*",
     "ext-pcntl": "*",
     "ext-posix": "*",
-    "ext-pdo": "*"
+    "ext-pdo": "*",
+    "ext-event": "*"
   },
   "platform-dev": [],
   "plugin-api-version": "2.6.0"
