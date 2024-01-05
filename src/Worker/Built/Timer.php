@@ -89,7 +89,7 @@ class Timer extends Worker
                     case Timer::EVENT_TIMER_LOOP:
                         async(function () use ($event) {
                             if (call_user_func($event->data['data'])) {
-                                $this->loop($event->data['time'], $event->data['data']);
+                                $this->loop($event->data['data'], $event->data['time']);
                             }
                         });
                         break;
