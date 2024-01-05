@@ -44,8 +44,6 @@ use PDOException;
 use Protocol\TCPProtocol;
 use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
 use Worker\Worker;
 use function PRipple\loop;
 
@@ -75,12 +73,12 @@ class PDOProxy extends Worker
     {
         parent::initialize();
         $this->connect();
-        loop(30, function () {
+        loop(function () {
             if (!$this->pdo->query('SELECT 1')) {
                 $this->connect();
             }
             return true;
-        });
+        }, 30);
     }
 
     public function config(array $config, PDOProxyPool $pool): PDOProxy
@@ -205,39 +203,5 @@ class PDOProxy extends Worker
     public function forkAfter(): void
     {
         $this->connect();
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onConnect(TCPConnection $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-        // TODO: Implement onMessage() method.
-    }
-
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
     }
 }

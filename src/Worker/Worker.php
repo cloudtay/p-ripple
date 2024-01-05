@@ -70,8 +70,9 @@ use Worker\Socket\TCPConnection;
 
 /**
  * WorkerInterface
+ * #abstract
  */
-abstract class Worker implements WorkerInterface
+class Worker implements WorkerInterface
 {
     public const HOOK_ON_CONNECT   = 'onConnect';
     public const HOOK_ON_HANDSHAKE = 'onHandshake';
@@ -392,7 +393,7 @@ abstract class Worker implements WorkerInterface
         }
 
         if (in_array($socket, array_values($this->listenSocketHashMap), true)) {
-            $this->accept($socket);
+            $this->acceptStreamSocket(StreamMap::getStreamBySocket($socket));
             return;
         } elseif (!$client = $this->getClientBySocket($socket)) {
             $this->expectSocket($socket);
@@ -447,14 +448,13 @@ abstract class Worker implements WorkerInterface
     }
 
     /**
-     * 同意一个StreamSocket连接
      * @param mixed $stream
      * @return TCPConnection|false
      */
     public function acceptStreamSocket(mixed $stream): TCPConnection|false
     {
-        if ($clientStream = stream_socket_accept($stream)) {
-            $clientSocket = socket_import_stream($clientStream);
+        if ($clientStreamSocket = stream_socket_accept($stream)) {
+            $clientSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($clientStreamSocket)];
             socket_set_option($clientSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
             if ($this->socketType === SocketInet::class) {
                 socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
@@ -862,7 +862,6 @@ abstract class Worker implements WorkerInterface
      */
     public function serialize(): string
     {
-        //TODO: Implement serialize() method.
         return '';
     }
 
@@ -921,7 +920,6 @@ abstract class Worker implements WorkerInterface
      */
     public static function unSerialize(string $serialized): static
     {
-        //TODO: Implement unSerialize() method.
         return new static();
     }
 
@@ -990,41 +988,59 @@ abstract class Worker implements WorkerInterface
      * 有连接到达到达
      * @param TCPConnection $client
      * @return void
+     * #abstract
      */
-    abstract public function onConnect(TCPConnection $client): void;
+    public function onConnect(TCPConnection $client): void
+    {
+    }
 
     /**
      * 关闭一个连接
      * @param TCPConnection $client
      * @return void
+     * #abstract
      */
-    abstract public function onClose(TCPConnection $client): void;
+    public function onClose(TCPConnection $client): void
+    {
+    }
 
     /**
      * 握手成功
      * @param TCPConnection $client
      * @return void
+     * #abstract
      */
-    abstract public function onHandshake(TCPConnection $client): void;
+    public function onHandshake(TCPConnection $client): void
+    {
+    }
 
     /**
      * 接收到一段报文
      * @param string        $context
      * @param TCPConnection $client
      * @return void
+     * #abstract
      */
-    abstract public function onMessage(string $context, TCPConnection $client): void;
+    public function onMessage(string $context, TCPConnection $client): void
+    {
+    }
 
     /**
      * 必须处理事件
      * @param Build $event
      * @return void
+     * #abstract
      */
-    abstract public function handleEvent(Build $event): void;
+    public function handleEvent(Build $event): void
+    {
+    }
 
     /**
      * 心跳
      * @return void
+     * #abstract
      */
-    abstract public function heartbeat(): void;
+    public function heartbeat(): void
+    {
+    }
 }

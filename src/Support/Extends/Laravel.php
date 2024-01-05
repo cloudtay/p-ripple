@@ -39,7 +39,7 @@
 
 declare(strict_types=1);
 
-namespace Support\WebApplication\Extends;
+namespace Support\Extends;
 
 use Illuminate\Container\Container;
 use Illuminate\Events\Dispatcher;
@@ -84,6 +84,7 @@ class Laravel
     public array $dependencyInjectionList = [];
 
     /**
+     * Laravel数据库管理器
      * @var Manager $databaseManager
      */
     public Manager $databaseManager;

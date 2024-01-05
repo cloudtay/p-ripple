@@ -78,7 +78,7 @@ abstract class CollaborativeFiberStd
 
     /**
      * @param Closure $callable
-     * @return $this
+     * @return static
      */
     public function setup(Closure $callable): CollaborativeFiberStd
     {
@@ -173,20 +173,22 @@ abstract class CollaborativeFiberStd
         } elseif ($worker = WorkerMap::get($class)) {
             $this->inject($class, $worker);
             return $worker;
-        } elseif ($constructor = (new ReflectionClass($class))->getConstructor()) {
+        } elseif ($classReflection = (new ReflectionClass($class))) {
             $params = [];
-            foreach ($constructor->getParameters() as $parameter) {
-                if ($paramClass = $parameter->getType()?->getName()) {
-                    $paramObject = $this->resolve($paramClass);
-                    if ($paramObject) {
-                        $params[] = $paramObject;
+            if ($constructor = $classReflection->getConstructor()) {
+                foreach ($constructor->getParameters() as $parameter) {
+                    if ($paramClass = $parameter->getType()?->getName()) {
+                        $paramObject = $this->resolve($paramClass);
+                        if ($paramObject) {
+                            $params[] = $paramObject;
+                        } else {
+                            return false;
+                        }
+                    } elseif ($parameter->isDefaultValueAvailable()) {
+                        $params[] = $parameter->getDefaultValue();
                     } else {
                         return false;
                     }
-                } elseif ($parameter->isDefaultValueAvailable()) {
-                    $params[] = $parameter->getDefaultValue();
-                } else {
-                    return false;
                 }
             }
             return new $class(...$params);

@@ -1,12 +1,13 @@
 <?php
 
-namespace Tests\http;
+namespace Tests\http\controller;
 
 use Core\Map\WorkerMap;
 use Facade\JsonRpc;
 use Generator;
 use Illuminate\Support\Facades\DB;
 use PRipple;
+use Support\Extends\Session\Session;
 use Support\Http\Request;
 
 class Index
@@ -91,5 +92,57 @@ class Index
                 ],
             ]);
         }
+    }
+
+    /**
+     * @param Request $request
+     * @param Session $session
+     * @return Generator
+     */
+    public static function login(Request $request, Session $session): Generator
+    {
+        if ($name = $request->query['name'] ?? null) {
+            $session->set('name', $name);
+            yield $request->respondJson([
+                'code' => 0,
+                'msg'  => 'success',
+                'data' => [
+                    'message' => 'login success,' . $name
+                ],
+            ]);
+        } elseif ($name = $session->get('name')) {
+            yield $request->respondJson([
+                'code' => 0,
+                'msg'  => 'success',
+                'data' => [
+                    'message' => 'hello,' . $name
+                ],
+            ]);
+        } else {
+            yield $request->respondJson([
+                'code' => 1,
+                'msg'  => 'error',
+                'data' => [
+                    'message' => 'name is required'
+                ],
+            ]);
+        }
+    }
+
+    /**
+     * @param Request $request
+     * @param Session $session
+     * @return Generator
+     */
+    public static function logout(Request $request, Session $session): Generator
+    {
+        $session->clear();
+        yield $request->respondJson([
+            'code' => 0,
+            'msg'  => 'success',
+            'data' => [
+                'message' => 'logout success'
+            ],
+        ]);
     }
 }

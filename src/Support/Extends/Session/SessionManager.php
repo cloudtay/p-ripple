@@ -37,20 +37,26 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Support\WebApplication\Extends\Session;
+namespace Support\Extends\Session;
 
 use RuntimeException;
+use Throwable;
 
 /**
  * Class Session
  */
 class SessionManager
 {
-    private string $filePath;
+    /**
+     * Session directory
+     * @var string $filePath
+     */
+    public string $filePath;
 
     /**
      * SessionManager constructor.
      * @param string $filePath
+     * @throws RuntimeException
      */
     public function __construct(string $filePath)
     {
@@ -69,27 +75,21 @@ class SessionManager
     {
         $sessionFile = "{$this->filePath}/session_{$key}";
         if (file_exists($sessionFile)) {
-            $session = unserialize(file_get_contents($sessionFile));
-            if ($session instanceof Session) {
-                if ($session->expire > 0 && $session->startTime + $session->expire < time()) {
-                    unlink($sessionFile);
-                    return new Session($key, $this);
-                }
-                return $session;
-            } else {
+            try {
+                $session = unserialize(file_get_contents($sessionFile));
+            } catch (Throwable $exception) {
                 unlink($sessionFile);
+                return new Session($key, $this);
             }
+            if (!$session instanceof Session) {
+                unlink($sessionFile);
+                return new Session($key, $this);
+            } elseif ($session->expire > 0 && $session->startTime + $session->expire > time()) {
+                unlink($sessionFile);
+                return new Session($key, $this);
+            }
+            return $session;
         }
         return new Session($key, $this);
-    }
-
-    /**
-     * 保存Session
-     * @param Session $session
-     * @return void
-     */
-    public function save(Session $session): void
-    {
-        file_put_contents("{$this->filePath}/session_{$session->key}", $session->serialize());
     }
 }

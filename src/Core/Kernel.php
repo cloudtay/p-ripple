@@ -168,6 +168,7 @@ class Kernel
                         $beforeWorker = [];
                         if ($worker->checkRpcService()) {
                             $worker->rpcService                      = JsonRpcServer::load($worker);
+                            $worker->rpcService->isFork = true;
                             $beforeWorker[$worker->rpcService->name] = $worker->rpcService;
                             $this->push($worker->rpcService);
                         }

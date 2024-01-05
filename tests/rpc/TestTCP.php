@@ -41,7 +41,6 @@ namespace Tests\rpc;
 
 use Facade\JsonRpc;
 use Support\PDOProxy\PDOProxy;
-use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 use function PRipple\async;
@@ -83,25 +82,5 @@ class TestTCP extends Worker
             $processId = intval(str_replace("\n", '', $context));
             signal($processId, SIGKILL);
         }
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
     }
 }

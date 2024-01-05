@@ -40,19 +40,15 @@
 namespace Support\PDOProxy;
 
 use PRipple;
-use Support\WebApplication\Extends\Laravel;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
+use Support\Extends\Laravel;
 use Worker\Worker;
 
 class PDOProxyPool extends Worker
 {
     /**
-     * @var PDOProxy[] $connections
+     * @var int[] $connections
      */
-    private array $connections        = [];
     private array $connectionRpcNames = [];
-
 
     /**
      * @param array  $config
@@ -69,28 +65,14 @@ class PDOProxyPool extends Worker
     }
 
     /**
-     * @param string $name
-     * @return PDOProxy
-     */
-    public function get(string $name): PDOProxy
-    {
-        return $this->connections[$name];
-    }
-
-    /**
-     * @return PDOProxy
-     */
-    public function range(): PDOProxy
-    {
-        return $this->connections[array_rand($this->connections)];
-    }
-
-    /**
      * @return string
      */
     public function rangeRpc(): string
     {
-        return $this->connectionRpcNames[array_rand($this->connectionRpcNames)];
+        asort($this->connectionRpcNames);
+        $name = array_key_first($this->connectionRpcNames);
+        $this->connectionRpcNames[$name]++;
+        return $name;
     }
 
     /**
@@ -114,7 +96,7 @@ class PDOProxyPool extends Worker
      */
     public function addRpcService(string $name): void
     {
-        $this->connectionRpcNames[] = $name;
+        $this->connectionRpcNames[$name] = 0;
     }
 
     /**
@@ -126,35 +108,5 @@ class PDOProxyPool extends Worker
         if ($data['type'] === PDOProxy::class) {
             $this->addRpcService($data['name']);
         }
-    }
-
-    public function onConnect(TCPConnection $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-        // TODO: Implement onMessage() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
-    }
-
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
     }
 }

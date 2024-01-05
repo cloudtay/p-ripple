@@ -43,7 +43,6 @@ use Core\FileSystem\FileException;
 use Core\Output;
 use Protocol\Slice;
 use Throwable;
-use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
@@ -136,25 +135,5 @@ class JsonRpcServer extends Worker
     public function onConnect(TCPConnection $client): void
     {
         socket_set_option($client->getSocket(), SOL_SOCKET, SO_KEEPALIVE, 1);
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
     }
 }

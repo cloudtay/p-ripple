@@ -39,9 +39,10 @@
 
 namespace Support\WebApplication\Std;
 
+use Generator;
 use Support\Http\Request;
 
 interface MiddlewareStd
 {
-    public function handle(Request &$collaborativeFiber): void;
+    public function handle(Request $request): Generator;
 }

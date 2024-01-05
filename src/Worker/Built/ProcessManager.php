@@ -273,24 +273,6 @@ class ProcessManager extends Worker
     }
 
     /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    /**
      * @param string        $context
      * @param TCPConnection $client
      * @return void
@@ -313,22 +295,5 @@ class ProcessManager extends Worker
                 }
             }
         }
-    }
-
-    /**
-     * @return void
-     */
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
-    }
-
-    /**
-     * @param Build $event
-     * @return void
-     */
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
     }
 }

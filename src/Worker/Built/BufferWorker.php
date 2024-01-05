@@ -45,7 +45,6 @@ use Core\Constants;
 use Core\FileSystem\FileException;
 use Core\Output;
 use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
 use Worker\Tunnel\SocketTunnel;
 use Worker\Worker;
 
@@ -122,25 +121,5 @@ class BufferWorker extends Worker
     {
         parent::forkPassive();
         $this->buffers = [];
-    }
-
-    public function onConnect(TCPConnection $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-        // TODO: Implement onMessage() method.
     }
 }

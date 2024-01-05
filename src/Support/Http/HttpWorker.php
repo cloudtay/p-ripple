@@ -47,7 +47,7 @@ use Core\Map\CollaborativeFiberMap;
 use Core\Output;
 use InvalidArgumentException;
 use PRipple;
-use Support\WebApplication\Extends\Session\SessionManager;
+use Support\Extends\Session\SessionManager;
 use Throwable;
 use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
@@ -334,14 +334,5 @@ class HttpWorker extends Worker
             unset($this->requests[$request->hash]);
             unset($this->queue[$request->hash]);
         }
-    }
-
-    /**
-     * @param TCPConnection $client
-     * @return void
-     */
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
     }
 }

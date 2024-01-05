@@ -314,29 +314,4 @@ class JsonRpcClient extends Worker
             'name' => $name
         ], $this->name));
     }
-
-    public function onConnect(TCPConnection $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO:
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function heartbeat(): void
-    {
-        // TODO: Implement heartbeat() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
-    }
 }

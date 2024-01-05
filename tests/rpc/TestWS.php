@@ -43,7 +43,6 @@ namespace Tests\rpc;
 
 use Worker\Built\JsonRpc\Attribute\RPC;
 use Worker\Built\JsonRpc\JsonRpc;
-use Worker\Prop\Build;
 use Worker\Socket\TCPConnection;
 use Worker\Worker;
 
@@ -86,23 +85,13 @@ class TestWS extends Worker
 
     /**
      * @param string $message
-     * @return mixed
+     * @return true
      */
-    #[RPC("向所有客户端发送消息")] public function sendMessageToClients(string $message): mixed
+    #[RPC("向所有客户端发送消息")] public function sendMessageToClients(string $message): true
     {
         foreach ($this->getClients() as $client) {
             $client->send($message);
         }
         return true;
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function handleEvent(Build $event): void
-    {
-        // TODO: Implement handleEvent() method.
     }
 }

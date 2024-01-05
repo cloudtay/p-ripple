@@ -37,84 +37,92 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Tests\http;
+namespace Support\Extends\Session;
 
-use Core\Map\WorkerMap;
-use Facade\JsonRpc;
-use Generator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\View;
-use Support\Http\Request;
-use Worker\Built\ProcessManager;
-
-class Controller
+class Session
 {
+    public string         $key;
+    public array          $data      = [];
+    public bool           $isChanged = false;
+    public int            $startTime = 0;
+    public int            $expire    = 0;
+    public SessionManager $sessionManager;
+
     /**
-     * @param Request $request
-     * @return Generator
+     * @param string         $key
+     * @param SessionManager $sessionManager
      */
-    public static function index(Request $request): Generator
+    public function __construct(string $key, SessionManager $sessionManager)
     {
-        yield $request->respondBody(View::make('upload', ['title' => 'upload'])->render());
+        $this->key            = $key;
+        $this->sessionManager = $sessionManager;
+        $this->startTime      = time();
+    }
+
+    public function __destruct()
+    {
+        $this->startTime = time();
+        $this->save();
     }
 
     /**
-     * @param Request $request
-     * @return Generator
+     * 被反序列化后
      */
-    public static function data(Request $request): Generator
+    public function __wakeup()
     {
-        yield $request->respondJson(DB::table('user')->first());
+        $this->isChanged = false;
     }
 
     /**
-     * @param Request $request
-     * @return Generator
+     * 保存自身
+     * @return void
      */
-    public static function send(Request $request): Generator
+    public function save(): void
     {
-        yield $request->respondJson([
-            'processId' => posix_getpid(),
-            'result'    => JsonRpc::call(['ws', 'sendMessageToClients'], posix_getpid())
-        ]);
+        file_put_contents("{$this->sessionManager->filePath}/session_{$this->key}", serialize($this));
     }
 
     /**
-     * @param Request $request
-     * @return Generator
+     * 设置一个键值
+     * @param string $key
+     * @param mixed  $value
+     * @return void
      */
-    public static function fork(Request $request): Generator
+    public function set(string $key, mixed $value): void
     {
-        if (WorkerMap::$workerMap['http']->fork() === 0) {
-            yield $request->respondJson(
-                [
-                    'myProcessId' => getmypid(),
-                ]
-            );
-        }
+        $this->data[$key] = $value;
+        $this->isChanged  = true;
     }
 
     /**
-     * @param Request $request
-     * @return Generator
+     * 删除一个键值
+     * @param string $key
+     * @return void
      */
-    public static function kill(Request $request): Generator
+    public function delete(string $key): void
     {
-        JsonRpc::call([ProcessManager::class, 'kill'], intval($request->query['processId']));
-        yield $request->respondJson(
-            ['myProcessId' => getmypid(),
-             'processId'   => $request->query['processId']]
-        );
+        unset($this->data[$key]);
+        $this->isChanged = true;
     }
 
     /**
-     * @param Request $request
-     * @return Generator
+     * 清空所有键值
+     * @return void
      */
-    public static function connect(Request $request): Generator
+    public function clear(): void
     {
-        yield $request->respondJson(
-            ['myProcessId' => getmypid()]
-        );
+        $this->data      = [];
+        $this->isChanged = true;
+    }
+
+    /**
+     * 获取一个键值
+     * @param string $key
+     * @param mixed  $default
+     * @return mixed|null
+     */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $this->data[$key] ?? $default;
     }
 }

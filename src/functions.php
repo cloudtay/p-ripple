@@ -61,24 +61,24 @@ function delay(int $second): void
 
 /**
  * 延时发布一个事件
- * @param int   $second
- * @param Build $event
+ * @param Build    $event
+ * @param int|null $second
  * @return void
  */
-function event(int $second, Build $event): void
+function event(Build $event, int|null $second = 0): void
 {
-    Timer::getInstance()->event($second, $event);
+    Timer::getInstance()->event($event, $second);
 }
 
 /**
  * 循环执行一个闭包
- * @param int     $second
- * @param Closure $callable
+ * @param Closure  $callable
+ * @param int|null $second
  * @return void
  */
-function loop(int $second, Closure $callable): void
+function loop(Closure $callable, int|null $second = 1): void
 {
-    Timer::getInstance()->loop($second, $callable);
+    Timer::getInstance()->loop($callable, $second);
 }
 
 /**
@@ -116,11 +116,11 @@ function process(Closure $closure, bool|null $exit = true): bool|int
 /**
  * 异步执行
  * @param Closure $callable
- * @return void
+ * @return CollaborativeFiberStd
  */
-function async(Closure $callable): void
+function async(Closure $callable): CollaborativeFiberStd
 {
-    EventMap::push(Build::new(Constants::EVENT_TEMP_FIBER, new class($callable) extends CollaborativeFiberStd {
+    EventMap::push(Build::new(Constants::EVENT_TEMP_FIBER, $class = new class($callable) extends CollaborativeFiberStd {
         public function __construct(Closure $callable)
         {
             $this->setup($callable);
@@ -131,4 +131,5 @@ function async(Closure $callable): void
 
         }
     }, 'anonymous'));
+    return $class;
 }

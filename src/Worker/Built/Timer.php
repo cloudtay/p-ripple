@@ -48,7 +48,6 @@ use Exception;
 use SplPriorityQueue;
 use Throwable;
 use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
 use Worker\Worker;
 use function PRipple\async;
 
@@ -111,11 +110,11 @@ class Timer extends Worker
 
     /**
      * 循环执行一个闭包
-     * @param int     $second
      * @param Closure $callable
+     * @param int     $second
      * @return void
      */
-    public function loop(int $second, Closure $callable): void
+    public function loop(Closure $callable, int $second): void
     {
         $this->publishAsync(Build::new(Timer::EVENT_TIMER_LOOP, [
             'time' => $second,
@@ -125,11 +124,11 @@ class Timer extends Worker
 
     /**
      * 延时发送一个事件
-     * @param int   $second
      * @param Build $event
+     * @param int   $second
      * @return void
      */
-    public function event(int $second, Build $event): void
+    public function event(Build $event, int $second): void
     {
         $this->publishAsync(Build::new(Timer::EVENT_TIMER_EVENT, [
             'time' => $second,
@@ -199,25 +198,5 @@ class Timer extends Worker
         while (!$this->taskQueue->isEmpty()) {
             $this->taskQueue->extract();
         }
-    }
-
-    public function onConnect(TCPConnection $client): void
-    {
-        // TODO: Implement onConnect() method.
-    }
-
-    public function onClose(TCPConnection $client): void
-    {
-        // TODO: Implement onClose() method.
-    }
-
-    public function onHandshake(TCPConnection $client): void
-    {
-        // TODO: Implement onHandshake() method.
-    }
-
-    public function onMessage(string $context, TCPConnection $client): void
-    {
-        // TODO: Implement onMessage() method.
     }
 }

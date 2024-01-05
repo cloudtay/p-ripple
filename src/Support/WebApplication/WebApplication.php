@@ -39,18 +39,20 @@
 
 namespace Support\WebApplication;
 
+use Core\Output;
 use Generator;
 use Illuminate\View\Factory;
 use PRipple;
 use ReflectionException;
 use ReflectionMethod;
+use Support\Extends\Laravel;
+use Support\Extends\Session\Session;
+use Support\Extends\Session\SessionManager;
 use Support\Http\HttpWorker;
 use Support\Http\Request;
+use Support\Http\Response;
 use Support\WebApplication\Exception\RouteExcept;
 use Support\WebApplication\Exception\WebException;
-use Support\WebApplication\Extends\Laravel;
-use Support\WebApplication\Extends\Session\Session;
-use Support\WebApplication\Extends\Session\SessionManager;
 use Support\WebApplication\Std\MiddlewareStd;
 use Throwable;
 
@@ -81,15 +83,23 @@ class WebApplication
             PRipple::config($key, $value);
         }
         if ($sessionPath = $config['SESSION_PATH'] ?? null) {
-            $this->sessionManager = new SessionManager($sessionPath);
+            try {
+                $this->sessionManager = new SessionManager($sessionPath);
+            } catch (Throwable $exception) {
+                Output::printException($exception);
+                exit(0);
+            }
         }
         $viewPaths = [__DIR__ . '/Resources/Views'];
         if ($viewPath = $config['VIEW_PATH_BLADE'] ?? null) {
-            $viewPaths[] = $viewPath;
+            if (is_array($viewPath)) {
+                $viewPaths = array_merge($viewPaths, $viewPath);
+            } else {
+                $viewPaths[] = $viewPath;
+            }
         }
         $cachePath = PP_RUNTIME_PATH . '/cache';
-
-        $laravel = Laravel::getInstance();
+        $laravel   = Laravel::getInstance();
         $laravel->initViewEngine($viewPaths, $cachePath);
     }
 
@@ -148,29 +158,41 @@ class WebApplication
                         'gif' => 'image/gif',
                         default => 'text/plain',
                     };
-                    return $this->generateStaticResponse($request, $mime, $body);
+                    yield $request->response->setStatusCode(200)->setHeader('Content-Type', $mime)->setBody($body);
                 } else {
                     throw new RouteExcept('404 Not Found', 404);
                 }
             }
         } else {
             $this->initSession($request);
-            foreach ($router->getMiddlewares() as $middleware) {
-                if (!$middlewareObject = $request->resolve($middleware)) {
-                    throw new WebException('500 Internal Server Error: class does not exist', 500);
-                }
-                /**
-                 * @var MiddlewareStd $middlewareObject
-                 */
-                $middlewareObject->handle($request);
-            }
             if (!class_exists($router->getPath())) {
                 throw new RouteExcept("500 Internal Server Error: class {$router->getPath()} does not exist", 500);
             } elseif (!method_exists($router->getPath(), $router->getMethod())) {
                 throw new RouteExcept("500 Internal Server Error: method {$router->getMethod()} does not exist", 500);
             }
-            $params = $this->resolveRouteParams($router->getPath(), $router->getMethod(), $request);
-            return call_user_func_array([$router->getPath(), $router->getMethod()], $params);
+            $access = true;
+            foreach ($router->getMiddlewares() as $middleware) {
+                if (!$middlewareObject = $request->resolve($middleware)) {
+                    var_dump($middleware);
+                    throw new WebException('500 Internal Server Error: class does not exist', 500);
+                }
+                /**
+                 * @var MiddlewareStd $middlewareObject
+                 */
+                foreach ($middlewareObject->handle($request) as $response) {
+                    yield $response;
+                    if ($response instanceof Response) {
+                        $access = false;
+                    }
+                }
+            }
+
+            if ($access) {
+                $params = $this->resolveRouteParams($router->getPath(), $router->getMethod(), $request);
+                foreach (call_user_func_array([$router->getPath(), $router->getMethod()], $params) as $response) {
+                    yield $response;
+                }
+            }
         }
     }
 
@@ -218,6 +240,7 @@ class WebApplication
         ])->render();
         try {
             $request->client->send($request->response->setStatusCode($error->getCode())->setBody($html)->__toString());
+            $this->httpWorker->closeClient($request->client);
         } catch (Throwable $exception) {
 
         }
