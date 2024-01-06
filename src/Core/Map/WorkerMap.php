@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,28 +37,21 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Core\Map;
+namespace Cclilshy\PRipple\Core\Map;
 
-use Core\MapInterface;
-use Fiber;
-use Worker\Worker;
+use Cclilshy\PRipple\Core\Standard\MapInterface;
+use Cclilshy\PRipple\Worker\Worker;
 
 /**
- * Class WorkerMap
+ * @class WorkerMap
  */
-class WorkerMap implements MapInterface
+final class WorkerMap implements MapInterface
 {
     /**
      * @var Worker[] $workerMap
      */
     public static array $workerMap = [];
-
-    /**
-     * @var Fiber[] $fiberMap
-     */
-    public static array $fiberMap = [];
 
     /**
      * @param Worker $worker
@@ -79,11 +72,9 @@ class WorkerMap implements MapInterface
     }
 
     /**
-     * @param string $name
-     * @return Fiber|null
+     * @return void
      */
-    public static function getFiber(string $name): Fiber|null
+    public static function initialize(): void
     {
-        return WorkerMap::$fiberMap[$name] ?? null;
     }
 }

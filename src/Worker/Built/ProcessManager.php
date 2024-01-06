@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,20 +37,36 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Worker\Built;
+namespace Cclilshy\PRipple\Worker\Built;
 
-use Core\FileSystem\FileException;
-use Core\Output;
+use Cclilshy\PRipple\Core\Event\Event;
+use Cclilshy\PRipple\Core\Map\EventMap;
+use Cclilshy\PRipple\Core\Map\WorkerMap;
+use Cclilshy\PRipple\Core\Output;
+use Cclilshy\PRipple\Core\Standard\WorkerInterface;
+use Cclilshy\PRipple\Facade\Process;
+use Cclilshy\PRipple\Facade\RPC;
+use Cclilshy\PRipple\Filesystem\Exception\FileException;
+use Cclilshy\PRipple\Protocol\Slice;
+use Cclilshy\PRipple\Utils\JsonRPC;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Attribute\RPCMethod;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Publisher;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Server;
 use Exception;
-use Facade\JsonRpc;
-use Facade\Process;
-use Protocol\Slice;
-use Worker\Built\JsonRpc\Attribute\RPC;
-use Worker\Prop\Build;
-use Worker\Socket\TCPConnection;
-use Worker\Worker;
+use function array_pop;
+use function array_search;
+use function call_user_func_array;
+use function json_encode;
+use function pcntl_waitpid;
+use function posix_getpid;
+use function posix_kill;
+use const SIGCHLD;
+use const SIGINT;
+use const SIGQUIT;
+use const SIGTERM;
+use const SIGUSR2;
 
 /**
  * The process manager is a standard Rpc Worker in independent running mode.
@@ -58,147 +74,23 @@ use Worker\Worker;
  * When passively forking, the Worker should be actively uninstalled and the heartbeat/Socket listening subscription-
  * should be logged out to ensure the normal operation of the process manager.
  */
-class ProcessManager extends Worker
+final class ProcessManager extends BuiltRPC implements WorkerInterface
 {
-    /**
-     * 映射进程ID守护ID
-     * @var array
-     */
-    public array $processObserverIdMap = [];
-
     /**
      * 进程管理器门面
      * @var string $facadeClass
      */
     public static string $facadeClass = Process::class;
-
+    /**
+     * 映射进程ID守护ID
+     * @var array
+     */
+    public array $processObserverIdMap = [];
     /**
      * 子进程ID列表
      * @var array $childrenProcessIds
      */
     public array $childrenProcessIds = [];
-
-    /**
-     * 设置守护进程ID
-     * @param int $processId
-     * @param int $observerProcessId
-     * @return void
-     */
-    #[RPC('设置守护进程ID')] public function setObserverProcessId(int $processId, int $observerProcessId): void
-    {
-        $this->processObserverIdMap[$processId] = $observerProcessId;
-        Output::info('Process running: ', $processId . ' [Guard:' . $observerProcessId . ']');
-    }
-
-    /**
-     * 设置进程ID
-     * @param int           $processId
-     * @param TCPConnection $tcpConnection
-     * @return array
-     * @throws Exception
-     */
-    #[RPC('设置进程ID')] public function setProcessId(int $processId, TCPConnection $tcpConnection): array
-    {
-        $this->setClientName($tcpConnection, "process:{$processId}");
-        $rpcServiceList = [];
-        foreach (JsonRpc::getInstance()->rpcServiceAddressList as $name => $info) {
-            $rpcServiceList[] = [
-                'name'    => $name,
-                'address' => $info['address'],
-                'type'    => $info['type']
-            ];
-        }
-        return $rpcServiceList;
-    }
-
-    /**
-     * 获取守护进程ID
-     * @param int $processId
-     * @param int $signal
-     * @return bool
-     */
-    #[RPC('向指定进程发送信号')] public function signal(int $processId, int $signal): bool
-    {
-        if ($observerProcessId = $this->processObserverIdMap[$processId] ?? null) {
-            if ($observerProcessId === posix_getpid()) {
-                return posix_kill($processId, $signal);
-            } elseif ($tcpConnection = $this->getClientByName("process:{$observerProcessId}")) {
-                try {
-                    $this->slice->send($tcpConnection, json_encode([
-                        'version' => '2.0',
-                        'method'  => 'posix_kill',
-                        'params'  => [$processId, $signal]
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                } catch (FileException $exception) {
-                    Output::printException($exception);
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * 关闭进程
-     * @param int $processId
-     * @return bool
-     */
-    #[RPC('关闭进程')] public function kill(int $processId): bool
-    {
-        $result = $this->signal($processId, SIGUSR2);
-        unset($this->processObserverIdMap[$processId]);
-        return $result;
-    }
-
-    /**
-     * 进程退出
-     * @param int $processId
-     * @return void
-     */
-    #[RPC('进程退出')] public function isDie(int $processId): void
-    {
-        unset($this->processObserverIdMap[$processId]);
-        Output::info('Process:', 'Exit:' . $processId);
-    }
-
-    /**
-     * RPC服务上线
-     * @param string        $name
-     * @param string        $address
-     * @param string        $type
-     * @param TCPConnection $connection
-     * @return void
-     */
-    #[RPC('RPC服务上线')] public function registerRpcService(string $name, string $address, string $type, TCPConnection $connection): void
-    {
-        try {
-            $this->publishAsync(Build::new('rpcServiceOnline', [
-                'name'    => $name,
-                'address' => $address,
-                'type'    => $type
-            ], $this->name));
-        } catch (Exception $exception) {
-            Output::printException($exception);
-        }
-        foreach ($this->getClients() as $client) {
-            if ($client !== $connection) {
-                try {
-                    $this->slice->send($client, json_encode([
-                        'version' => '2.0',
-                        'method'  => 'noticeRpcServiceOnline',
-                        'params'  => [$name, $address, $type]
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                } catch (FileException $exception) {
-                    Output::printException($exception);
-                }
-            }
-        }
-    }
-
-    #[RPC('子进程输出')] private function outputInfo(...$arguments): void
-    {
-        array_pop($arguments);
-        call_user_func_array([Output::class, 'info'], $arguments);
-    }
 
     /**
      * 注册信号处理器
@@ -214,12 +106,52 @@ class ProcessManager extends Worker
     /**
      * @return void
      */
+    public function registerSignalHandler(): void
+    {
+        pcntl_async_signals(true);
+        pcntl_signal(SIGCHLD, function () {
+            while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
+                if ($this->isFork()) {
+                    try {
+                        JsonRPC::call([ProcessManager::class, 'isDie'], $childrenProcessId);
+                    } catch (RPCException $exception) {
+                        Output::printException($exception);
+                    }
+                } else {
+                    $this->isDie($childrenProcessId);
+                }
+                unset($this->childrenProcessIds[array_search($childrenProcessId, $this->childrenProcessIds)]);
+            }
+        });
+        if ($this->isFork()) {
+            pcntl_signal(SIGINT, [$this, 'processSignalHandler']);
+            pcntl_signal(SIGTERM, [$this, 'processSignalHandler']);
+            pcntl_signal(SIGQUIT, [$this, 'processSignalHandler']);
+            pcntl_signal(SIGUSR2, [$this, 'processSignalHandler']);
+        }
+    }
+
+    /**
+     * 进程退出
+     * @param int $processId
+     * @return void
+     */
+    #[RPCMethod('进程退出')] public function isDie(int $processId): void
+    {
+        unset($this->processObserverIdMap[$processId]);
+        Output::info('process:', 'exit:' . $processId);
+    }
+
+    /**
+     * @return void
+     */
     public function initialize(): void
     {
         parent::initialize();
+        $this->registerSignalHandler();
         $this->protocol(Slice::class);
         try {
-            $this->bind($this->getRpcServiceAddress());
+            $this->bind($this->getRPCServiceAddress(), [SO_REUSEADDR => 1, SO_REUSEPORT => 1]);
         } catch (Exception $exception) {
             Output::printException($exception);
         }
@@ -228,72 +160,155 @@ class ProcessManager extends Worker
     /**
      * @return void
      */
-    public function registerSignalHandler(): void
-    {
-        pcntl_async_signals(true);
-        pcntl_signal(SIGCHLD, function () {
-            while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
-                if ($this->isFork()) {
-                    JsonRpc::call([ProcessManager::class, 'isDie'], $childrenProcessId);
-                } else {
-                    $this->isDie($childrenProcessId);
-                }
-                unset($this->childrenProcessIds[array_search($childrenProcessId, $this->childrenProcessIds)]);
-            }
-        });
-        pcntl_signal(SIGINT, [$this, 'processSignalHandler']);
-        pcntl_signal(SIGTERM, [$this, 'processSignalHandler']);
-        pcntl_signal(SIGQUIT, [$this, 'processSignalHandler']);
-        pcntl_signal(SIGUSR2, [$this, 'processSignalHandler']);
-    }
-
-    /**
-     * @return void
-     */
     public function processSignalHandler(): void
     {
         if (!$this->isFork()) {
-            Output::info('Process:', 'Exit:' . posix_getpid());
+            Output::info('process:', 'exit:' . posix_getpid());
         }
         foreach ($this->childrenProcessIds as $childrenProcessId) {
             $this->signal($childrenProcessId, SIGUSR2);
         }
         if ($this->isFork()) {
+            foreach (WorkerMap::$workerMap as $worker) {
+                if ($worker->name !== $this->name) {
+                    $worker->destroy();
+                }
+            }
             exit(0);
+        } else {
+            foreach ($this->childrenProcessIds as $processId) {
+                pcntl_waitpid($processId, $status);
+            }
+            foreach (WorkerMap::$workerMap as $worker) {
+                $worker->destroy();
+            }
         }
     }
 
     /**
-     * @param TCPConnection $client
-     * @return void
+     * 获取守护进程ID
+     * @param int $processId
+     * @param int $signal
+     * @return bool
      */
-    public function onConnect(TCPConnection $client): void
+    #[RPCMethod('向指定进程发送信号')] public function signal(int $processId, int $signal): bool
     {
-        $client->handshake($this->protocol);
+        if ($observerProcessId = $this->processObserverIdMap[$processId] ?? null) {
+            if ($observerProcessId === posix_getpid()) {
+                return posix_kill($processId, $signal);
+            } elseif ($TCPConnection = $this->getClientByName("process:{$observerProcessId}")) {
+                try {
+                    $this->slice->send($TCPConnection, json_encode([
+                        'version' => '2.0',
+                        'method'  => 'posix_kill',
+                        'params'  => [$processId, $signal]
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                } catch (\Cclilshy\PRipple\Core\Net\Exception|FileException $exception) {
+                    Output::printException($exception);
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
-     * @param string        $context
-     * @param TCPConnection $client
+     * 设置守护进程ID
+     * @param int $processId
+     * @param int $observerProcessId
      * @return void
      */
-    public function onMessage(string $context, TCPConnection $client): void
+    #[RPCMethod('设置守护进程ID')] public function setObserverProcessId(int $processId, int $observerProcessId): void
     {
-        $jsonRequest = json_decode($context);
-        if (isset($jsonRequest->method)) {
-            if (method_exists($this, $jsonRequest->method)) {
-                $jsonRequest->params[] = $client;
-                $result                = call_user_func_array([$this, $jsonRequest->method], $jsonRequest->params ?? []);
+        $this->processObserverIdMap[$processId] = $observerProcessId;
+        Output::info('Process running: ', $processId . ' [Guard:' . $observerProcessId . ']');
+    }
+
+    /**
+     * 设置进程ID
+     * @param int       $processId
+     * @param Publisher $jsonRPCPublisher
+     * @return array
+     */
+    #[RPCMethod('设置进程ID')] public function setProcessId(int $processId, Publisher $jsonRPCPublisher): array
+    {
+        $TCPConnection = $jsonRPCPublisher->TCPConnection;
+        $this->setClientName($TCPConnection, "process:{$processId}");
+        $rpcServiceList = [];
+        foreach (RPC::getInstance()->rpcServiceAddressList as $name => $info) {
+            $rpcServiceList[] = [
+                'name'    => $name,
+                'address' => $info['address'],
+                'type'    => $info['type']
+            ];
+        }
+        return $rpcServiceList;
+    }
+
+    /**
+     * 关闭进程
+     * @param int $processId
+     * @return bool
+     */
+    #[RPCMethod('关闭进程')] public function kill(int $processId): bool
+    {
+        $result = $this->signal($processId, SIGUSR2);
+        unset($this->processObserverIdMap[$processId]);
+        return $result;
+    }
+
+    /**
+     * RPC服务上线
+     * @param string    $name
+     * @param string    $address
+     * @param string    $type
+     * @param Publisher $jsonRPCPublisher
+     * @return void
+     */
+    #[RPCMethod('RPC服务上线')] public function registerRPCService(string $name, string $address, string $type, Publisher $jsonRPCPublisher): void
+    {
+        $connection = $jsonRPCPublisher->TCPConnection;
+        try {
+            EventMap::push(Event::build(Server::EVENT_ONLINE, [
+                'name'    => $name,
+                'address' => $address,
+                'type'    => $type
+            ], $this->name));
+        } catch (Exception $exception) {
+            Output::printException($exception);
+        }
+        foreach ($this->getClients() as $client) {
+            if ($client !== $connection) {
                 try {
                     $this->slice->send($client, json_encode([
                         'version' => '2.0',
-                        'result'  => $result,
-                        'id'      => $jsonRequest->id ?? null
+                        'method'  => 'noticeRpcServiceOnline',
+                        'params'  => [$name, $address, $type]
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                } catch (FileException $exception) {
+                } catch (\Cclilshy\PRipple\Core\Net\Exception|FileException $exception) {
                     Output::printException($exception);
                 }
             }
         }
+    }
+
+    /**
+     * @param ...$arguments
+     * @return void
+     */
+    #[RPCMethod('子进程输出')] protected function outputInfo(...$arguments): void
+    {
+        array_pop($arguments);
+        call_user_func_array([Output::class, 'info'], $arguments);
+    }
+
+    /**
+     * 子进程发布事件
+     * @param Event $event
+     * @return void
+     */
+    #[RPCMethod('子进程发布事件')] protected function event(Event $event): void
+    {
+        EventMap::push($event);
     }
 }

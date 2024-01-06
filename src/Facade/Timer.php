@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,26 +37,26 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Facade;
+namespace Cclilshy\PRipple\Facade;
 
-use Core\Std\FacadeStd;
-use Worker\Prop\Build;
-use Worker\Worker;
+use Cclilshy\PRipple\Core\Event\Event;
+use Cclilshy\PRipple\Core\Standard\WorkerFacadeStd;
+use Cclilshy\PRipple\Core\Standard\WorkerInterface;
+use function call_user_func_array;
 
 /**
- * 计时器门面
+ * @class Timer 计时器门面
  * @method static void sleep(int $seconds)
  * @method static void loop(int $seconds, callable $callback)
- * @method static void event(int $seconds, Build $event)
+ * @method static void event(int $seconds, Event $event)
  */
-class Timer implements FacadeStd
+final class Timer implements WorkerFacadeStd
 {
     /**
      * @var mixed
      */
-    public static mixed $instance;
+    public static \Cclilshy\PRipple\Worker\Built\Timer|WorkerInterface $instance;
 
     /**
      * @param string $name
@@ -69,18 +69,18 @@ class Timer implements FacadeStd
     }
 
     /**
-     * @return \Worker\Built\Timer
+     * @return \Cclilshy\PRipple\Worker\Built\Timer|WorkerInterface
      */
-    public static function getInstance(): \Worker\Built\Timer
+    public static function getInstance(): \Cclilshy\PRipple\Worker\Built\Timer|WorkerInterface
     {
         return Timer::$instance;
     }
 
     /**
-     * @param Worker $worker
-     * @return \Worker\Built\Timer
+     * @param WorkerInterface $worker
+     * @return \Cclilshy\PRipple\Worker\Built\Timer|WorkerInterface
      */
-    public static function setInstance(Worker $worker): \Worker\Built\Timer
+    public static function setInstance(WorkerInterface $worker): \Cclilshy\PRipple\Worker\Built\Timer|WorkerInterface
     {
         Timer::$instance = $worker;
         return Timer::$instance;

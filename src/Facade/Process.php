@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,24 +37,27 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Facade;
+namespace Cclilshy\PRipple\Facade;
 
-use Core\Std\FacadeStd;
-use Worker\Built\ProcessManager;
-use Worker\Worker;
+use Cclilshy\PRipple\Core\Output;
+use Cclilshy\PRipple\Core\Standard\WorkerFacadeStd;
+use Cclilshy\PRipple\Core\Standard\WorkerInterface;
+use Cclilshy\PRipple\Utils\JsonRPC;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
+use Cclilshy\PRipple\Worker\Built\ProcessManager;
+use Cclilshy\PRipple\Worker\Worker;
+use function call_user_func_array;
 
 /**
- * 进程管理器门面
- * @method static int process(callable $callback, bool|null $exit = true)
+ * @class Process 进程管理器门面
  */
-class Process implements FacadeStd
+final class Process implements WorkerFacadeStd
 {
     /**
-     * @var mixed
+     * @var ProcessManager|WorkerInterface
      */
-    public static mixed $instance;
+    public static ProcessManager|WorkerInterface $instance;
 
     /**
      * @param string $name
@@ -67,21 +70,20 @@ class Process implements FacadeStd
     }
 
     /**
-     * @return ProcessManager
+     * @return ProcessManager|WorkerInterface
      */
-    public static function getInstance(): ProcessManager
+    public static function getInstance(): ProcessManager|WorkerInterface
     {
         return Process::$instance;
     }
 
     /**
      * @param Worker $worker
-     * @return ProcessManager
+     * @return ProcessManager|WorkerInterface
      */
-    public static function setInstance(Worker $worker): ProcessManager
+    public static function setInstance(WorkerInterface $worker): ProcessManager|WorkerInterface
     {
-        Process::$instance = $worker;
-        return Process::$instance;
+        return Process::$instance = $worker;
     }
 
     /**
@@ -91,7 +93,12 @@ class Process implements FacadeStd
      */
     public static function signal(int $processId, int $signalNo): bool
     {
-        return JsonRpc::call([Process::class, 'signal'], $processId, $signalNo);
+        try {
+            return JsonRPC::call([ProcessManager::class, 'signal'], $processId, $signalNo);
+        } catch (RPCException $exception) {
+            Output::printException($exception);
+            return false;
+        }
     }
 
     /**
@@ -100,6 +107,11 @@ class Process implements FacadeStd
      */
     public static function kill(int $processId): bool
     {
-        return JsonRpc::call([Process::class, 'kill'], $processId);
+        try {
+            return JsonRPC::call([ProcessManager::class, 'kill'], $processId);
+        } catch (RPCException $exception) {
+            Output::printException($exception);
+            return false;
+        }
     }
 }

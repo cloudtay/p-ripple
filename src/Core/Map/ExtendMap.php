@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,14 +37,15 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Core\Map;
 
-use Core\MapInterface;
+namespace Cclilshy\PRipple\Core\Map;
+
+use Cclilshy\PRipple\Core\Standard\MapInterface;
 
 /**
- * Class ExtendMap
+ * @class ExtendMap
  */
-class ExtendMap implements MapInterface
+final class ExtendMap implements MapInterface
 {
     /**
      * @var array
@@ -68,5 +69,13 @@ class ExtendMap implements MapInterface
     public static function set(string $name, mixed $value): void
     {
         ExtendMap::$extendMap[$name] = $value;
+    }
+
+    /**
+     * 初始化映射基础依赖
+     * @return void
+     */
+    public static function initialize(): void
+    {
     }
 }

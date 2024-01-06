@@ -1,5 +1,10 @@
 .idea
 .vscode
+
+document
+debug
+
+composer.lock
 vendor
-src/.temporary
-tests/cache
+
+.phpunit.result.cache

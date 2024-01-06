@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,17 +37,18 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Core;
+namespace Cclilshy\PRipple\Core;
 
-use PRipple;
+use Cclilshy\PRipple\PRipple;
 use Throwable;
+use function explode;
+use function fwrite;
 
 /**
- *
+ * @class Output 输出辅助类
  */
-class Output
+final class Output
 {
     /**
      * @param Throwable $exception
@@ -58,18 +59,18 @@ class Output
         if (!PRipple::isConsole()) {
             return;
         }
-        echo "\033[1;31mProcess: " . posix_getpid() . "=>" . posix_getppid() . "\033[0m\n";
-        echo "\033[1;31mException: " . get_class($exception) . "\033[0m\n";
-        echo "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n";
-        echo "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n";
-        echo "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n";
-        echo "\033[0;32mStack trace:\033[0m\n";
+        fwrite(STDIN, "\033[1;31mProcess: " . posix_getpid() . '=>' . posix_getppid() . "\033[0m\n");
+        fwrite(STDIN, "\033[1;31mException: " . get_class($exception) . "\033[0m\n");
+        fwrite(STDIN, "\033[1;33mMessage: " . $exception->getMessage() . "\033[0m\n");
+        fwrite(STDIN, "\033[1;34mFile: " . $exception->getFile() . "\033[0m\n");
+        fwrite(STDIN, "\033[1;34mLine: " . $exception->getLine() . "\033[0m\n");
+        fwrite(STDIN, "\033[0;32mStack trace:\033[0m\n");
         $trace      = $exception->getTraceAsString();
         $traceLines = explode("\n", $trace);
         foreach ($traceLines as $line) {
-            echo "\033[0;32m" . $line . "\033[0m\n";
+            fwrite(STDIN, "\033[0;32m" . $line . "\033[0m\n");
         }
-        echo PHP_EOL;
+        fwrite(STDIN, PHP_EOL);
     }
 
     /**
@@ -82,10 +83,10 @@ class Output
         if (!PRipple::isConsole()) {
             return;
         }
-        echo "\033[1;32m" . $title . "\033[0m";
+        fwrite(STDIN, "\033[1;32m" . $title . "\033[0m");
         foreach ($contents as $content) {
-            echo "\033[1;33m" . $content . "\033[0m";
+            fwrite(STDIN, "\033[1;33m" . $content . "\033[0m");
         }
-        echo PHP_EOL;
+        fwrite(STDIN, PHP_EOL);
     }
 }

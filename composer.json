@@ -2,11 +2,11 @@
   "name": "cclilshy/p-ripple",
   "autoload": {
     "psr-4": {
-      "": "src/",
+      "Cclilshy\\PRipple\\": "src/",
       "Tests\\": "tests/"
     },
     "files": [
-      "src/functions.php"
+      "src/helper.php"
     ]
   },
   "license": "MIT",
@@ -17,15 +17,17 @@
     }
   ],
   "require": {
-    "php": ">=8.2",
+    "php": ">=8.3",
     "ext-sockets": "*",
     "ext-pcntl": "*",
     "ext-posix": "*",
-    "ext-pdo": "*",
-    "cclilshy/p-ripple-plugins": "dev-main",
-    "firebase/php-jwt": "dev-main",
-    "ext-event": "*"
+    "cclilshy/container": "^1.0",
+    "cclilshy/laravel-component-core": "dev-main",
+    "phpunit/phpunit": "^10.5"
   },
+  "suggest": {
+  },
+  "version": "v0.3.8",
   "minimum-stability": "dev",
-  "version": "dev-main"
+  "prefer-stable": true
 }

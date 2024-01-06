@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,86 +37,65 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Worker\Socket;
+namespace Cclilshy\PRipple\Worker\Socket;
 
-use AllowDynamicProperties;
-use Core\FileSystem\FileException;
-use Core\Output;
-use Core\Std\ProtocolStd;
-use stdClass;
-use Worker\Tunnel\SocketTunnel;
+use Cclilshy\PRipple\Core\Net\Socket;
+use Cclilshy\PRipple\Core\Output;
+use Cclilshy\PRipple\Core\Standard\ProtocolStd;
+use Cclilshy\PRipple\Filesystem\Exception\FileException;
+use Cclilshy\PRipple\Protocol\TCPProtocol;
+use Exception;
+use Generator;
+use function boolval;
 
 /**
- * 客户端
+ * @class TCPConnection 客户端
  */
-#[AllowDynamicProperties] class TCPConnection extends SocketTunnel
+class TCPConnection extends Socket
 {
-    public string      $verifyBuffer;
-    public string      $socketType;
-    public bool        $verify;
-    public string      $cache;
-    public mixed       $info;
+    public bool        $verify = false;
+    public string      $buffer = '';
+    public mixed       $info   = null;
     public ProtocolStd $protocol;
 
     /**
-     * @param mixed  $socket
-     * @param string $type
+     * @param resource $stream
+     * @throws Exception
      */
-    public function __construct(mixed $socket, string $type)
+    public function __construct(mixed $stream, ProtocolStd|string|null $protocol = TCPProtocol::class)
     {
-        parent::__construct($socket);
-        $this->socketType   = $type;
-        $this->verifyBuffer = '';
-        $this->verify       = false;
-        $this->info         = new stdClass();
-        $this->cache        = '';
+        parent::__construct($stream);
+        $this->protocol($protocol);
     }
 
     /**
      * 设置协议
-     * @param ProtocolStd $protocol
-     * @return true
+     * @param ProtocolStd|string|null $protocol
+     * @return void
      */
-    public function handshake(ProtocolStd $protocol): true
+    public function protocol(ProtocolStd|string|null $protocol = TCPProtocol::class): void
     {
-        $this->protocol = $protocol;
-        return $this->verify = true;
-    }
-
-    /**
-     * 通过协议切割
-     * @return string|false|null
-     */
-    public function getPlaintext(): string|null|false
-    {
-        return $this->protocol->parse($this);
-    }
-
-    /**
-     * 客户端数据缓存区
-     * @param string|null $context
-     * @return string
-     */
-    public function cache(string|null $context = null): string
-    {
-        if ($context !== null) {
-            $this->cache .= $context;
+        if ($protocol instanceof ProtocolStd) {
+            $this->protocol = $protocol;
+        } else {
+            $this->protocol = new $protocol($this->info);
         }
-        return $this->cache;
     }
 
     /**
-     * 清空缓存区
-     * @return string
+     * 确认握手
+     * @param ProtocolStd|null $protocolStd
+     * @return void
      */
-    public function cleanCache(): string
+    public function handshake(ProtocolStd|null $protocolStd = null): void
     {
-        $cache       = $this->cache;
-        $this->cache = '';
-        return $cache;
+        if ($protocolStd) {
+            $this->protocol = $protocolStd;
+        }
+        $this->verify = true;
     }
+
 
     /**
      * 发送信息
@@ -130,7 +109,7 @@ use Worker\Tunnel\SocketTunnel;
         } else {
             try {
                 return boolval($this->write($context));
-            } catch (FileException $exception) {
+            } catch (Exception|FileException $exception) {
                 Output::printException($exception);
                 return false;
             }
@@ -138,14 +117,61 @@ use Worker\Tunnel\SocketTunnel;
     }
 
     /**
+     * 客户端数据缓存区
+     * @param string|null $context
+     * @return string
+     */
+    public function buffer(string|null $context = null): string
+    {
+        if ($context !== null) {
+            $this->buffer .= $context;
+        }
+        return $this->buffer;
+    }
+
+    /**
+     * 清空缓存区
+     * @return string
+     */
+    public function cleanBuffer(): string
+    {
+        $cache        = $this->buffer;
+        $this->buffer = '';
+        return $cache;
+    }
+
+    /**
      * 读取到缓冲区
      * @return int|false
      */
-    public function readToCache(): string|false
+    public function readToBuffer(): string|false
     {
-        if ($context = $this->read(0, $resultLength)) {
-            return $this->cache($context);
+        if (!$context = $this->read(0)) {
+            return false;
         }
-        return false;
+        return $this->buffer($context);
+    }
+
+    /**
+     * 通过协议切割
+     * @return Generator
+     */
+    public function generatePayload(): Generator
+    {
+        while (true) {
+            yield $result = $this->protocol->cut($this);
+            if ($result === false || $result === null) {
+                break;
+            }
+        }
+    }
+
+    /**
+     * 是否已经握手
+     * @return bool
+     */
+    public function isHandshake(): bool
+    {
+        return $this->verify;
     }
 }

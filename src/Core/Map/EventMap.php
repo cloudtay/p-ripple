@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,57 +37,63 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Core\Map;
+namespace Cclilshy\PRipple\Core\Map;
 
-use Core\MapInterface;
-use Worker\Prop\Build;
+use Cclilshy\PRipple\Core\Event\Event;
+use Cclilshy\PRipple\Core\Standard\MapInterface;
+use function array_shift;
 
 /**
- *
+ * @class EventMap 事件映射
  */
-class EventMap implements MapInterface
+final class EventMap implements MapInterface
 {
     /**
-     * @var Build[] $eventMap
+     * 事件列表
+     * @var Event[] $eventMap
      */
     public static array $eventMap = [];
     public static int   $count    = 0;
 
     /**
      * 异步发布事件
-     * @param Build $event
+     * @param Event $event
      * @return void
      */
-    public static function push(Build $event): void
+    public static function push(Event $event): void
     {
         EventMap::$eventMap[] = $event;
         EventMap::$count++;
     }
 
     /**
-     * 异步发布一条启动事件
-     * @param Build $event
-     * @return void
+     * 异步消费事件
+     * @return Event|null
      */
-    public static function launchEvent(Build $event): void
-    {
-        foreach (EventMap::$eventMap as $event) {
-            EventMap::$eventMap[] = $event;
-            EventMap::$count++;
-        }
-    }
-
-    /**
-     * @return Build|null
-     */
-    public static function arrayShift(): Build|null
+    public static function arrayShift(): Event|null
     {
         if (EventMap::$count > 0) {
             EventMap::$count--;
             return array_shift(EventMap::$eventMap);
         }
         return null;
+    }
+
+    /**
+     * 是否有事件
+     * @return bool
+     */
+    public static function hasEvent(): bool
+    {
+        return EventMap::$count > 0;
+    }
+
+    /**
+     * 初始化映射基础依赖
+     * @return void
+     */
+    public static function initialize(): void
+    {
     }
 }

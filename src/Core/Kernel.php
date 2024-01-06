@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,54 +37,80 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Core;
+namespace Cclilshy\PRipple\Core;
 
+use Cclilshy\Container\Container;
+use Cclilshy\PRipple\Component\LaravelComponent;
+use Cclilshy\PRipple\Core\Event\Event;
+use Cclilshy\PRipple\Core\Event\EventLoop;
+use Cclilshy\PRipple\Core\Map\CoroutineMap;
+use Cclilshy\PRipple\Core\Map\EventMap;
+use Cclilshy\PRipple\Core\Map\ExtendMap;
+use Cclilshy\PRipple\Core\Map\WorkerMap;
+use Cclilshy\PRipple\Core\Net\Stream;
+use Cclilshy\PRipple\Core\Standard\EventLoopInterface;
+use Cclilshy\PRipple\PRipple;
+use Cclilshy\PRipple\Utils\JsonRPC;
+use Cclilshy\PRipple\Worker\Built\Buffer;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Client;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Server;
+use Cclilshy\PRipple\Worker\Built\ProcessManager;
+use Cclilshy\PRipple\Worker\Built\ProcessService;
+use Cclilshy\PRipple\Worker\Built\TCPClient\TCPClient;
+use Cclilshy\PRipple\Worker\Built\Timer;
+use Cclilshy\PRipple\Worker\Worker;
+use Cclilshy\PRipple\Worker\WorkerNet;
 use Closure;
-use Core\Map\EventMap;
-use Core\Map\SocketMap;
-use Core\Map\StreamMap;
-use Core\Map\WorkerMap;
-use Event;
-use EventBase;
 use Exception;
-use Facade\JsonRpc;
-use Fiber;
-use Generator;
 use JetBrains\PhpStorm\NoReturn;
+use ReflectionException;
 use Throwable;
-use Worker\Built\BufferWorker;
-use Worker\Built\JsonRpc\JsonRpcClient;
-use Worker\Built\JsonRpc\JsonRpcServer;
-use Worker\Built\ProcessManager;
-use Worker\Built\Timer;
-use Worker\Prop\Build;
-use Worker\Worker;
+use function cli_set_process_title;
+use function fopen;
+use function get_class;
+use function get_resource_id;
+use function in_array;
+use function pcntl_fork;
+use const FS;
+use const PP_RUNTIME_PATH;
+use const SIGINT;
+use const SIGQUIT;
+use const SIGTERM;
+use const SIGUSR2;
 
 /**
- * loop
+ * @class Kernel 内核
  */
-class Kernel
+final class Kernel extends Container
 {
-    private const LOOP_MODE_SELECT = 1;
-    private const LOOP_MODE_EVENT  = 2;
+    public const string VERSION                         = '0.3.8';
+    public const string EVENT_HEARTBEAT                 = 'system.heartbeat';
+    public const string EVENT_STREAM_EXPECT             = 'system.net.stream.expect';
+    public const string EVENT_STREAM_READ               = 'system.net.stream.read';
+    public const string EVENT_STREAM_WRITE              = 'system.net.stream.write';
+    public const string EVENT_STREAM_SUBSCRIBE_READ     = 'system.net.stream.subscribe.read';
+    public const string EVENT_STREAM_SUBSCRIBE_WRITE    = 'system.net.stream.subscribe.write';
+    public const string EVENT_STREAM_SUBSCRIBE_EXCEPT   = 'system.net.stream.subscribe.except';
+    public const string EVENT_STREAM_UNSUBSCRIBE_READ   = 'system.net.stream.unsubscribe.read';
+    public const string EVENT_STREAM_UNSUBSCRIBE_WRITE  = 'system.net.stream.unsubscribe.write';
+    public const string EVENT_STREAM_UNSUBSCRIBE_EXCEPT = 'system.net.stream.unsubscribe.except';
+    public const string EVENT_EVENT_SUBSCRIBE           = 'system.event.subscribe';
+    public const string EVENT_EVENT_UNSUBSCRIBE         = 'system.event.unsubscribe';
+    public const string EVENT                           = Event::class;
 
     /**
      * 内置服务
      */
-    public const BUILT_SERVICES = [
+    public const array BUILT_SERVICES = [
         Timer::class,
-        JsonRpcClient::class,
-        BufferWorker::class,
+        Client::class,
+        Buffer::class,
         ProcessManager::class,
+        ProcessService::class,
+        TCPClient::class
     ];
-
-    /**
-     * 处理速率
-     * @var int
-     */
-    private int $rate = 1000000;
 
     /**
      * 是否为子进程
@@ -93,164 +119,62 @@ class Kernel
     public bool $isFork = false;
 
     /**
-     * 当前进程主导者
-     * @var Worker $masterWorker
+     * 订阅的读流列表
+     * @var array $subscribeStreamsRead
      */
-    private Worker $masterWorker;
+    public array $subscribeStreamsRead = [];
 
     /**
-     * 循环模式
-     * @var int $loopMode
+     * 订阅的写流列表
+     * @var array $subscribeStreamsWrite
      */
-    private int $loopMode = Kernel::LOOP_MODE_SELECT;
+    public array $subscribeStreamsWrite = [];
 
     /**
-     * event扩展支持
-     * @var EventBase $eventBase
+     * 订阅的异常流列表
+     * @var array $subscribeStreamsExcept
      */
-    private EventBase $eventBase;
+    public array $subscribeStreamsExcept = [];
 
     /**
-     * 事件列表
-     * @var Event[] $eventList
+     * 订阅事件表
+     * @var array $subscribeEventMap
      */
-    private array $eventList = [];
+    private array $subscribeEventMap = [];
+
+    /**
+     * 订阅流表
+     * @var array<string,string> $subscribeStreamMap
+     * @var array                $subscribeStreamMap
+     */
+    private array $subscribeStreamMap = [];
+
+    /**
+     * 日志文件
+     * @var Stream $logFile
+     */
+    private Stream $logFile;
+
+    /**
+     * 循环事件
+     * @var EventLoopInterface $eventLoop
+     */
+    private EventLoopInterface $eventLoop;
+
+    /**
+     * @var array             $streamIdMap
+     * @var Stream[]          $streamIdMap
+     * @var array<int,Stream> $streamIdMap
+     */
+    private array $streamIdMap = [];
 
     /**
      * 构造函数
      */
     public function __construct()
     {
+        parent::__construct();
         $this->initialize();
-    }
-
-    /**
-     * 启动服务: 内置服务->主服务
-     * @return void
-     */
-    #[NoReturn] public function launch(): void
-    {
-        /**
-         * @var Worker[] $beforeWorker
-         */
-        $beforeWorker = [];
-        foreach (WorkerMap::$workerMap as $worker) {
-            if (in_array($worker->name, Kernel::BUILT_SERVICES, true)) {
-                continue;
-            }
-            $beforeWorker[$worker->name] = $worker;
-        }
-
-        while ($worker = array_shift($beforeWorker)) {
-            try {
-                if ($worker->mode === Worker::MODE_COLLABORATIVE) {
-                    $worker->initialize();
-                    $worker->listen();
-                    if ($worker->checkRpcService()) {
-                        $worker->rpcService                      = JsonRpcServer::load($worker);
-                        $beforeWorker[$worker->rpcService->name] = $worker->rpcService;
-                        $this->push($worker->rpcService);
-                    }
-                } elseif ($worker->mode === Worker::MODE_INDEPENDENT) {
-                    $processId = $this->fork(function () use ($worker, $beforeWorker) {
-                        $worker->isFork = true;
-                        $worker->initialize();
-                        $worker->listen();
-                        $this->consumption();
-                        for ($i = 1; $i < $worker->thread(); $i++) {
-                            $processId = $worker->fork();
-                            if ($processId === 0) {
-                                break;
-                            }
-                        }
-                    }, false);
-                    if ($processId === 0) {
-                        $beforeWorker = [];
-                        if ($worker->checkRpcService()) {
-                            $worker->rpcService                      = JsonRpcServer::load($worker);
-                            $worker->rpcService->isFork              = true;
-                            $beforeWorker[$worker->rpcService->name] = $worker->rpcService;
-                            $this->push($worker->rpcService);
-                        }
-                    }
-                } else {
-                    continue;
-                }
-
-                $this->consumption();
-                $fiber = WorkerMap::$fiberMap[$worker->name] = new Fiber([$worker, 'launch']);
-                if ($response = $fiber->start()) {
-                    EventMap::push($response);
-                }
-                if ($worker instanceof JsonRpcServer) {
-                    JsonRpc::call([ProcessManager::class, 'registerRpcService'],
-                        $worker->worker->name,
-                        $worker->worker->getRpcServiceAddress(),
-                        get_class($worker->worker)
-                    );
-                }
-            } catch (Throwable $exception) {
-                Output::printException($exception);
-            }
-        }
-
-        if (!$this->isFork()) {
-            Output::info('', '-----------------------------------------');
-            Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
-        }
-
-        if ($this->loopMode === Kernel::LOOP_MODE_EVENT) {
-            $this->eventLoop();
-        } else {
-            $this->loop();
-        }
-    }
-
-    /**
-     * 信号处理器
-     * @param int $signal
-     * @return void
-     */
-    #[NoReturn] public function signalHandler(int $signal): void
-    {
-        ProcessManager::getInstance()->processSignalHandler();
-        foreach (ProcessManager::getInstance()->childrenProcessIds as $processId) {
-            pcntl_waitpid($processId, $status);
-        }
-        foreach (WorkerMap::$workerMap as $worker) {
-            $worker->destroy();
-        }
-        Output::info('[PRipple]', 'Stopped successfully...');
-        exit(0);
-    }
-
-    /**
-     * 循环监听
-     * @return void
-     */
-    #[NoReturn] private function loop(): void
-    {
-        /**
-         * @var Build $event
-         */
-        foreach ($this->generator() as $event) {
-            $this->handleEvent($event);
-        }
-    }
-
-    /**
-     * @return void
-     */
-    #[NoReturn] private function eventLoop(): void
-    {
-        while (true) {
-            $this->consumption();
-            match ($this->eventBase->loop()) {
-                true => $this->busyHeartbeat(),
-                false => $this->heartbeat()
-            };
-            usleep($this->rate);
-        }
     }
 
     /**
@@ -258,26 +182,60 @@ class Kernel
      * Ensure that different types of service startup modes are supported during Launch, and the connection can be established smoothly
      * @return void
      */
-    private function initialize(): void
+    public function initialize(): void
     {
-        if ($this->loopMode === Kernel::LOOP_MODE_EVENT) {
-            $this->eventBase = new EventBase();
-        }
-        $this->registerSignalHandler();
+        // 重置opcache缓存
+        $this->opcacheReset();
+
+        // 初始化映射表
+        $this->initializeMap();
+
+        // 初始化事件循环监听器
+        $this->initializeEventLoop();
+
+        // 初始化内核日志
+        $this->initializeLog();
+
+        // 初始化自定义组件
+        $this->initializeComponent();
+
+        // 启动内置服务
         $this->loadBuiltInServices();
     }
 
     /**
-     * 注册信号处理器
      * @return void
      */
-    private function registerSignalHandler(): void
+    private function initializeEventLoop(): void
     {
-        pcntl_async_signals(true);
-        pcntl_signal(SIGINT, [$this, 'signalHandler']);
-        pcntl_signal(SIGTERM, [$this, 'signalHandler']);
-        pcntl_signal(SIGQUIT, [$this, 'signalHandler']);
-        pcntl_signal(SIGUSR2, [$this, 'signalHandler']);
+        $loopKernel = PRipple::getArgument('PP_LOOP_KERNEL', EventLoop::class);
+        try {
+            $this->eventLoop = $this->make($loopKernel);
+        } catch (\Cclilshy\Container\Exception\Exception|ReflectionException $exception) {
+            Output::printException($exception);
+            exit(-1);
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function opcacheReset(): void
+    {
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function initializeMap(): void
+    {
+        CoroutineMap::initialize();
+        EventMap::initialize();
+        ExtendMap::initialize();
+        WorkerMap::initialize();
     }
 
     /**
@@ -287,184 +245,107 @@ class Kernel
     private function loadBuiltInServices(): void
     {
         foreach (Kernel::BUILT_SERVICES as $serviceClass) {
-            $worker = WorkerMap::add(new $serviceClass($serviceClass));
-            $worker->initialize();
-            $worker->listen();
+            $this->run(new $serviceClass($serviceClass));
         }
     }
 
     /**
-     * 处理事件
-     * @param Build $event
      * @return void
      */
-    public function handleEvent(Build $event): void
+    private function initializeComponent(): void
     {
-        switch ($event->name) {
-            case Constants::EVENT_SUSPEND:
-                break;
-            case Constants::EVENT_SOCKET_READ:
-            case Constants::EVENT_SOCKET_EXPECT:
-            case Constants::EVENT_SOCKET_WRITE:
-                $socketHash = spl_object_hash($event->data);
-                if ($workerName = SocketMap::$worker[$socketHash] ?? null) {
-                    WorkerMap::get($workerName)->handleSocket($event->data, $event->name);
-                } else {
-                    if ($stream = StreamMap::getStreamBySocket($event->data)) {
-                        StreamMap::removeStreamSocket($stream);
-                    } else {
-                        SocketMap::removeSocket($event->data);
-                    }
-                }
-                break;
-            case Constants::EVENT_SOCKET_SUBSCRIBE:
-                $socketHash                     = spl_object_hash($event->data);
-                SocketMap::$worker[$socketHash] = $event->source;
-                break;
-            case Constants::EVENT_SOCKET_UNSUBSCRIBE:
-                if ($stream = StreamMap::getStreamBySocket($event->data)) {
-                    StreamMap::removeStreamSocket($stream);
-                } else {
-                    SocketMap::removeSocket($event->data);
-                }
-                break;
-            case Constants::EVENT_EVENT_SUBSCRIBE:
-                SocketMap::$worker[$event->data] = $event->source;
-                break;
-            case Constants::EVENT_EVENT_UNSUBSCRIBE:
-                unset(SocketMap::$worker[$event->data]);
-                break;
-            case Constants::EVENT_TEMP_FIBER:
-                try {
-                    if ($response = $event->data->execute()) {
-                        EventMap::push($response);
-                    } else {
-                        $event->data->destroy();
-                    }
-                } catch (Throwable $exception) {
-                    $event->data->exceptionHandler($exception);
-                    Output::printException($exception);
-                }
-                break;
-            case Constants::EVENT_KERNEL_RATE_SET:
-                $this->rate += $event->data;
-                return;
-            case 'rpcServiceOnline':
-                JsonRpc::addService($event->data['name'], $event->data['address'], $event->data['type']);
-                foreach (WorkerMap::$workerMap as $worker) {
-                    $worker->rpcServiceOnline($event->data);
-                }
-                break;
-            default:
-                $this->distribute($event);
-        }
+        LaravelComponent::initialize();
     }
 
+
     /**
-     * 派发事件
-     * @param Build $event
      * @return void
      */
-    private function distribute(Build $event): void
+    private function initializeLog(): void
     {
-        if ($subscriber = SocketMap::$worker[$event->name] ?? null) {
-            WorkerMap::get($subscriber)?->handleEvent($event);
-        }
+        $logFilePath   = PRipple::getArgument('PP_LOG_PATH', PP_RUNTIME_PATH) . FS . 'p-ripple.log';
+        $this->logFile = new Stream(fopen($logFilePath, 'a+'));
     }
 
     /**
-     * 全局心跳
+     * 注册信号处理器
      * @return void
      */
-    private function heartbeat(): void
+    public function registerSignalHandler(): void
+    {
+        pcntl_async_signals(true);
+        pcntl_signal(SIGINT, [$this, 'signalHandler']);
+        pcntl_signal(SIGTERM, [$this, 'signalHandler']);
+        pcntl_signal(SIGQUIT, [$this, 'signalHandler']);
+        pcntl_signal(SIGUSR2, [$this, 'signalHandler']);
+    }
+
+    /**
+     * 启动服务: 内置服务->主服务
+     * @return Kernel
+     */
+    public function build(): Kernel
     {
         foreach (WorkerMap::$workerMap as $worker) {
-            $worker->callWorkerEvent(Worker::HOOK_HEARTBEAT);
-        }
-        gc_collect_cycles();
-    }
-
-    /**
-     * 高频心跳
-     * @return void
-     */
-    private function busyHeartbeat(): void
-    {
-        foreach (WorkerMap::$workerMap as $worker) {
-            if ($worker->busy) {
-                $worker->callWorkerEvent(Worker::HOOK_HEARTBEAT);
+            if (in_array($worker->name, Kernel::BUILT_SERVICES, true)) {
+                continue;
+            }
+            try {
+                if ($worker->mode === Worker::MODE_COLLABORATIVE) {
+                    $this->run($worker);
+                } elseif ($worker->mode === Worker::MODE_INDEPENDENT) {
+                    $processId = $this->fork(function () use ($worker) {
+                        $worker->isFork = true;
+                        $this->run($worker);
+                        for ($count = 1; $count < $worker->thread(); $count++) {
+                            $processId = $worker->fork();
+                            if ($processId === 0) {
+                                break;
+                            }
+                        }
+                    }, false);
+                    if ($processId === 0) {
+                        break;
+                    }
+                }
+            } catch (Throwable $exception) {
+                Output::printException($exception);
             }
         }
+        if (!$this->isFork()) {
+            Output::info('', '-----------------------------------------');
+            Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
+        }
+
+        return $this;
     }
 
     /**
-     * 调整频率
+     * 循环监听
      * @return void
      */
-    private function adjustRate(): void
+    public function loop(): void
     {
-        $this->rate = max(1000000 - (EventMap::$count + SocketMap::$count) * 1000, 1);
-    }
-
-    /**
-     * 消费所有事件
-     * @return void
-     */
-    public function consumption(): void
-    {
-        while ($event = EventMap::arrayShift()) {
-            $this->handleEvent($event);
+        cli_set_process_title('prp');
+        $this->registerSignalHandler();
+        while (true) {
+            $this->heartbeat();
         }
     }
 
     /**
-     * 是否为子进程
+     * 循环监听
      * @return bool
      */
-    public function isFork(): bool
+    public function heartbeat(): bool
     {
-        return $this->isFork;
-    }
-
-    /**
-     * 开启进程分生
-     * @param Closure $closure
-     * @param bool    $exit
-     * @return int
-     */
-    public function fork(Closure $closure, bool $exit = true): int
-    {
-        $this->consumption();
-        $processId = pcntl_fork();
-        if ($processId === 0) {
-            $this->isFork = true;
-            try {
-                foreach (Kernel::BUILT_SERVICES as $serviceName) {
-                    WorkerMap::get($serviceName)->forkPassive();
-                }
-
-                /**
-                 * forkPassive属于初始化行为, 它决定了该进程的最基础依赖
-                 * 因为部分forkPassive中使用了异步操作,因此匿名包需要在forkPassive之后再执行
-                 * 所以使用了PRipple\async($closure)来执行匿名包,确保了forkPassive的执行顺序
-                 */
-                call_user_func($closure);
-                if ($exit) {
-                    exit(0);
-                }
-            } catch (Exception $exception) {
-                Output::printException($exception);
-                exit(0);
+        foreach ($this->eventLoop->generator() as $event) {
+            if ($event === false) {
+                return false;
             }
-        } elseif ($processId > 0) {
-            if ($this->isFork()) {
-                JsonRpc::call([ProcessManager::class, 'setObserverProcessId'], $processId, posix_getpid());
-            } else {
-                ProcessManager::getInstance()->setObserverProcessId($processId, posix_getpid());
-            }
-            ProcessManager::getInstance()->childrenProcessIds[] = $processId;
+            $this->handleEvent($event);
         }
-        return $processId;
+        return true;
     }
 
     /**
@@ -484,40 +365,251 @@ class Kernel
         return $this;
     }
 
+
     /**
-     * 生成事件
-     * @return Generator
+     * @param Worker $worker
+     * @return Kernel
      */
-    #[NoReturn] private function generator(): Generator
+    public function run(Worker $worker): Kernel
     {
-        while (true) {
-            while ($event = EventMap::arrayShift()) {
-                yield $event;
+        WorkerMap::add($worker)->initialize();
+        if ($worker instanceof WorkerNet) {
+            $worker->listen();
+            if ($worker->checkRPCService()) {
+                $worker->rpcService = Server::load($worker);
+                $this->run($worker->rpcService);
             }
-            $readSockets = SocketMap::$sockets;
-            if (count($readSockets) === 0) {
-                usleep($this->rate);
-                $this->heartbeat();
-            } else {
-                $writeSockets  = [];
-                $exceptSockets = SocketMap::$sockets;
-                if (socket_select($readSockets, $writeSockets, $exceptSockets, 1, $this->rate)) {
-                    foreach ($exceptSockets as $socket) {
-                        yield Build::new(Constants::EVENT_SOCKET_EXPECT, $socket, Kernel::class);
-                    }
-                    foreach ($readSockets as $socket) {
-                        yield Build::new(Constants::EVENT_SOCKET_READ, $socket, Kernel::class);
-                    }
-                    foreach ($writeSockets as $socket) {
-                        yield Build::new(Constants::EVENT_SOCKET_WRITE, $socket, Kernel::class);
-                    }
-                    $this->busyHeartbeat();
-                } else {
-                    $this->heartbeat();
+            if ($worker instanceof Server) {
+                try {
+                    JsonRPC::call([ProcessManager::class, 'registerRPCService'],
+                        $worker->worker->name,
+                        $worker->worker->getRPCServiceAddress(),
+                        get_class($worker->worker)
+                    );
+                } catch (RPCException $exception) {
+                    Output::printException($exception);
                 }
             }
-            pcntl_signal_dispatch();
-            $this->adjustRate();
         }
+        $worker->launch();
+        return $this;
+    }
+
+
+    /**
+     * 消费所有事件
+     * @return void
+     */
+    public function consumption(): void
+    {
+        while ($event = EventMap::arrayShift()) {
+            $this->handleEvent($event);
+        }
+    }
+
+    /**
+     * 处理事件
+     * @param Event $event
+     * @return void
+     */
+    public function handleEvent(Event $event): void
+    {
+        try {
+            switch ($event->name) {
+                case Kernel::EVENT_STREAM_READ:
+                case Kernel::EVENT_STREAM_EXPECT:
+                case Kernel::EVENT_STREAM_WRITE:
+                    if ($workerName = $this->subscribeStreamMap[get_resource_id($event->data)][$event->name] ?? null) {
+                        if (!$worker = WorkerMap::get($workerName)) {
+                            $this->unsubscribeStream($event->data, $event->name);
+                            return;
+                        }
+                        $worker->handleStream($this->streamIdMap[get_resource_id($event->data)], $event->name);
+                    }
+                    break;
+                case Kernel::EVENT_STREAM_SUBSCRIBE_READ:
+                    $this->subscribeStream($event->data, Kernel::EVENT_STREAM_READ, $event->source);
+                    break;
+                case Kernel::EVENT_STREAM_UNSUBSCRIBE_READ:
+                    $this->unsubscribeStream($event->data, Kernel::EVENT_STREAM_READ);
+                    break;
+                case Kernel::EVENT_STREAM_SUBSCRIBE_WRITE:
+                    $this->subscribeStream($event->data, Kernel::EVENT_STREAM_WRITE, $event->source);
+                    break;
+                case Kernel::EVENT_STREAM_UNSUBSCRIBE_WRITE:
+                    $this->unsubscribeStream($event->data, Kernel::EVENT_STREAM_WRITE);
+                    break;
+                case Kernel::EVENT_STREAM_SUBSCRIBE_EXCEPT:
+                    $this->subscribeStream($event->data, Kernel::EVENT_STREAM_EXPECT, $event->source);
+                    break;
+                case Kernel::EVENT_STREAM_UNSUBSCRIBE_EXCEPT:
+                    $this->unsubscribeStream($event->data, Kernel::EVENT_STREAM_EXPECT);
+                    break;
+
+                case Kernel::EVENT_EVENT_SUBSCRIBE:
+                    $this->subscribeEventMap[$event->data][] = $event->source;
+                    break;
+                case Kernel::EVENT_EVENT_UNSUBSCRIBE:
+                    if (isset($this->subscribeEventMap[$event->data])) {
+                        if (($index = array_search($event->source, $this->subscribeEventMap[$event->data])) !== false) {
+                            unset($this->subscribeEventMap[$event->data][$index]);
+                        }
+                    }
+                    break;
+                case Server::EVENT_ONLINE:
+                    JsonRPC::addService($event->data['name'], $event->data['address'], $event->data['type']);
+                    foreach (WorkerMap::$workerMap as $worker) {
+                        $worker->rPCServiceOnline($event->data);
+                    }
+                    break;
+                default:
+                    if ($subscriber = $this->subscribeEventMap[$event->name] ?? null) {
+                        foreach ($subscriber as $workerName) {
+                            WorkerMap::get($workerName)?->handleEvent($event);
+                        }
+                    }
+            }
+        } catch (Throwable $exception) {
+            Output::printException($exception);
+        }
+    }
+
+    /**
+     * @param Stream $stream
+     * @param string $event
+     * @param string $subscriber
+     * @return void
+     */
+    public function subscribeStream(Stream $stream, string $event, string $subscriber): void
+    {
+        $this->subscribeStreamMap[$stream->id][$event] = $subscriber;
+        $this->streamIdMap[$stream->id]                = $stream;
+        switch ($event) {
+            case Kernel::EVENT_STREAM_READ:
+                $this->subscribeStreamsRead[$stream->id] = $stream->stream;
+                break;
+            case Kernel::EVENT_STREAM_WRITE:
+                $this->subscribeStreamsWrite[$stream->id] = $stream->stream;
+                break;
+            case Kernel::EVENT_STREAM_EXPECT:
+                $this->subscribeStreamsExcept[$stream->id] = $stream->stream;
+                break;
+        }
+    }
+
+    /**
+     * @param Stream $stream
+     * @param string $event
+     * @return void
+     */
+    public function unsubscribeStream(Stream $stream, string $event): void
+    {
+        unset($this->subscribeStreamMap[$stream->id][$event]);
+        if (isset($this->subscribeStreamMap[$stream->id]) && count($this->subscribeStreamMap[$stream->id]) === 0) {
+            unset($this->subscribeStreamMap[$stream->id]);
+            unset($this->streamIdMap[$stream->id]);
+        }
+        switch ($event) {
+            case Kernel::EVENT_STREAM_READ:
+                unset($this->subscribeStreamsRead[$stream->id]);
+                break;
+            case Kernel::EVENT_STREAM_WRITE:
+                unset($this->subscribeStreamsWrite[$stream->id]);
+                break;
+            case Kernel::EVENT_STREAM_EXPECT:
+                unset($this->subscribeStreamsExcept[$stream->id]);
+                break;
+        }
+    }
+
+    /**
+     * 日志
+     * @param string $message
+     * @return void
+     */
+    public function log(string $message): void
+    {
+        $this->logFile->write($message . PHP_EOL);
+        Output::info('[LOG] ', $message);
+    }
+
+    /**
+     * 开启进程分生
+     * @param Closure $closure
+     * @param bool    $exit
+     * @return int
+     */
+    public function fork(Closure $closure, bool $exit = true): int
+    {
+        $this->consumption();
+        $processId = pcntl_fork();
+        if ($processId === 0) {
+            $this->isFork = true;
+            CoroutineMap::forkPassive();
+            /**
+             * forkPassive is an initialization behavior that determines the most basic dependencies of the process
+             * Because some forkPasses use asynchronous operations, anonymous packages need to be executed after forkPassive
+             * Therefore, PRipple\async($closure) is used to execute anonymous packages, ensuring the order in which forkPassive is executed
+             */
+            foreach (Kernel::BUILT_SERVICES as $serviceName) {
+                WorkerMap::get($serviceName)->forkPassive();
+            }
+            $this->consumption();
+            try {
+                call_user_func($closure);
+                if ($exit) {
+                    exit(0);
+                }
+            } catch (Exception $exception) {
+                try {
+                    JsonRPC::call([ProcessManager::class, 'outputInfo'], $exception->getMessage());
+                } catch (RPCException $exception) {
+                    Output::printException($exception);
+                }
+                exit(0);
+            }
+        } elseif ($processId > 0) {
+            if ($this->isFork()) {
+                try {
+                    JsonRPC::call([ProcessManager::class, 'setObserverProcessId'], $processId, posix_getpid());
+                } catch (RPCException $exception) {
+                    Output::printException($exception);
+                }
+            } else {
+                ProcessManager::getInstance()->setObserverProcessId($processId, posix_getpid());
+            }
+            ProcessManager::getInstance()->childrenProcessIds[] = $processId;
+        }
+        return $processId;
+    }
+
+    /**
+     * 是否为子进程
+     * @return bool
+     */
+    public function isFork(): bool
+    {
+        return $this->isFork;
+    }
+
+    /**
+     * @return void
+     */
+    public function destruct(): void
+    {
+        ProcessManager::getInstance()->processSignalHandler();
+        Output::info('[PRipple]', 'Stopped successfully...');
+        $this->logFile->close();
+    }
+
+    /**
+     * 信号处理器
+     * @param int $signal
+     * @return void
+     */
+    #[NoReturn] public function signalHandler(int $signal): void
+    {
+        $this->destruct();
+        exit(0);
     }
 }

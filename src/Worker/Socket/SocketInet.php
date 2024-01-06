@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,100 +37,12 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Worker\Socket;
-
-use Exception;
-use Socket;
+namespace Cclilshy\PRipple\Worker\Socket;
 
 /**
- * INET套接字
+ * @class SocketInet INET套接字
  */
 class SocketInet
 {
-    /**
-     * @throws Exception
-     */
-    public static function create(string $address, int $port, array|null $options = []): Socket
-    {
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        if (!$socket) {
-            throw new Exception('Unable to create INET socket, please close the running process');
-        }
-        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
-        socket_set_nonblock($socket);
-        foreach ($options as $option => $value) {
-            socket_set_option($socket, SOL_SOCKET, $option, $value);
-        }
-        if (!socket_bind($socket, $address, $port)) {
-            throw new Exception("Unable to bind socket address > {$address} : {$port}");
-        }
-        socket_listen($socket);
-        return $socket;
-    }
-
-    /**
-     * @param string     $address
-     * @param int        $port
-     * @param array|null $options
-     * @return resource
-     * @throws Exception
-     */
-    public static function createStream(string $address, int $port, array|null $options = [])
-    {
-        $stream = stream_socket_server("tcp://{$address}:{$port}", $errno, $errorMessages, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
-        if (!$stream) {
-            throw new Exception('Unable to create Unix socket, probably process is occupied');
-        }
-        $socket = socket_import_stream($stream);
-        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
-        socket_set_nonblock($socket);
-        foreach ($options as $option => $value) {
-            socket_set_option($socket, SOL_SOCKET, $option, $value);
-        }
-        return $stream;
-    }
-
-    /**
-     * @param string     $address
-     * @param int        $port
-     * @param array|null $options
-     * @return Socket|false
-     */
-    public static function connect(string $address, int $port, array|null $options = []): Socket|false
-    {
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        socket_set_nonblock($socket);
-        foreach ($options as $option => $value) {
-            socket_set_option($socket, SOL_SOCKET, $option, $value);
-        }
-        if (!socket_connect($socket, $address, $port)) {
-            return false;
-        }
-        return $socket;
-
-    }
-
-    /**
-     * @param string     $address
-     * @param int        $port
-     * @param array|null $options
-     * @return resource
-     * @throws Exception
-     */
-    public static function connectStream(string $address, int $port, array|null $options = [])
-    {
-        $stream = stream_socket_client("tcp://{$address}:{$port}");
-        if (!$stream) {
-            throw new Exception('Unable to create Unix socket, probably process is occupied');
-        }
-        $socket = socket_import_stream($stream);
-        socket_set_nonblock($socket);
-        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
-        foreach ($options as $option => $value) {
-            socket_set_option($socket, SOL_SOCKET, $option, $value);
-        }
-        return $stream;
-    }
 }

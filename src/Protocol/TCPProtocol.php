@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,17 +37,16 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Protocol;
+namespace Cclilshy\PRipple\Protocol;
 
-use Core\Std\ProtocolStd;
-use Core\Std\TunnelStd;
+use Cclilshy\PRipple\Core\Standard\ProtocolStd;
+use Cclilshy\PRipple\Core\Standard\StreamInterface;
+use Cclilshy\PRipple\Worker\Socket\TCPConnection;
 use stdClass;
-use Worker\Socket\TCPConnection;
 
 /**
- * TCP协议
+ * @class TCPProtocol TCP协议
  */
 class TCPProtocol implements ProtocolStd
 {
@@ -61,13 +60,13 @@ class TCPProtocol implements ProtocolStd
     }
 
     /**
-     * @param TunnelStd $tunnel
-     * @param string    $context
+     * @param StreamInterface $TCPConnection
+     * @param string          $context
      * @return bool|int
      */
-    public function send(TunnelStd $tunnel, string $context): bool|int
+    public function send(StreamInterface $TCPConnection, string $context): bool|int
     {
-        return $tunnel->write($context);
+        return $TCPConnection->write($context);
     }
 
     /**
@@ -81,31 +80,34 @@ class TCPProtocol implements ProtocolStd
     }
 
     /**
-     * @param TunnelStd $tunnel
+     * @param StreamInterface $TCPConnection
      * @return string|false
      */
-    public function corrective(TunnelStd $tunnel): string|false
+    public function corrective(StreamInterface $TCPConnection): string|false
     {
         return false;
     }
 
     /**
-     * @param TCPConnection $tunnel
+     * @param TCPConnection $TCPConnection
      * @return string|false|null
      */
-    public function parse(TCPConnection $tunnel): string|null|false
+    public function parse(TCPConnection $TCPConnection): string|null|false
     {
-        return $this->cut($tunnel);
+        return $this->cut($TCPConnection);
     }
 
     /**
-     * @param TunnelStd $tunnel
-     * @return string|false
+     * @param StreamInterface $TCPConnection
+     * @return string|false|null
      */
-    public function cut(TunnelStd $tunnel): string|false
+    public function cut(StreamInterface $TCPConnection): string|null|false
     {
-        if ($tunnel instanceof TCPConnection) {
-            return $tunnel->cleanCache();
+        if ($TCPConnection instanceof TCPConnection) {
+            if ($buffer = $TCPConnection->cleanBuffer()) {
+                return $buffer;
+            }
+            return null;
         }
         return false;
     }
@@ -117,5 +119,13 @@ class TCPProtocol implements ProtocolStd
     public function handshake(TCPConnection $client): bool|null
     {
         return true;
+    }
+
+    /**
+     * 初始化协议
+     * @param mixed|null $config
+     */
+    public function __construct(mixed $config = null)
+    {
     }
 }

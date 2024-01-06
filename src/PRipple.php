@@ -1,4 +1,5 @@
-<?php
+<?php declare(strict_types=1);
+
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,18 +38,29 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
+namespace Cclilshy\PRipple;
 
-use Core\Kernel;
+use Cclilshy\PRipple\Core\Kernel;
+use Cclilshy\PRipple\Core\Output;
+use Exception;
+use function md5;
+use function strval;
 
 /**
- * PRipple
+ * @class     PRipple
+ * @configure Key
+ *
+ * @key       PP_DEBUG 是否开启调试模式
+ * @key       PP_RUNTIME_PATH 运行时目录
+ * @key       PP_LOG_PATH 日志目录
+ * @key       PP_MAX_FILE_HANDLE 最大缓冲文件句柄数
+ * @key       PP_RPC_BUFFER_SIZE RPC缓冲区大小
  */
-class PRipple
+final class PRipple
 {
     private static Kernel $kernel;
-    private static int    $index              = 0;
-    private static array  $configureArguments = [];
+    private static int    $index     = 0;
+    private static array  $arguments = [];
     private static bool   $isConsole;
 
     /**
@@ -58,12 +70,45 @@ class PRipple
      */
     public static function configure(array $arguments): Kernel
     {
-        PRipple::$isConsole          = PHP_SAPI === 'cli';
-        PRipple::$configureArguments = $arguments;
-        PRipple::initEnvConfig();
+        PRipple::$isConsole = PHP_SAPI === 'cli';
+        PRipple::$arguments = $arguments;
         PRipple::initConstant();
+        PRipple::initEnvConfig();
+        if (!is_writable(PP_RUNTIME_PATH)) {
+            Output::printException(new Exception('Runtime path is not writable :' . PP_RUNTIME_PATH));
+            exit(0);
+        }
         PRipple::$kernel = new Kernel();
         return PRipple::$kernel;
+    }
+
+    /**
+     * 初始化环境配置
+     */
+    private static function initEnvConfig(): void
+    {
+        if (PP_DEBUG !== true) {
+            error_reporting(E_ALL & ~E_WARNING);
+        }
+        ini_set('max_execution_time', 0);
+    }
+
+    /**
+     * 初始化常量
+     * @return void
+     */
+    private static function initConstant(): void
+    {
+        define('UL', '_');
+        define('FS', DIRECTORY_SEPARATOR);
+        define('BS', '\\');
+
+        define('PP_DEBUG', PRipple::getArgument('PP_DEBUG', false));
+        define('PP_START_TIMESTAMP', time());
+        define('PP_ROOT_PATH', __DIR__);
+        define('PP_RUNTIME_PATH', PRipple::getArgument('PP_RUNTIME_PATH', '/tmp'));
+        define('PP_LOG_PATH', PRipple::getArgument('PP_LOG_PATH', PP_RUNTIME_PATH . FS . 'log'));
+        define('PP_MAX_FILE_HANDLE', PRipple::getArgument('PP_MAX_FILE_HANDLE', 10240));
     }
 
     /**
@@ -75,9 +120,9 @@ class PRipple
     public static function getArgument(string|null $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
-            return PRipple::$configureArguments;
+            return PRipple::$arguments;
         }
-        if ($value = PRipple::$configureArguments[$name] ?? null) {
+        if ($value = PRipple::$arguments[$name] ?? null) {
             return $value;
         } elseif ($default) {
             return $default;
@@ -113,37 +158,13 @@ class PRipple
     }
 
     /**
-     * 初始化环境配置
-     */
-    private static function initEnvConfig(): void
-    {
-        error_reporting(E_ALL & ~E_WARNING);
-        ini_set('max_execution_time', 0);
-    }
-
-    /**
-     * 初始化常量
-     * @return void
-     */
-    private static function initConstant(): void
-    {
-        define('UL', '_');
-        define('FS', DIRECTORY_SEPARATOR);
-        define('BS', '\\');
-        define('PP_START_TIMESTAMP', time());
-        define('PP_ROOT_PATH', __DIR__);
-        define('PP_RUNTIME_PATH', PRipple::getArgument('PP_RUNTIME_PATH', '/tmp'));
-        define('PP_MAX_FILE_HANDLE', 10240);
-    }
-
-    /**
      * @param int|string $key
      * @param mixed      $value
      * @return void
      */
     public static function config(int|string $key, mixed $value): void
     {
-        PRipple::$configureArguments[$key] = $value;
+        PRipple::$arguments[$key] = $value;
     }
 
     /**

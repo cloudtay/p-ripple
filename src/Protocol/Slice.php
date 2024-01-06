@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,30 +37,33 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-declare(strict_types=1);
 
-namespace Protocol;
+namespace Cclilshy\PRipple\Protocol;
 
-use Core\FileSystem\FileException;
-use Core\Std\ProtocolStd;
+use Cclilshy\PRipple\Core\Net\Exception;
+use Cclilshy\PRipple\Core\Standard\ProtocolStd;
+use Cclilshy\PRipple\Filesystem\Exception\FileException;
+use Cclilshy\PRipple\Worker\Socket\TCPConnection;
 use stdClass;
-use Worker\Socket\TCPConnection;
+use function pack;
+use function strlen;
+use function substr;
 
 /**
- * 一个小而简的报文切割器
+ * @class Slice 一个小而简的报文切割器
  */
 class Slice implements ProtocolStd
 {
     /**
-     * @param TCPConnection $tunnel
+     * @param TCPConnection $TCPConnection
      * @param string        $context
      * @return bool|int
-     * @throws FileException
+     * @throws FileException|Exception
      */
-    public function send(TCPConnection $tunnel, string $context): bool|int
+    public function send(TCPConnection $TCPConnection, string $context): bool|int
     {
         $context = Slice::build($context);
-        return $tunnel->write($context);
+        return $TCPConnection->write($context);
     }
 
     /**
@@ -89,42 +92,61 @@ class Slice implements ProtocolStd
     }
 
     /**
-     * @param TCPConnection $tunnel
+     * @param TCPConnection $TCPConnection
      * @return string|false
      */
-    public function corrective(TCPConnection $tunnel): string|false
+    public function corrective(TCPConnection $TCPConnection): string|false
     {
         return false;
     }
 
     /**
-     * @param TCPConnection $tunnel
+     * @param TCPConnection $TCPConnection
      * @return string|false|null
      */
-    public function parse(TCPConnection $tunnel): string|null|false
+    public function parse(TCPConnection $TCPConnection): string|null|false
     {
-        return $this->cut($tunnel);
+        return $this->cut($TCPConnection);
     }
 
     /**
-     * @param TCPConnection $tunnel
+     * 荷载状态
+     * @var int $payloadStatus
+     */
+    private int $payloadStatus = 0;
+
+    /**
+     * 荷载长度
+     * @var int $payloadLength
+     */
+    private int $payloadLength = 0;
+
+    /**
+     * @param TCPConnection $TCPConnection
      * @return string|false|null
      */
-    public function cut(TCPConnection $tunnel): string|null|false
+    public function cut(TCPConnection $TCPConnection): string|null|false
     {
-        $buffer = $tunnel->cache();
-        if (strlen($buffer) < 4) {
-            return false;
+        if ($this->payloadStatus === 0) {
+            if (strlen($TCPConnection->buffer()) >= 4) {
+                $this->payloadLength   = unpack('L', substr($TCPConnection->buffer(), 0, 4))[1];
+                $TCPConnection->buffer = substr($TCPConnection->buffer(), 4);
+                if (strlen($TCPConnection->buffer()) >= $this->payloadLength) {
+                    $context               = substr($TCPConnection->buffer(), 0, $this->payloadLength);
+                    $TCPConnection->buffer = substr($TCPConnection->buffer(), $this->payloadLength);
+                    return $context;
+                }
+                $this->payloadStatus = 1;
+            }
+        } else {
+            if (strlen($TCPConnection->buffer()) >= $this->payloadLength) {
+                $payload               = substr($TCPConnection->buffer(), 0, $this->payloadLength);
+                $TCPConnection->buffer = substr($TCPConnection->buffer(), $this->payloadLength);
+                $this->payloadStatus   = 0;
+                return $payload;
+            }
         }
-        $length = substr($buffer, 0, 4);
-        $pack   = unpack('L', $length);
-        $length = $pack[1];
-        if (strlen($buffer) >= $length + 4) {
-            $context       = substr($buffer, 4, $length);
-            $tunnel->cache = substr($buffer, $length + 4);
-            return $context;
-        }
-        return false;
+        return null;
     }
 
     /**
@@ -134,5 +156,21 @@ class Slice implements ProtocolStd
     public function handshake(TCPConnection $client): bool|null
     {
         return true;
+    }
+
+    /**
+     * @param mixed|null $config
+     */
+    public function __construct(mixed $config = null)
+    {
+    }
+
+    /**
+     * @return void
+     */
+    public function __clone(): void
+    {
+        $this->payloadStatus = 0;
+        $this->payloadLength = 0;
     }
 }
