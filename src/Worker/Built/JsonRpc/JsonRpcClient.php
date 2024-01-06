@@ -130,8 +130,8 @@ class JsonRpcClient extends Worker
         $this->addService($name, $address, $type);
         [$type, $addressFull, $addressInfo, $address, $port] = Worker::parseAddress($address);
         match ($type) {
-            SocketUnix::class => $serverStreamSocket = SocketUnix::connectStream($address, null, ['nonblock' => true]),
-            SocketInet::class => $serverStreamSocket = SocketInet::connectStream($address, $port, ['nonblock' => true]),
+            SocketUnix::class => $serverStreamSocket = SocketUnix::connectStream($address),
+            SocketInet::class => $serverStreamSocket = SocketInet::connectStream($address, $port),
             default => throw new Exception("Unsupported socket type: {$type}")
         };
         $serverSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($serverStreamSocket)];

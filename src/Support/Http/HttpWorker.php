@@ -253,7 +253,6 @@ class HttpWorker extends Worker
      */
     public function onConnect(TCPConnection $client): void
     {
-        $client->setNoBlock();
         $client->setReceiveBufferSize(81920);
         $client->setSendBufferSize(81920);
     }

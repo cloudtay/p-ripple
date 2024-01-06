@@ -168,7 +168,7 @@ class Kernel
                         $beforeWorker = [];
                         if ($worker->checkRpcService()) {
                             $worker->rpcService                      = JsonRpcServer::load($worker);
-                            $worker->rpcService->isFork = true;
+                            $worker->rpcService->isFork              = true;
                             $beforeWorker[$worker->rpcService->name] = $worker->rpcService;
                             $this->push($worker->rpcService);
                         }
@@ -198,6 +198,7 @@ class Kernel
             Output::info('', '-----------------------------------------');
             Output::info('Please Ctrl+C to stop. ', 'Starting successfully...');
         }
+
         if ($this->loopMode === Kernel::LOOP_MODE_EVENT) {
             $this->eventLoop();
         } else {
@@ -402,7 +403,7 @@ class Kernel
      */
     private function adjustRate(): void
     {
-        $this->rate = max(1000000 - (EventMap::$count + SocketMap::$count) * 1000, 0);
+        $this->rate = max(1000000 - (EventMap::$count + SocketMap::$count) * 1000, 1);
     }
 
     /**
@@ -500,7 +501,7 @@ class Kernel
             } else {
                 $writeSockets  = [];
                 $exceptSockets = SocketMap::$sockets;
-                if (socket_select($readSockets, $writeSockets, $exceptSockets, 0, $this->rate)) {
+                if (socket_select($readSockets, $writeSockets, $exceptSockets, 1, $this->rate)) {
                     foreach ($exceptSockets as $socket) {
                         yield Build::new(Constants::EVENT_SOCKET_EXPECT, $socket, Kernel::class);
                     }

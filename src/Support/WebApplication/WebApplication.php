@@ -173,7 +173,6 @@ class WebApplication
             $access = true;
             foreach ($router->getMiddlewares() as $middleware) {
                 if (!$middlewareObject = $request->resolve($middleware)) {
-                    var_dump($middleware);
                     throw new WebException('500 Internal Server Error: class does not exist', 500);
                 }
                 /**

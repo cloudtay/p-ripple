@@ -95,7 +95,7 @@ class Worker implements WorkerInterface
 
     /**
      * 服务名称
-     * @var string
+     * @var string $name
      */
     public string $name;
 
@@ -433,11 +433,8 @@ class Worker implements WorkerInterface
      */
     public function accept(Socket $socket): TCPConnection|false
     {
-        if (!$stream = StreamMap::getStreamBySocket($socket)) {
-            return false;
-        }
-        if ($clientStreamSocket = stream_socket_accept($stream)) {
-            $clientSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($clientStreamSocket)];
+        if ($clientSocket = socket_accept($socket)) {
+            socket_set_nonblock($clientSocket);
             socket_set_option($clientSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
             if ($this->socketType === SocketInet::class) {
                 socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
@@ -453,8 +450,9 @@ class Worker implements WorkerInterface
      */
     public function acceptStreamSocket(mixed $stream): TCPConnection|false
     {
-        if ($clientStreamSocket = stream_socket_accept($stream)) {
+        if ($clientStreamSocket = stream_socket_accept($stream, 0)) {
             $clientSocket = SocketMap::$socketIdMap[StreamMap::addStreamSocket($clientStreamSocket)];
+            socket_set_nonblock($clientSocket);
             socket_set_option($clientSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
             if ($this->socketType === SocketInet::class) {
                 socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
@@ -475,7 +473,6 @@ class Worker implements WorkerInterface
         $name                       = Worker::getHashBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clientHashMap[$name] = $client = new TCPConnection($socket, $type);
-        $this->clientHashMap[$name]->setNoBlock();
         $this->callWorkerEvent(Worker::HOOK_ON_CONNECT, $this->clientHashMap[$name]);
         $this->subscribeSocket($socket);
         return $client;
@@ -493,7 +490,6 @@ class Worker implements WorkerInterface
         $name                       = Worker::getHashBySocket($socket);
         $this->clientSockets[$name] = $socket;
         $this->clientHashMap[$name] = $client = new TCPConnection($socket, $type, $streamId);
-        $this->clientHashMap[$name]->setNoBlock();
         $this->callWorkerEvent(Worker::HOOK_ON_CONNECT, $this->clientHashMap[$name]);
         $this->subscribeSocket($socket);
         return $client;

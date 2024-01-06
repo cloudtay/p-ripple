@@ -66,12 +66,9 @@ class SocketUnix
             throw new Exception('Unable to create Unix socket, probably process is occupied');
         }
         socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+        socket_set_nonblock($socket);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         if (!socket_bind($socket, $socketFile)) {
             throw new Exception('Unable to bind socket, please check directory permissions ' . $socketFile);
@@ -93,13 +90,10 @@ class SocketUnix
             throw new Exception('Unable to create Unix socket, probably process is occupied');
         }
         $socket = socket_import_stream($stream);
+        socket_set_nonblock($socket);
         socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         return $stream;
     }
@@ -133,26 +127,22 @@ class SocketUnix
 
     /**
      * @param string     $socketFile
-     * @param int|null   $bufferSize
      * @param array|null $options
      * @return resource
      * @throws Exception
      */
-    public static function connectStream(string $socketFile, int|null $bufferSize = 1024 * 1024, array|null $options = [])
+    public static function connectStream(string $socketFile, array|null $options = [])
     {
         $stream = stream_socket_client("unix://{$socketFile}", $errno, $errorMessages, 0);
         if (!$stream) {
             throw new Exception('Unable to create Unix socket, probably process is occupied');
         }
+
         $socket = socket_import_stream($stream);
-        socket_set_option($socket, SOL_SOCKET, SO_SNDBUF, $bufferSize);
-        socket_set_option($socket, SOL_SOCKET, SO_RCVBUF, $bufferSize);
+        socket_set_nonblock($socket);
+        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         return $stream;
     }

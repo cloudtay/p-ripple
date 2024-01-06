@@ -59,12 +59,9 @@ class SocketInet
             throw new Exception('Unable to create INET socket, please close the running process');
         }
         socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+        socket_set_nonblock($socket);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         if (!socket_bind($socket, $address, $port)) {
             throw new Exception("Unable to bind socket address > {$address} : {$port}");
@@ -88,12 +85,9 @@ class SocketInet
         }
         $socket = socket_import_stream($stream);
         socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
+        socket_set_nonblock($socket);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         return $stream;
     }
@@ -107,12 +101,9 @@ class SocketInet
     public static function connect(string $address, int $port, array|null $options = []): Socket|false
     {
         $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_nonblock($socket);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         if (!socket_connect($socket, $address, $port)) {
             return false;
@@ -130,17 +121,15 @@ class SocketInet
      */
     public static function connectStream(string $address, int $port, array|null $options = [])
     {
-        $stream = stream_socket_client("tcp://{$address}:{$port}", $errno, $errorMessages);
+        $stream = stream_socket_client("tcp://{$address}:{$port}");
         if (!$stream) {
             throw new Exception('Unable to create Unix socket, probably process is occupied');
         }
         $socket = socket_import_stream($stream);
+        socket_set_nonblock($socket);
+        socket_set_option($socket, SOL_SOCKET, SO_KEEPALIVE, 1);
         foreach ($options as $option => $value) {
-            if ($option === 'nonblock') {
-                socket_set_nonblock($socket);
-            } else {
-                socket_set_option($socket, SOL_SOCKET, $option, $value);
-            }
+            socket_set_option($socket, SOL_SOCKET, $option, $value);
         }
         return $stream;
     }

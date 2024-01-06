@@ -555,14 +555,14 @@ class SocketTunnel implements TunnelStd
      */
     public function read(int $length, int|null &$resultLength): string|false
     {
-        $result    = '';
+        $result       = '';
         $resultLength = 0;
-        $recLength = socket_recv($this->socket, $context, $this->receiveBufferSize, 0);
+        $recLength    = socket_recv($this->socket, $context, $this->receiveBufferSize, 0);
         if ($recLength === false || $recLength === 0) {
             return false;
         }
         $length                 -= $recLength;
-        $result .= $context;
+        $result                 .= $context;
         $resultLength           += $recLength;
         $this->receiveFlowCount += $recLength;
         while ($length > 0) {
@@ -571,7 +571,7 @@ class SocketTunnel implements TunnelStd
                 return false;
             }
             $length                 -= $recLength;
-            $result .= $context;
+            $result                 .= $context;
             $resultLength           += $recLength;
             $this->receiveFlowCount += $recLength;
         }

@@ -5,7 +5,6 @@ use Support\Http\HttpWorker;
 use Support\WebApplication\Route;
 use Support\WebApplication\RouteMap;
 use Support\WebApplication\WebApplication;
-use Support\WebSocket\WebSocket;
 use Tests\http\controller\Index;
 use Tests\http\middleware\StopCommandMiddleware;
 use Worker\Built\JsonRpc\Attribute\RPC;
@@ -17,7 +16,6 @@ $kernel  = PRipple::configure([]);
 $options = [
     SO_REUSEPORT => 1,
     SO_REUSEADDR => 1,
-    'nonblock'   => 1
 ];
 
 // 构建一个自定义服务
@@ -59,7 +57,7 @@ $ws = new class('ws') extends Worker {
 };
 
 // 将服务绑定Websocket协议并设定为独立运行模式
-$ws->bind('tcp://0.0.0.0:8001', $options)->protocol(WebSocket::class)->mode(Worker::MODE_INDEPENDENT);
+//$ws->bind('tcp://0.0.0.0:8001', $options)->protocol(WebSocket::class)->mode(Worker::MODE_INDEPENDENT);
 
 //// 构建数据库连接池服务,内置LaravelORM
 //$pool = new PDOProxyPool([
@@ -75,7 +73,7 @@ $ws->bind('tcp://0.0.0.0:8001', $options)->protocol(WebSocket::class)->mode(Work
 //$pool->run(1);
 
 # 构建HTTP服务
-$httpWorker = HttpWorker::new('http')->bind('tcp://0.0.0.0:8008', $options)->mode(Worker::MODE_INDEPENDENT, 4);
+$httpWorker = HttpWorker::new('http')->bind('tcp://0.0.0.0:8008', $options)->mode(Worker::MODE_INDEPENDENT, 8);
 // 为WebApplication应用处理器构建路由并注入到HttpWorker中
 $router = new RouteMap();
 $router->define(Route::GET, '', [Index::class, 'index']);
@@ -89,7 +87,7 @@ $router->define(Route::GET, '/logout', [Index::class, 'logout']);
 WebApplication::inject($httpWorker, $router, [
     'HTTP_UPLOAD_PATH' => '/tmp',
     'HTTP_PUBLIC'      => __DIR__ . '/public',
-    'SESSION_PATH'     => '/tmp'
+    //    'SESSION_PATH'     => '/tmp'
 ]);
 
-PRipple::kernel()->push($httpWorker, $ws)->launch();
+PRipple::kernel()->push($httpWorker)->launch();
