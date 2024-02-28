@@ -33,6 +33,10 @@ class TestTCP extends TestCase
                 })->catch(function (Throwable $throwable) {
                     echo $throwable->getMessage() . PHP_EOL;
                 });
+            } elseif ($command === 'fork') {
+                if (pcntl_fork() === 0) {
+                    exit;
+                }
             }
         });
 

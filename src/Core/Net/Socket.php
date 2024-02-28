@@ -47,7 +47,6 @@ use function array_shift;
 use function file_exists;
 use function fopen;
 use function fwrite;
-
 use function min;
 use function posix_getpid;
 use function socket_get_option;

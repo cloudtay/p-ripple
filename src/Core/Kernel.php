@@ -66,8 +66,8 @@ use Closure;
 use Exception;
 use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
+use Revolt\EventLoop\UnsupportedFeatureException;
 use Throwable;
-use function cli_set_process_title;
 use function fopen;
 use function get_class;
 use function get_resource_id;
@@ -201,6 +201,15 @@ final class Kernel extends Container
 
         // 启动内置服务
         $this->loadBuiltInServices();
+
+        // 注册信号处理器
+        $this->registerSignalHandler();
+
+        // 注册心跳
+        \Revolt\EventLoop::repeat(0.1, function () {
+            $this->heartbeat();
+            return null;
+        });
     }
 
     /**
@@ -213,7 +222,7 @@ final class Kernel extends Container
             $this->eventLoop = $this->make($loopKernel);
         } catch (\Cclilshy\Container\Exception\Exception|ReflectionException $exception) {
             Output::printException($exception);
-            exit(-1);
+            exit(0);
         }
     }
 
@@ -273,11 +282,15 @@ final class Kernel extends Container
      */
     public function registerSignalHandler(): void
     {
-        pcntl_async_signals(true);
-        pcntl_signal(SIGINT, [$this, 'signalHandler']);
-        pcntl_signal(SIGTERM, [$this, 'signalHandler']);
-        pcntl_signal(SIGQUIT, [$this, 'signalHandler']);
-        pcntl_signal(SIGUSR2, [$this, 'signalHandler']);
+        try {
+            \Revolt\EventLoop::onSignal(SIGINT, fn() => $this->signalHandler(SIGINT));
+            \Revolt\EventLoop::onSignal(SIGTERM, fn() => $this->signalHandler(SIGTERM));
+            \Revolt\EventLoop::onSignal(SIGQUIT, fn() => $this->signalHandler(SIGQUIT));
+            \Revolt\EventLoop::onSignal(SIGUSR2, fn() => $this->signalHandler(SIGUSR2));
+        } catch (UnsupportedFeatureException $exception) {
+            Output::printException($exception);
+            exit(0);
+        }
     }
 
     /**
@@ -326,11 +339,7 @@ final class Kernel extends Container
      */
     public function loop(): void
     {
-        cli_set_process_title('prp');
-        $this->registerSignalHandler();
-        while (true) {
-            $this->heartbeat();
-        }
+        \Revolt\EventLoop::run();
     }
 
     /**

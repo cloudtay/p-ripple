@@ -175,7 +175,7 @@ final class Client extends WorkerNet implements WorkerInterface
         $this->rpcServiceConnections = [];
         $this->rpcServices           = [];
         if (!$this->connectProcessManager()) {
-            exit(-1);
+            exit(0);
         }
         async(function () {
             $rpcServiceList = $this->call([ProcessManager::class, 'setProcessId'], $this->clientId);

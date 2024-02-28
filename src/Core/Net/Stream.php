@@ -41,17 +41,17 @@ namespace Cclilshy\PRipple\Core\Net;
 
 use Cclilshy\PRipple\Core\Standard\StreamInterface;
 use Socket;
-use function fwrite;
 use function fclose;
-use function stream_get_meta_data;
+use function feof;
+use function filesize;
+use function fseek;
+use function ftell;
+use function fwrite;
+use function get_resource_id;
 use function get_resource_type;
 use function socket_import_stream;
 use function str_replace;
-use function get_resource_id;
-use function fseek;
-use function ftell;
-use function feof;
-use function filesize;
+use function stream_get_meta_data;
 
 class Stream implements StreamInterface
 {

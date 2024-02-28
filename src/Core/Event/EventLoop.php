@@ -47,11 +47,7 @@ use Cclilshy\PRipple\Core\Standard\EventLoopInterface;
 use Cclilshy\PRipple\Worker\Worker;
 use Generator;
 use Override;
-use function count;
 use function gc_collect_cycles;
-use function pcntl_signal_dispatch;
-use function stream_select;
-use function usleep;
 
 /**
  * @class EventLoop 内置事件循环
@@ -74,35 +70,12 @@ final class EventLoop implements EventLoopInterface
         while ($event = EventMap::arrayShift()) {
             yield $event;
         }
-        $readStreams   = $this->kernel->subscribeStreamsRead;
-        $writeStreams  = $this->kernel->subscribeStreamsWrite;
-        $exceptStreams = $this->kernel->subscribeStreamsExcept;
-        if (count($readStreams) === 0) {
-            $this->busyHeartbeat();
-            $this->heartbeat();
-            return yield false;
-        } else {
-            $writeStreams  = [];
-            $exceptStreams = $readStreams;
-            if (stream_select($readStreams, $writeStreams, $exceptStreams, 0, $this->rate)) {
-                foreach ($exceptStreams as $stream) {
-                    yield Event::build(Kernel::EVENT_STREAM_EXPECT, $stream, Kernel::class);
-                }
-                foreach ($readStreams as $stream) {
-                    yield Event::build(Kernel::EVENT_STREAM_READ, $stream, Kernel::class);
-                }
-                foreach ($writeStreams as $stream) {
-                    yield Event::build(Kernel::EVENT_STREAM_WRITE, $stream, Kernel::class);
-                }
-            } else {
-                pcntl_signal_dispatch();
-                $this->heartbeat();
-            }
-        }
+        $this->heartbeat();
         $this->busyHeartbeat();
         if (EventMap::hasEvent()) {
             goto loop;
         }
+        return yield false;
     }
 
     /**

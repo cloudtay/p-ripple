@@ -229,9 +229,9 @@ class WorkerNet extends Worker
                 $this->streams[$TCPConnection->id]      = $TCPConnection;
                 $this->subscribeStream($TCPConnection);
                 if (!$this->isFork()) {
-                    Output::info('[listen]', $address);
+                    Output::info('[Listen]', $address);
                 } else {
-                    \Cclilshy\PRipple\Utils\JsonRPC::call([ProcessManager::class, 'outputInfo'], '[listen]', $address);
+                    \Cclilshy\PRipple\Utils\JsonRPC::call([ProcessManager::class, 'outputInfo'], '[Listen]', $address);
                 }
             }
         } catch (Exception $exception) {
@@ -426,7 +426,7 @@ class WorkerNet extends Worker
     {
         if (!isset($this->RPCServiceListenAddress)) {
             $name                          = strtolower(str_replace(['\\', '/'], '_', $this->name));
-            $path                          = 'unix://' . PP_RUNTIME_PATH . FS . "{$name}.rpc.socket";
+            $path                          = 'unix://' . PP_RUNTIME_PATH . FS . $name . '.' . posix_getpid() . '.rpc.socket';
             $this->RPCServiceListenAddress = $path;
         }
         return $this->RPCServiceListenAddress;
@@ -490,7 +490,7 @@ class WorkerNet extends Worker
                     continue;
                 }
                 $this->removeTCPConnection($TCPConnection);
-                if ($type === SocketUnix::class && ($this->isRoot() || !$this->isFork())) {
+                if ($type === Socket::TYPE_UNIX && ($this->isRoot() || !$this->isFork())) {
                     unlink($address);
                 }
             }

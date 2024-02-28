@@ -55,6 +55,7 @@ use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\Publisher;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\Server;
 use Exception;
+use Revolt\EventLoop;
 use function array_pop;
 use function array_search;
 use function call_user_func_array;
@@ -108,26 +109,34 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
      */
     public function registerSignalHandler(): void
     {
-        pcntl_async_signals(true);
-        pcntl_signal(SIGCHLD, function () {
-            while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
-                if ($this->isFork()) {
-                    try {
-                        JsonRPC::call([ProcessManager::class, 'isDie'], $childrenProcessId);
-                    } catch (RPCException $exception) {
-                        Output::printException($exception);
+        try {
+            EventLoop::onSignal(SIGCHLD, function () {
+                while (($childrenProcessId = pcntl_waitpid(-1, $status, WNOHANG)) > 0) {
+                    if ($this->isFork()) {
+                        try {
+                            JsonRPC::call([ProcessManager::class, 'isDie'], $childrenProcessId);
+                        } catch (RPCException $exception) {
+                            Output::printException($exception);
+                        }
+                    } else {
+                        $this->isDie($childrenProcessId);
                     }
-                } else {
-                    $this->isDie($childrenProcessId);
+                    unset($this->childrenProcessIds[array_search($childrenProcessId, $this->childrenProcessIds)]);
                 }
-                unset($this->childrenProcessIds[array_search($childrenProcessId, $this->childrenProcessIds)]);
-            }
-        });
+            });
+        } catch (EventLoop\UnsupportedFeatureException $exception) {
+            Output::printException($exception);
+        }
         if ($this->isFork()) {
-            pcntl_signal(SIGINT, [$this, 'processSignalHandler']);
-            pcntl_signal(SIGTERM, [$this, 'processSignalHandler']);
-            pcntl_signal(SIGQUIT, [$this, 'processSignalHandler']);
-            pcntl_signal(SIGUSR2, [$this, 'processSignalHandler']);
+            try {
+                EventLoop::onSignal(SIGINT, fn() => $this->processSignalHandler());
+                EventLoop::onSignal(SIGTERM, fn() => $this->processSignalHandler());
+                EventLoop::onSignal(SIGQUIT, fn() => $this->processSignalHandler());
+                EventLoop::onSignal(SIGUSR2, fn() => $this->processSignalHandler());
+            } catch (EventLoop\UnsupportedFeatureException $exception) {
+                Output::printException($exception);
+                exit(0);
+            }
         }
     }
 

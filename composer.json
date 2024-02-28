@@ -23,7 +23,8 @@
     "ext-posix": "*",
     "cclilshy/container": "^1.0",
     "cclilshy/laravel-component-core": "dev-main",
-    "phpunit/phpunit": "^10.5"
+    "phpunit/phpunit": "^10.5",
+    "revolt/event-loop": "^1.0"
   },
   "suggest": {
   },

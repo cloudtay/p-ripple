@@ -43,17 +43,12 @@ namespace Cclilshy\PRipple\Worker\Built;
 use Cclilshy\PRipple\Core\Coroutine\Coroutine;
 use Cclilshy\PRipple\Core\Event\Event;
 use Cclilshy\PRipple\Core\Map\CoroutineMap;
-use Cclilshy\PRipple\Core\Map\EventMap;
-use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\WorkerInterface;
 use Cclilshy\PRipple\Worker\Worker;
 use Closure;
-use Exception;
-use Override;
-use SplPriorityQueue;
+use Revolt\EventLoop;
 use Throwable;
 use function Co\async;
-use function time;
 
 /**
  * @class Timer
@@ -62,64 +57,11 @@ use function time;
  */
 final class Timer extends Worker implements WorkerInterface
 {
-    public const string EVENT_TIMER_EVENT = 'timer.event';
-    public const string EVENT_TIMER_LOOP  = 'timer.loop';
-    public const string EVENT_TIMER_SLEEP = 'timer.sleep';
-
     /**
      * 门面类
      * @var string $facadeClass
      */
     public static string $facadeClass = \Cclilshy\PRipple\Facade\Timer::class;
-
-    /**
-     * 任务队列
-     * @var SplPriorityQueue $taskQueue
-     */
-    private SplPriorityQueue $taskQueue;
-
-    /**
-     * 心跳
-     * @return void
-     */
-    #[Override] public function heartbeat(): void
-    {
-        $baseTime = time();
-        while (!$this->taskQueue->isEmpty()) {
-            $task = $this->taskQueue->top();
-            if ($task['expire'] <= $baseTime && $event = $task['event']) {
-                $this->taskQueue->extract();
-                switch ($event->name) {
-                    case Timer::EVENT_TIMER_EVENT:
-                        EventMap::push($event->data['data']);
-                        break;
-                    case Timer::EVENT_TIMER_LOOP:
-                        async(function (Coroutine $coroutine) use ($event) {
-                            try {
-                                if ($coroutine->callUserFunction($event->data['data'])) {
-                                    $this->loop($event->data['data'], $event->data['time']);
-                                }
-                            } catch (Throwable $exception) {
-                                Output::printException($exception);
-                            }
-                        });
-                        break;
-                    case Timer::EVENT_TIMER_SLEEP:
-                        try {
-                            CoroutineMap::resume(
-                                $event->data['data'],
-                                Event::build(Coroutine::EVENT_RESUME, null, Timer::class)
-                            );
-                        } catch (Throwable|Exception $exception) {
-                            Output::printException($exception);
-                        }
-                        break;
-                }
-            } else {
-                break;
-            }
-        }
-    }
 
     /**
      * 循环执行一个闭包
@@ -129,18 +71,13 @@ final class Timer extends Worker implements WorkerInterface
      */
     public function loop(Closure $closure, int $second): void
     {
-        EventMap::push(Event::build(Timer::EVENT_TIMER_LOOP, ['time' => $second, 'data' => $closure], Timer::class));
-    }
-
-    /**
-     * 延时发送一个事件
-     * @param Event $event
-     * @param int   $second
-     * @return void
-     */
-    public function event(Event $event, int $second): void
-    {
-        EventMap::push(Event::build(Timer::EVENT_TIMER_EVENT, ['time' => $second, 'data' => $event], Timer::class));
+        async(function () use ($closure, $second) {
+            if (call_user_func($closure) === false) {
+                return;
+            }
+            \Co\sleep($second);
+            $this->loop($closure, $second);
+        });
     }
 
     /**
@@ -154,41 +91,13 @@ final class Timer extends Worker implements WorkerInterface
         if (!$coroutine = CoroutineMap::this()) {
             sleep($second);
             return null;
+        } else {
+            EventLoop::delay(
+                $second,
+                fn() => $coroutine->resume(Event::build(Coroutine::EVENT_RESUME, null, Timer::class)
+                ));
+            return $coroutine->suspend();
         }
-        $event     = Event::build(Timer::EVENT_TIMER_SLEEP, ['time' => $second, 'data' => CoroutineMap::this()->hash], Timer::class);
-        $timerData = $event->data;
-        $duration  = $timerData['time'];
-        $this->taskQueue->insert(['expire' => time() + $duration, 'event' => $event], -time() - $duration);
-        return $coroutine->suspend();
-    }
-
-    /**
-     * 初始化
-     * @return void
-     */
-    public function initialize(): void
-    {
-        $this->busy      = true;
-        $this->taskQueue = new SplPriorityQueue();
-        $this->subscribe(Timer::EVENT_TIMER_EVENT);
-        $this->subscribe(Timer::EVENT_TIMER_LOOP);
-        $this->subscribe(Timer::EVENT_TIMER_SLEEP);
-        parent::initialize();
-    }
-
-    /**
-     * 处理事件
-     * @param Event $event
-     * @return void
-     */
-    #[Override] public function handleEvent(Event $event): void
-    {
-        $timerData = $event->data;
-        $duration  = $timerData['time'];
-        $this->taskQueue->insert([
-            'expire' => time() + $duration,
-            'event'  => $event
-        ], -time() - $duration);
     }
 
     /**
@@ -198,8 +107,5 @@ final class Timer extends Worker implements WorkerInterface
     public function forkPassive(): void
     {
         parent::forkPassive();
-        while (!$this->taskQueue->isEmpty()) {
-            $this->taskQueue->extract();
-        }
     }
 }

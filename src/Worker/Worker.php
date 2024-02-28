@@ -52,6 +52,7 @@ use Cclilshy\PRipple\Utils\JsonRPC;
 use Cclilshy\PRipple\Worker\Built\ProcessManager;
 use Closure;
 use Exception;
+use Revolt\EventLoop;
 use Throwable;
 use function array_search;
 use function call_user_func;
@@ -294,6 +295,11 @@ class Worker implements WorkerInterface
     }
 
     /**
+     * @var string[] $callableIds
+     */
+    private array $callableIds = [];
+
+    /**
      * Subscribe to a stream
      * @param Stream      $stream
      * @param string|null $event
@@ -301,11 +307,15 @@ class Worker implements WorkerInterface
      */
     final public function subscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_SUBSCRIBE_READ): void
     {
-        try {
-            EventMap::push(Event::build($event, $stream, $this->name));
-        } catch (Throwable $exception) {
-            Output::printException($exception);
+        switch ($event) {
+            case Kernel::EVENT_STREAM_SUBSCRIBE_READ:
+                $this->callableIds[$stream->id] = EventLoop::onReadable($stream->stream, fn() => $this->handleStreamRead($stream));
+                break;
+            case Kernel::EVENT_STREAM_SUBSCRIBE_WRITE:
+                $this->callableIds[$stream->id] = EventLoop::onWritable($stream->stream, fn() => $this->handleStreamWrite($stream));
+                break;
         }
+
     }
 
     /**
@@ -316,10 +326,9 @@ class Worker implements WorkerInterface
      */
     final public function unsubscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_UNSUBSCRIBE_READ): void
     {
-        try {
-            EventMap::push(Event::build($event, $stream, $this->name));
-        } catch (Throwable $exception) {
-            Output::printException($exception);
+        if (isset($this->callableIds[$stream->id])) {
+            EventLoop::cancel($this->callableIds[$stream->id]);
+            unset($this->callableIds[$stream->id]);
         }
     }
 

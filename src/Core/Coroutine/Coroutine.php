@@ -49,8 +49,8 @@ use Cclilshy\PRipple\Core\Output;
 use Closure;
 use Fiber;
 use Throwable;
-use function spl_object_hash;
 use function count;
+use function spl_object_hash;
 
 /**
  * @class Coroutine 基础协程对象
