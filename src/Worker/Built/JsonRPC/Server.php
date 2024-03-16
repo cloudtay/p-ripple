@@ -90,8 +90,8 @@ final class Server extends WorkerNet implements WorkerInterface
      */
     #[Override] public function initialize(): void
     {
-        parent::initialize();
         $this->bind($this->worker->getRPCServiceAddress());
+        parent::initialize();
     }
 
     /**
@@ -121,7 +121,7 @@ final class Server extends WorkerNet implements WorkerInterface
                             'id'      => $info->id,
                         ]));
                     } catch (FileException $exception) {
-                        Output::printException($exception);
+                        Output::error($exception);
                         try {
                             $this->slice->send($TCPConnection, json_encode([
                                 'version' => '2.0',
@@ -133,11 +133,11 @@ final class Server extends WorkerNet implements WorkerInterface
                                 'id'      => $info->id,
                             ]));
                         } catch (FileException $exception) {
-                            Output::printException($exception);
+                            Output::error($exception);
                         }
                     }
                 } catch (Throwable $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                 }
             }
         }

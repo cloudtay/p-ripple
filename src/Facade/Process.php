@@ -96,7 +96,7 @@ final class Process implements WorkerFacadeStd
         try {
             return JsonRPC::call([ProcessManager::class, 'signal'], $processId, $signalNo);
         } catch (RPCException $exception) {
-            Output::printException($exception);
+            Output::error($exception);
             return false;
         }
     }
@@ -110,7 +110,7 @@ final class Process implements WorkerFacadeStd
         try {
             return JsonRPC::call([ProcessManager::class, 'kill'], $processId);
         } catch (RPCException $exception) {
-            Output::printException($exception);
+            Output::error($exception);
             return false;
         }
     }

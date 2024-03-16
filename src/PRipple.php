@@ -75,7 +75,7 @@ final class PRipple
         PRipple::initConstant();
         PRipple::initEnvConfig();
         if (!is_writable(PP_RUNTIME_PATH)) {
-            Output::printException(new Exception('Runtime path is not writable :' . PP_RUNTIME_PATH));
+            Output::error(new Exception('Runtime path is not writable :' . PP_RUNTIME_PATH));
             exit(0);
         }
         PRipple::$kernel = new Kernel();

@@ -40,9 +40,8 @@
 
 namespace Cclilshy\PRipple\Worker\Built\JsonRPC;
 
-use Cclilshy\PRipple\Core\Coroutine\Coroutine;
+use Cclilshy\PRipple\Core\Coroutine\Promise;
 use Cclilshy\PRipple\Core\Event\Event;
-use Cclilshy\PRipple\Core\Map\CoroutineMap;
 use Cclilshy\PRipple\Core\Map\EventMap;
 use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\WorkerInterface;
@@ -55,16 +54,13 @@ use Cclilshy\PRipple\Worker\Built\ProcessManager;
 use Cclilshy\PRipple\Worker\Socket\TCPConnection;
 use Cclilshy\PRipple\Worker\Worker;
 use Cclilshy\PRipple\Worker\WorkerNet;
+use Closure;
 use Exception;
 use Override;
 use Throwable;
-use function call_user_func_array;
-use function Co\async;
 use function count;
-use function function_exists;
 use function json_decode;
 use function json_encode;
-use function method_exists;
 use function posix_getpid;
 use function property_exists;
 
@@ -129,37 +125,13 @@ final class Client extends WorkerNet implements WorkerInterface
     #[Override] protected function onMessage(string $context, TCPConnection $TCPConnection): void
     {
         $info = json_decode($context);
-        try {
+        if ($promise = $this->promiseMap[$info->id] ?? null) {
             if (property_exists($info, 'result')) {
-                CoroutineMap::resume(
-                    $info->id,
-                    Event::build(Coroutine::EVENT_RESUME, $info->result, $TCPConnection->getName())
-                );
+                $promise->resolve($info->result);
             } elseif (property_exists($info, 'error')) {
-                CoroutineMap::throw($info->id, new RPCException($info->error->message, $info->error->code));
-            } elseif (property_exists($info, 'method')) {
-                /**
-                 * @deprecated 禁止主动请求客户端
-                 */
-                if (method_exists($this, $info->method)) {
-                    $info->params[] = $TCPConnection;
-                    $result         = call_user_func_array([$this, $info->method], $info->params);
-                    $this->slice->send($TCPConnection, json_encode([
-                        'version' => '2.0',
-                        'result'  => $result,
-                        'id'      => $info->id
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                } elseif (function_exists($info->method)) {
-                    $result = call_user_func_array($info->method, $info->params);
-                    $this->slice->send($TCPConnection, json_encode([
-                        'version' => '2.0',
-                        'result'  => $result,
-                        'id'      => $info->id
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                }
+                $promise->reject($info->error);
             }
-        } catch (Throwable $exception) {
-            Output::printException($exception);
+            unset($this->promiseMap[$info->id]);
         }
     }
 
@@ -177,22 +149,24 @@ final class Client extends WorkerNet implements WorkerInterface
         if (!$this->connectProcessManager()) {
             exit(0);
         }
-        async(function () {
-            $rpcServiceList = $this->call([ProcessManager::class, 'setProcessId'], $this->clientId);
-            foreach ($rpcServiceList as $rpcService) {
-                EventMap::push(Event::build(Server::EVENT_ONLINE, [
-                    'name'    => $rpcService->name,
-                    'address' => $rpcService->address,
-                    'type'    => $rpcService->type
-                ], $this->name));
-            }
-        });
+
+        $this
+            ->call([ProcessManager::class, 'setProcessId'], $this->clientId)
+            ->then(function ($rpcServiceList) {
+                foreach ($rpcServiceList as $rpcService) {
+                    EventMap::push(Event::build(Server::EVENT_ONLINE, [
+                        'name'    => $rpcService->name,
+                        'address' => $rpcService->address,
+                        'type'    => $rpcService->type
+                    ], $this->name));
+                }
+            });
     }
 
     /**
-     * @return bool
+     * @return TCPConnection|false
      */
-    private function connectProcessManager(): bool
+    private function connectProcessManager(): TCPConnection|false
     {
         $count = 0;
         connect:
@@ -202,6 +176,7 @@ final class Client extends WorkerNet implements WorkerInterface
             ProcessManager::class
         );
         if (!$connect && $count++ < 3) {
+            usleep(1000000);
             goto connect;
         }
         return $connect;
@@ -219,57 +194,47 @@ final class Client extends WorkerNet implements WorkerInterface
         $this->rpcServiceAddressList[$name] = ['address' => $address, 'type' => $type];
     }
 
+    private array $promiseMap = [];
+
     /**
      * @param array $route
      * @param mixed ...$arguments
      * @return mixed
-     * @throws RPCException
-     * @throws Exception
      */
-    public function call(array $route, mixed ...$arguments): mixed
+    public function call(array $route, mixed ...$arguments): Promise
     {
-        if (count($route) !== 2) {
-            throw new RPCException('Invalid router');
-        }
-        $serviceName = $route[0];
-        $methodName  = $route[1];
-        $context     = json_encode([
-            'method' => $methodName,
-            'params' => $arguments,
-            'id'     => CoroutineMap::this()?->hash ?? 'anonymous'
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $uniqueId = md5(uniqid());
+        return $this->promiseMap[$uniqueId] = new Promise(function (Closure $resolve, Closure $reject) use ($route, $arguments, $uniqueId) {
+            if (count($route) !== 2) {
+                throw new RPCException('Invalid router');
+            }
+            $serviceName = $route[0];
+            $methodName  = $route[1];
+            $clientId    = $uniqueId;
 
-        if (!$serviceConnection = $this->rpcServiceConnections[$serviceName] ?? null) {
-            if (!$serviceInfo = $this->rpcServiceAddressList[$serviceName]) {
-                throw new Exception("RPC service {$serviceName} is not connected");
-            }
-            try {
-                $this->connectService($serviceName, $serviceInfo['address'], $serviceInfo['type']);
-                $serviceConnection = $this->rpcServiceConnections[$serviceName];
-            } catch (Exception $exception) {
-                throw new Exception("RPC service {$serviceName} is not connected : {$exception->getMessage()}");
-            }
-        } elseif ($serviceConnection->deprecated === true) {
-            if (!$serviceInfo = $this->rpcServiceAddressList[$serviceName]) {
-                throw new Exception("RPC service {$serviceName} is not connected");
-            }
-            try {
-                $this->connectService($serviceName, $serviceInfo['address'], $serviceInfo['type']);
-                $serviceConnection = $this->rpcServiceConnections[$serviceName];
-            } catch (Exception $exception) {
-                Output::printException($exception);
-            }
-        }
+            $context = json_encode([
+                'method' => $methodName,
+                'params' => $arguments,
+                'id'     => $clientId
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        try {
-            $this->slice->send($serviceConnection, $context);
-            if ($coroutine = CoroutineMap::this()) {
-                return $coroutine->suspend();
+            if (!$serviceConnection = $this->rpcServiceConnections[$serviceName] ?? null) {
+                if (!$serviceInfo = $this->rpcServiceAddressList[$serviceName]) {
+                    throw new Exception("RPC service {$serviceName} is not connected");
+                } elseif (!$serviceConnection = $this->connectService($serviceName, $serviceInfo['address'], $serviceInfo['type'])) {
+                    throw new Exception("RPC service {$serviceName} is not connected");
+                }
             }
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-        }
-        return false;
+
+            try {
+                $this->slice->send($serviceConnection, $context);
+            } catch (Throwable $exception) {
+                Output::error($exception);
+            }
+
+            return false;
+        });
+
     }
 
     /**
@@ -277,9 +242,9 @@ final class Client extends WorkerNet implements WorkerInterface
      * @param string $name
      * @param string $address
      * @param string $type
-     * @return bool
+     * @return TCPConnection|false
      */
-    public function connectService(string $name, string $address, string $type): bool
+    public function connectService(string $name, string $address, string $type): TCPConnection|false
     {
         if ($TCPConnection = $this->connect($address)) {
             $TCPConnection->setName($name);
@@ -287,7 +252,7 @@ final class Client extends WorkerNet implements WorkerInterface
             $TCPConnection->setReceiveBufferSize(PRipple::getArgument('PP_RPC_BUFFER_SIZE', 204800));
             $this->rpcServiceConnections[$name] = $TCPConnection;
             $this->addService($name, $address, $type);
-            return true;
+            return $TCPConnection;
         } else {
             return false;
         }

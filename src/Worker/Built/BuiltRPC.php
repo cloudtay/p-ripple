@@ -84,7 +84,6 @@ class BuiltRPC extends WorkerNet implements WorkerInterface
                     'result'  => $result,
                     'id'      => $jsonRequest->id ?? null
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
             } elseif (function_exists($jsonRequest)) {
                 $jsonRequest->params[] = Publisher::package($TCPConnection, $jsonRequest->id);
                 $result                = call_user_func_array($jsonRequest->method, $jsonRequest->params ?? []);
@@ -93,7 +92,6 @@ class BuiltRPC extends WorkerNet implements WorkerInterface
                     'result'  => $result,
                     'id'      => $jsonRequest->id ?? null
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
             } else {
                 $packet = json_encode([
                     'version' => '2.0',
@@ -107,7 +105,7 @@ class BuiltRPC extends WorkerNet implements WorkerInterface
             try {
                 $this->slice->send($TCPConnection, $packet);
             } catch (FileException|Exception $exception) {
-                Output::printException($exception);
+                Output::error($exception);
                 $this->removeTCPConnection($TCPConnection);
             }
         }

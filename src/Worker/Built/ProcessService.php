@@ -78,13 +78,13 @@ final class ProcessService extends BuiltRPC implements WorkerInterface
      */
     public function initialize(): void
     {
-        parent::initialize();
         $processUnixPath = ProcessService::generatePathByProcessId(posix_getpid());
         if (file_exists($processUnixPath)) {
             unlink($processUnixPath);
         }
         $this->bind("unix://{$processUnixPath}");
         $this->protocol(Slice::class);
+        parent::initialize();
     }
 
     /**
@@ -117,7 +117,7 @@ final class ProcessService extends BuiltRPC implements WorkerInterface
             try {
                 JsonRPC::call([ProcessManager::class, 'outputInfo'], $exception->getMessage());
             } catch (RPCException $exception) {
-                Output::printException($exception);
+                Output::error($exception);
             }
             exit(0);
         }
@@ -157,7 +157,7 @@ final class ProcessService extends BuiltRPC implements WorkerInterface
                 try {
                     JsonRPC::call([ProcessService::class, 'processException'], $exception, posix_getppid(), $coroutine->hash);
                 } catch (RPCException $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                 }
             } finally {
                 $this->destroy();
@@ -202,7 +202,7 @@ final class ProcessService extends BuiltRPC implements WorkerInterface
                 ProcessService::PROCESS_CALL
             );
         } catch (Throwable $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 
@@ -223,7 +223,7 @@ final class ProcessService extends BuiltRPC implements WorkerInterface
                 ProcessService::PROCESS_CALL
             );
         } catch (Throwable $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 }

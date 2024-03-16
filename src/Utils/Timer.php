@@ -49,23 +49,23 @@ class Timer
 {
     /**
      * 挂起当前协程
-     * @param int $seconds
+     * @param int|float $seconds
      * @return void
      * @throws Throwable
      */
-    public static function sleep(int $seconds): void
+    public static function sleep(int|float $seconds): void
     {
         \Cclilshy\PRipple\Facade\Timer::getInstance()->sleep($seconds);
     }
 
     /**
      * 定时器
-     * @param Closure $callback
-     * @param int     $seconds
+     * @param Closure   $callback
+     * @param int|float $seconds
      * @return void
      */
-    public static function repeat(Closure $callback, int $seconds): void
+    public static function repeat(Closure $callback, int|float $seconds): void
     {
-        \Cclilshy\PRipple\Facade\Timer::getInstance()->loop($callback, $seconds);
+        \Cclilshy\PRipple\Facade\Timer::getInstance()->repeat($callback, $seconds);
     }
 }

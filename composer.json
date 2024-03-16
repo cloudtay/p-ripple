@@ -28,7 +28,7 @@
   },
   "suggest": {
   },
-  "version": "v0.3.8",
+  "version": "dev-main",
   "minimum-stability": "dev",
   "prefer-stable": true
 }

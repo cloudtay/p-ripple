@@ -52,6 +52,12 @@ class Client
     public TCPConnection $TCPConnection;
 
     /**
+     * 事件处理器
+     * @var array $handlers
+     */
+    private array $handlers = [];
+
+    /**
      * TCPClient constructor.
      * @param string      $address
      * @param ProtocolStd $protocol
@@ -71,17 +77,11 @@ class Client
      */
     public static function create(string $address, ProtocolStd|string|null $protocol = TCPProtocol::class): Client
     {
-        if (!($protocol instanceof ProtocolStd)) {
+        if (is_string($protocol)) {
             $protocol = new $protocol();
         }
         return new Client($address, $protocol);
     }
-
-    /**
-     * 事件处理器
-     * @var array $handlers
-     */
-    private array $handlers = [];
 
     /**
      * hook事件

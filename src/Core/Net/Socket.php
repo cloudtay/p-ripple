@@ -409,7 +409,7 @@ class Socket extends Stream
                 throw new FileException('Unable to create socket buffer buffer file, please check directory permissions: ' . $this->bufferFilePath);
             }
         } else {
-            fwrite(STDIN, 'Error, the maximum number of open handles has been reached: ' . $this->bufferFilePath . PHP_EOL);
+            fwrite(STDIN, "Error, the maximum number of open handles has been reached: {$this->bufferFilePath}\n");
         }
     }
 

@@ -39,7 +39,6 @@
 
 namespace Cclilshy\PRipple\Facade;
 
-use Cclilshy\PRipple\Core\Event\Event;
 use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Worker\Built\Buffer;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\Client;
@@ -57,23 +56,6 @@ use function call_user_func_array;
  */
 class Kernel
 {
-    public const string VERSION                         = '0.2';
-    public const string EVENT_HEARTBEAT                 = 'system.heartbeat';
-    public const string EVENT_AUTO_COROUTINE            = 'system.auto.coroutine';
-    public const string EVENT_STREAM_EXPECT             = 'system.net.stream.expect';
-    public const string EVENT_STREAM_READ               = 'system.net.stream.read';
-    public const string EVENT_STREAM_WRITE              = 'system.net.stream.write';
-    public const string EVENT_STREAM_SUBSCRIBE_READ     = 'system.net.stream.subscribe.read';
-    public const string EVENT_STREAM_SUBSCRIBE_WRITE    = 'system.net.stream.subscribe.write';
-    public const string EVENT_STREAM_SUBSCRIBE_EXCEPT   = 'system.net.stream.subscribe.except';
-    public const string EVENT_STREAM_UNSUBSCRIBE_READ   = 'system.net.stream.unsubscribe.read';
-    public const string EVENT_STREAM_UNSUBSCRIBE_WRITE  = 'system.net.stream.unsubscribe.write';
-    public const string EVENT_STREAM_UNSUBSCRIBE_EXCEPT = 'system.net.stream.unsubscribe.except';
-    public const string EVENT_EVENT_SUBSCRIBE           = 'system.event.subscribe';
-    public const string EVENT_EVENT_UNSUBSCRIBE         = 'system.event.unsubscribe';
-    public const string EVENT                           = Event::class;
-    private const int   LOOP_MODE_SELECT                = 1;
-    private const int   LOOP_MODE_EVENT                 = 2;
 
     /**
      * 内置服务

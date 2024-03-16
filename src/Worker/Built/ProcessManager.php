@@ -116,7 +116,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                         try {
                             JsonRPC::call([ProcessManager::class, 'isDie'], $childrenProcessId);
                         } catch (RPCException $exception) {
-                            Output::printException($exception);
+                            Output::error($exception);
                         }
                     } else {
                         $this->isDie($childrenProcessId);
@@ -125,7 +125,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                 }
             });
         } catch (EventLoop\UnsupportedFeatureException $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
         if ($this->isFork()) {
             try {
@@ -134,7 +134,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                 EventLoop::onSignal(SIGQUIT, fn() => $this->processSignalHandler());
                 EventLoop::onSignal(SIGUSR2, fn() => $this->processSignalHandler());
             } catch (EventLoop\UnsupportedFeatureException $exception) {
-                Output::printException($exception);
+                Output::error($exception);
                 exit(0);
             }
         }
@@ -156,14 +156,14 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
      */
     public function initialize(): void
     {
-        parent::initialize();
         $this->registerSignalHandler();
         $this->protocol(Slice::class);
         try {
             $this->bind($this->getRPCServiceAddress(), [SO_REUSEADDR => 1, SO_REUSEPORT => 1]);
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
+        parent::initialize();
     }
 
     /**
@@ -213,7 +213,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                         'params'  => [$processId, $signal]
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 } catch (\Cclilshy\PRipple\Core\Net\Exception|FileException $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                     return false;
                 }
             }
@@ -284,7 +284,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                 'type'    => $type
             ], $this->name));
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
         foreach ($this->getClients() as $client) {
             if ($client !== $connection) {
@@ -295,7 +295,7 @@ final class ProcessManager extends BuiltRPC implements WorkerInterface
                         'params'  => [$name, $address, $type]
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 } catch (\Cclilshy\PRipple\Core\Net\Exception|FileException $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                 }
             }
         }

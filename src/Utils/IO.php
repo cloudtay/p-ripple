@@ -77,7 +77,7 @@ class IO
         try {
             return Buffer::getInstance()->fileGetContents($path);
         } catch (Throwable $exception) {
-            Output::printException($exception);
+            Output::error($exception);
             return '';
         }
     }

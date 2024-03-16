@@ -41,12 +41,8 @@
 namespace Cclilshy\PRipple\Core\Map;
 
 use Cclilshy\PRipple\Core\Coroutine\Coroutine;
-use Cclilshy\PRipple\Core\Coroutine\Exception\TimeoutException;
-use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\MapInterface;
-use Cclilshy\PRipple\Facade\Kernel;
 use Fiber;
-use SplPriorityQueue;
 use Throwable;
 use function spl_object_hash;
 
@@ -59,13 +55,6 @@ final class CoroutineMap implements MapInterface
      * @var Coroutine[] $coroutineMap
      */
     public static array             $coroutineMap = [];
-    private static SplPriorityQueue $timeoutCollector;
-
-    /**
-     * @var SplPriorityQueue<Coroutine>
-     */
-    private static SplPriorityQueue $queue;
-    private static int              $count = 0;
 
     /**
      * 根据Hash获得某个协程对象
@@ -111,21 +100,14 @@ final class CoroutineMap implements MapInterface
 
     /**
      * 恢复协程执行
-     * @param string      $hash
-     * @param mixed       $data
-     * @param string|null $flag
+     * @param string $hash
+     * @param mixed  $data
      * @return mixed
      * @throws Throwable
      */
-    public static function resume(string $hash, mixed $data, string|null $flag = null): mixed
+    public static function resume(string $hash, mixed $data): mixed
     {
-        if ($coroutine = CoroutineMap::get($hash)) {
-            if ($flag) {
-                $coroutine->erase($flag);
-            }
-            return $coroutine->resume($data);
-        }
-        return null;
+        return CoroutineMap::get($hash)?->resume($data);
     }
 
     /**
@@ -136,44 +118,7 @@ final class CoroutineMap implements MapInterface
      */
     public static function throw(string $hash, Throwable $exception): void
     {
-        CoroutineMap::get($hash)?->throw($exception);
-    }
-
-    /**
-     * 生产协程
-     * @param Coroutine $coroutine
-     * @return void
-     */
-    public static function production(Coroutine $coroutine): void
-    {
-        CoroutineMap::$queue->insert($coroutine, CoroutineMap::$count--);
-    }
-
-    /**
-     * 消费协程
-     * @return void
-     */
-    public static function consumption(): void
-    {
-        while (!CoroutineMap::$queue->isEmpty()) {
-            $coroutine = CoroutineMap::$queue->extract();
-            try {
-                $coroutine->execute();
-            } catch (Throwable $exception) {
-                Output::printException($exception);
-            }
-        }
-    }
-
-    /**
-     * 监听协程超时
-     * @param string $hash
-     * @param int    $timeout
-     * @return void
-     */
-    public static function timer(string $hash, int $timeout): void
-    {
-        CoroutineMap::$timeoutCollector->insert($hash, (time() + $timeout * -1));
+        CoroutineMap::get($hash)?->reject($exception);
     }
 
     /**
@@ -184,39 +129,7 @@ final class CoroutineMap implements MapInterface
     {
         foreach (CoroutineMap::$coroutineMap as $coroutine) {
             if ($coroutine->terminated()) {
-                Kernel::log("warning: discover a coroutine that has ended: '{$coroutine->hash}");
-            }
-//            elseif (count($coroutine->flags) === 0) {
-//                // ~,更新为状态维护
-//            }
-        }
-        $baseTime = time();
-        while (!CoroutineMap::$timeoutCollector->isEmpty()) {
-            $hash = CoroutineMap::$timeoutCollector->top();
-            if (!$coroutine = CoroutineMap::get($hash)) {
-                CoroutineMap::$timeoutCollector->extract();
-            } elseif ($coroutine->timeout <= $baseTime) {
-                CoroutineMap::$timeoutCollector->extract();
-                if ($coroutine->terminated()) {
-                    $coroutine->destroy();
-                } else {
-                    try {
-                        $coroutine->throw(new TimeoutException('The run time exceeds the maximum limit'));
-                    } catch (Throwable $exception) {
-                        Output::printException($exception);
-                    }
-                }
-            } elseif ($coroutine->status !== Coroutine::STATUS_PENDING && count($coroutine->flags) === 0) {
-                CoroutineMap::$timeoutCollector->extract();
-                try {
-                    $coroutine->throw(new TimeoutException(
-                        'The coroutine creation and destruction process is incorrect, which may be caused by the service not being actively reclaimed'
-                    ));
-                } catch (Throwable $exception) {
-                    Output::printException($exception);
-                }
-            } else {
-                break;
+                CoroutineMap::remove($coroutine);
             }
         }
     }
@@ -228,9 +141,7 @@ final class CoroutineMap implements MapInterface
     public static function forkPassive(): void
     {
         CoroutineMap::$coroutineMap = [];
-        while (!CoroutineMap::$timeoutCollector->isEmpty()) {
-            CoroutineMap::$timeoutCollector->extract();
-        }
+
     }
 
     /**
@@ -239,7 +150,5 @@ final class CoroutineMap implements MapInterface
      */
     public static function initialize(): void
     {
-        CoroutineMap::$timeoutCollector = new SplPriorityQueue();
-        CoroutineMap::$queue            = new SplPriorityQueue();
     }
 }

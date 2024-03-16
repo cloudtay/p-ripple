@@ -110,7 +110,7 @@ class TCPConnection extends Socket
             try {
                 return boolval($this->write($context));
             } catch (Exception|FileException $exception) {
-                Output::printException($exception);
+                Output::error($exception);
                 return false;
             }
         }

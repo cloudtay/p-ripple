@@ -135,7 +135,7 @@ final class Buffer extends Worker implements WorkerInterface
                             }
                         }
                     } catch (Throwable $exception) {
-                        Output::printException($exception);
+                        Output::error($exception);
                         $this->removeStream($stream);
                         unset($this->tasks[$stream->id]);
                         if ($event->source) {
@@ -146,7 +146,7 @@ final class Buffer extends Worker implements WorkerInterface
                                     Buffer::class
                                 ));
                             } catch (Throwable $exception) {
-                                Output::printException($exception);
+                                Output::error($exception);
                             }
                         }
                     }
@@ -164,7 +164,7 @@ final class Buffer extends Worker implements WorkerInterface
                             }
                         }
                     } catch (Throwable $exception) {
-                        Output::printException($exception);
+                        Output::error($exception);
                         $this->removeStream($stream);
                         unset($this->tasks[$stream->id]);
                     }
@@ -203,7 +203,7 @@ final class Buffer extends Worker implements WorkerInterface
                             goto write;
                         }
                     } catch (FileException $exception) {
-                        Output::printException($exception);
+                        Output::error($exception);
                         $this->unsubscribeStream($stream, Kernel::EVENT_STREAM_SUBSCRIBE_WRITE);
                         unset($this->tasks[$stream->id]);
                         return;
@@ -236,7 +236,7 @@ final class Buffer extends Worker implements WorkerInterface
             try {
                 $coroutine->suspend();
             } catch (Throwable $exception) {
-                Output::printException($exception);
+                Output::error($exception);
             }
         }
     }

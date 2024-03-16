@@ -39,16 +39,17 @@
 
 namespace Cclilshy\PRipple\Worker;
 
+use Cclilshy\PRipple\Core\Kernel;
 use Cclilshy\PRipple\Core\Net\Socket;
 use Cclilshy\PRipple\Core\Net\Stream;
 use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\ProtocolStd;
-use Cclilshy\PRipple\Facade\Kernel;
+use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\TCPProtocol;
+use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\JsonRPC;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\Server;
 use Cclilshy\PRipple\Worker\Built\ProcessManager;
-use Cclilshy\PRipple\Worker\Socket\SocketUnix;
 use Cclilshy\PRipple\Worker\Socket\TCPConnection;
 use Exception;
 use Throwable;
@@ -72,12 +73,6 @@ class WorkerNet extends Worker
     public const string HOOK_ON_CLOSE     = 'system.worker.net.close';
 
     /**
-     * The type of service connection
-     * @var string
-     */
-    public string $socketType;
-
-    /**
      * ProtocolStd
      * @var ProtocolStd
      */
@@ -90,10 +85,9 @@ class WorkerNet extends Worker
     public array $listenAddressList = [];
 
     /**
-     * Address-to-socket hash table: [] = $address=>$TCPConnection
-     * @var TCPConnection[] $listenSocketAddressMap
+     * @var TCPConnection[] $streamMap
      */
-    public array $listenSocketAddressMap = [];
+    public array $streamMap = [];
 
     /**
      * A list of client names
@@ -114,9 +108,7 @@ class WorkerNet extends Worker
     public function __construct(string $name, ProtocolStd|string|null $protocol = TCPProtocol::class)
     {
         parent::__construct($name);
-
         $this->protocol($protocol);
-
         $this->hook(
             WorkerNet::HOOK_ON_CONNECT,
             fn(TCPConnection $TCPConnection) => $this->onConnect($TCPConnection)
@@ -148,7 +140,7 @@ class WorkerNet extends Worker
             try {
                 $this->handleTCPConnection($stream, Kernel::EVENT_STREAM_READ);
             } catch (Throwable $exception) {
-                Output::printException($exception);
+                Output::error($exception);
                 $this->removeTCPConnection($stream);
             }
         } else {
@@ -193,7 +185,6 @@ class WorkerNet extends Worker
     final public function connect(string $address, array|null $options = []): TCPConnection|null
     {
         try {
-            [$type, $host, $port] = Socket::parseAddress($address);
             if (!$connect = stream_socket_client($address)) {
                 return null;
             }
@@ -204,7 +195,7 @@ class WorkerNet extends Worker
             $this->addTCPConnection($TCPConnection);
             return $TCPConnection;
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
             return null;
         }
     }
@@ -223,22 +214,20 @@ class WorkerNet extends Worker
                 && file_exists($host)
                 && unlink($host);
 
-                $server                                 = stream_socket_server($address);
-                $TCPConnection                          = new TCPConnection($server, clone $this->protocol);
-                $this->listenSocketAddressMap[$address] = $TCPConnection;
-                $this->streams[$TCPConnection->id]      = $TCPConnection;
-                $this->subscribeStream($TCPConnection);
-                if (!$this->isFork()) {
-                    Output::info('[Listen]', $address);
-                } else {
-                    \Cclilshy\PRipple\Utils\JsonRPC::call([ProcessManager::class, 'outputInfo'], '[Listen]', $address);
-                }
+                $server        = stream_socket_server($address);
+                $TCPConnection = new TCPConnection($server, clone $this->protocol);
+
+                $this->addStream($TCPConnection);
+                $this->listenStreamMap[$TCPConnection->id] = $TCPConnection;
+                $this->streamMap[$TCPConnection->id]       = $TCPConnection;
+                Output::info('[listen]', $address);
             }
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 
+    private array $listenStreamMap = [];
 
     /**
      * Handle client requests
@@ -248,12 +237,12 @@ class WorkerNet extends Worker
      */
     final public function handleTCPConnection(TCPConnection $TCPConnection, string $event): void
     {
-        if (in_array($TCPConnection, array_values($this->listenSocketAddressMap), true)) {
+        if (in_array($TCPConnection, array_values($this->listenStreamMap), true)) {
             if ($clientStream = $TCPConnection->accept()) {
                 try {
                     $this->addTCPConnection(new TCPConnection($clientStream, clone $this->protocol));
                 } catch (Exception $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                 }
             }
             return;
@@ -272,6 +261,7 @@ class WorkerNet extends Worker
                 $TCPConnection->handshake();
                 $this->callWorkerEvent(WorkerNet::HOOK_ON_HANDSHAKE, $TCPConnection);
                 $this->splitMessage($TCPConnection);
+
             } elseif ($handshake === false) {
                 $this->removeTCPConnection($TCPConnection);
             }
@@ -330,8 +320,8 @@ class WorkerNet extends Worker
      */
     final public function getClients(): array
     {
-        return array_filter($this->streams, function (TCPConnection $TCPConnection) {
-            return !in_array($TCPConnection, array_values($this->listenSocketAddressMap), true);
+        return array_filter($this->streamMap, function (TCPConnection $TCPConnection) {
+            return !in_array($TCPConnection, array_values($this->streamMap), true);
         });
     }
 
@@ -354,46 +344,6 @@ class WorkerNet extends Worker
     }
 
     /**
-     * Workers are born in parallel
-     * @return int $count
-     */
-    final public function fork(): int
-    {
-        if ($this->checkRPCService() || $this instanceof Server) {
-            return -1;
-        }
-        return parent::fork();
-    }
-
-    /**
-     * @return void
-     */
-    public function forking(): void
-    {
-        foreach ($this->getClients() as $TCPConnection) {
-            $this->removeTCPConnection($TCPConnection);
-        }
-        parent::forking();
-    }
-
-    /**
-     * @return void
-     */
-    public function forkPassive(): void
-    {
-        foreach ($this->getClients() as $TCPConnection) {
-            $this->removeTCPConnection($TCPConnection);
-        }
-        foreach ($this->listenAddressList as $address => $option) {
-            $TCPConnection = $this->listenSocketAddressMap[$address];
-            unset($this->listenSocketAddressMap[$address]);
-            unset($this->listenAddressList[$address]);
-            $this->removeTCPConnection($TCPConnection);
-        }
-        parent::forkPassive();
-    }
-
-    /**
      * Add a client
      * @param TCPConnection $TCPConnection
      * @return void
@@ -413,8 +363,8 @@ class WorkerNet extends Worker
     {
         $TCPConnection->deprecated = true;
         $TCPConnection->destroy();
-        $this->callWorkerEvent(WorkerNet::HOOK_ON_CLOSE, $TCPConnection);
         unset($this->TCPConnectionNameMap[$TCPConnection->getName()]);
+        $this->callWorkerEvent(WorkerNet::HOOK_ON_CLOSE, $TCPConnection);
         $this->removeStream($TCPConnection);
     }
 
@@ -431,6 +381,50 @@ class WorkerNet extends Worker
         }
         return $this->RPCServiceListenAddress;
     }
+
+    /**
+     * Workers are born in parallel
+     * @return int $count
+     */
+    final public function fork(): int
+    {
+        if ($this->checkRPCService() || $this instanceof Server) {
+            return -1;
+        }
+        return parent::fork();
+    }
+
+    /**
+     * @return void
+     */
+    public function forking(): void
+    {
+        foreach ($this->getClients() as $TCPConnection) {
+            $this->removeTCPConnection($TCPConnection);
+        }
+        foreach ($this->streamMap as $TCPConnection) {
+            $this->subscribeStream($TCPConnection);
+        }
+        parent::forking();
+    }
+
+    /**
+     * @return void
+     */
+    public function forkPassive(): void
+    {
+        foreach ($this->streamMap as $TCPConnection) {
+            $this->removeTCPConnection($TCPConnection);
+            unset($this->listenStreamMap[$TCPConnection->id]);
+        }
+
+        foreach ($this->listenAddressList as $address => $option) {
+            unset($this->listenAddressList[$address]);
+        }
+
+        parent::forkPassive();
+    }
+
 
     /**
      * There is a connection to Dada
@@ -482,19 +476,45 @@ class WorkerNet extends Worker
             $this->removeTCPConnection($client);
         }
         foreach ($this->listenAddressList as $addressOriginal => $options) {
-            if ($TCPConnection = $this->listenSocketAddressMap[$addressOriginal] ?? null) {
+            if ($TCPConnection = $this->streamMap[$addressOriginal] ?? null) {
                 try {
                     [$type, $address, $port] = Socket::parseAddress($addressOriginal);
                 } catch (Exception $exception) {
-                    Output::printException($exception);
+                    Output::error($exception);
                     continue;
                 }
                 $this->removeTCPConnection($TCPConnection);
-                if ($type === Socket::TYPE_UNIX && ($this->isRoot() || !$this->isFork())) {
+                if ($type === Socket::TYPE_UNIX && $this->isRoot()) {
                     unlink($address);
                 }
             }
         }
         parent::destroy();
+    }
+
+    /**
+     * @return void
+     */
+    public function initialize(): void
+    {
+        $this->listen();
+        if ($this->checkRPCService()) {
+            PRipple::kernel()->push(
+                $this->rpcService = Server::load($this)
+            );
+        }
+        if ($this instanceof Server) {
+            try {
+                \Cclilshy\PRipple\Utils\JsonRPC::call(
+                    [ProcessManager::class, 'registerRPCService'],
+                    $this->worker->name,
+                    $this->worker->getRPCServiceAddress(),
+                    get_class($this->worker)
+                );
+            } catch (RPCException $exception) {
+                Output::error($exception);
+            }
+        }
+        parent::initialize();
     }
 }

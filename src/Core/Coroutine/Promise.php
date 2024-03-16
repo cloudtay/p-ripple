@@ -37,87 +37,110 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-
 namespace Cclilshy\PRipple\Core\Coroutine;
 
-use Cclilshy\PRipple\Core\Map\CoroutineMap;
+use Cclilshy\PRipple\Core\Output;
 use Closure;
-use Fiber;
 use Throwable;
 
-/**
- * @class Coroutine 基础协程对象
- */
-class Coroutine extends Promise
+class Promise
 {
-    /**
-     * 任务唯一标识
-     * @var string $hash
-     */
-    public string $hash;
+    public const string  PENDING   = 'pending';
+    public const string  FULFILLED = 'fulfilled';
+    public const string  REJECTED  = 'rejected';
+
+    public string $status = Promise::PENDING;
 
     /**
-     * 协程实例
-     * @var Fiber $fiber
+     * @var Closure[] $onFulfilled
      */
-    public Fiber $fiber;
+    private array $onFulfilled = [];
 
+    /**
+     * @var Closure[] $onRejected
+     */
+    private array $onRejected = [];
+
+    /**
+     * @var mixed $result
+     */
+    private mixed $result;
+
+    /**
+     * @param Closure $closure
+     */
     public function __construct(Closure $closure)
     {
-        $this->fiber = new Fiber($closure);
-        $this->hash  = spl_object_hash($this->fiber);
-
-        CoroutineMap::insert($this);
-
-        $this->then(
-            fn() => CoroutineMap::remove($this),
-            fn() => CoroutineMap::remove($this)
-        );
-
-        parent::__construct(
-            fn(Closure $resolve, Closure $reject) => $this->fiber->start($resolve, $reject)
-        );
+        $this->execute($closure);
     }
 
     /**
-     * @param Promise $promise
-     * @return mixed
-     * @throws Throwable
+     * @param Closure $closure
+     * @return void
      */
-    public function await(Promise $promise): mixed
+    private function execute(Closure $closure): void
     {
-        $promise->then(
-            fn(mixed $result) => $this->fiber->resume($result),
-            fn(mixed $result) => $this->reject($result)
-        );
-        return $this->suspend();
+        try {
+            call_user_func_array($closure, [
+                fn(mixed $result = null) => $this->resolve($this->result = $result),
+                fn(mixed $result = null) => $this->reject($this->result = $result)
+            ]);
+        } catch (Throwable $exception) {
+            $this->reject($exception);
+        }
+    }
+
+    /**
+     * @param Closure|null $onFulfilled
+     * @param Closure|null $onRejected
+     * @return $this
+     */
+    public function then(Closure|null $onFulfilled, Closure|null $onRejected = null): Promise
+    {
+        if ($this->status === Promise::FULFILLED) {
+            return new Promise($onFulfilled);
+        } elseif ($this->status === Promise::REJECTED && $this->onRejected) {
+            return new Promise($onRejected);
+        }
+        $this->onFulfilled[] = $onFulfilled;
+        $this->onRejected[]  = $onRejected;
+        return $this;
     }
 
     /**
      * @param mixed $result
-     * @return mixed
-     * @throws Throwable
+     * @return $this
      */
-    public function suspend(mixed $result = null): mixed
+    public function resolve(mixed $result): Promise
     {
-        return $this->fiber->suspend($result);
+        $this->status = Promise::FULFILLED;
+        foreach ($this->onFulfilled as $onFulfilled) {
+            try {
+                call_user_func($onFulfilled, $result);
+            } catch (Throwable $exception) {
+                $this->reject($exception);
+            }
+        }
+        return $this;
     }
 
     /**
-     * @param mixed $data
-     * @return mixed
-     * @throws Throwable
+     * @param mixed $result
+     * @return $this
      */
-    public function resume(mixed $data = null): mixed
+    public function reject(mixed $result): Promise
     {
-        return $this->fiber->resume($data);
-    }
-
-    /**
-     * @return bool
-     */
-    public function terminated(): bool
-    {
-        return $this->fiber->isTerminated();
+        $this->status = Promise::REJECTED;
+        foreach ($this->onRejected as $onRejected) {
+            try {
+                call_user_func($onRejected, $result);
+            } catch (Throwable $exception) {
+                Output::error($exception);
+            }
+        }
+        if ($result instanceof Throwable) {
+            Output::error($result);
+        }
+        return $this;
     }
 }

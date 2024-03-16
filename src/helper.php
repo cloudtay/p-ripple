@@ -41,6 +41,8 @@
 namespace Co;
 
 use Cclilshy\PRipple\Core\Coroutine\Coroutine;
+use Cclilshy\PRipple\Core\Coroutine\Promise;
+use Cclilshy\PRipple\Core\Map\CoroutineMap;
 use Cclilshy\PRipple\Utils\Process;
 use Cclilshy\PRipple\Utils\Timer;
 use Cclilshy\PRipple\Worker\Built\JsonRPC\Exception\RPCException;
@@ -49,11 +51,11 @@ use Throwable;
 
 /**
  * 延时
- * @param int $second
+ * @param int|float $second
  * @return void
  * @throws Throwable
  */
-function sleep(int $second): void
+function sleep(int|float $second): void
 {
     Timer::sleep($second);
 }
@@ -61,11 +63,11 @@ function sleep(int $second): void
 
 /**
  * 重复执行一个闭包
- * @param Closure  $closure
- * @param int|null $second
+ * @param Closure        $closure
+ * @param int|float|null $second
  * @return void
  */
-function repeat(Closure $closure, int|null $second = 1): void
+function repeat(Closure $closure, int|float|null $second = 1): void
 {
     Timer::repeat($closure, $second);
 }
@@ -111,14 +113,15 @@ function process(Closure $closure, int|null $timeout = null): int
  */
 function async(Closure $closure): Coroutine
 {
-    return new class($closure) extends Coroutine {
-        /**
-         * @param Closure $closure
-         */
-        public function __construct(Closure $closure)
-        {
-            parent::__construct();
-            $this->setup($closure)->queue();
-        }
-    };
+    return new Coroutine($closure);
+}
+
+/**
+ * @param Promise $promise
+ * @return mixed
+ * @throws Throwable
+ */
+function await(Promise $promise): mixed
+{
+    return CoroutineMap::this()->await($promise);
 }

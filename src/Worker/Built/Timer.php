@@ -40,15 +40,14 @@
 
 namespace Cclilshy\PRipple\Worker\Built;
 
-use Cclilshy\PRipple\Core\Coroutine\Coroutine;
-use Cclilshy\PRipple\Core\Event\Event;
-use Cclilshy\PRipple\Core\Map\CoroutineMap;
+use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\WorkerInterface;
 use Cclilshy\PRipple\Worker\Worker;
 use Closure;
 use Revolt\EventLoop;
 use Throwable;
 use function Co\async;
+use function Co\await;
 
 /**
  * @class Timer
@@ -65,39 +64,42 @@ final class Timer extends Worker implements WorkerInterface
 
     /**
      * 循环执行一个闭包
-     * @param Closure $closure
-     * @param int     $second
+     * @param Closure   $closure
+     * @param int|float $delay
      * @return void
      */
-    public function loop(Closure $closure, int $second): void
+    public function repeat(Closure $closure, int|float $delay): void
     {
-        async(function () use ($closure, $second) {
+        async(function () use ($closure, $delay) {
             if (call_user_func($closure) === false) {
                 return;
             }
-            \Co\sleep($second);
-            $this->loop($closure, $second);
+            \Co\sleep($delay);
+            $this->repeat($closure, $delay);
         });
     }
 
     /**
      * 在协程内延时
-     * @param int $second
+     * @param int|float $delay
      * @return mixed
      * @throws Throwable
      */
-    public function sleep(int $second): mixed
+    public function sleep(int|float $delay): mixed
     {
-        if (!$coroutine = CoroutineMap::this()) {
-            sleep($second);
-            return null;
-        } else {
-            EventLoop::delay(
-                $second,
-                fn() => $coroutine->resume(Event::build(Coroutine::EVENT_RESUME, null, Timer::class)
-                ));
-            return $coroutine->suspend();
-        }
+        return await(async(function (Closure $resolve, Closure $reject) use ($delay) {
+            EventLoop::delay($delay, function () use ($resolve, $reject) {
+                try {
+                    call_user_func($resolve, null);
+                } catch (Throwable $exception) {
+                    try {
+                        call_user_func($reject, $exception);
+                    } catch (Throwable $exception) {
+                        Output::error($exception);
+                    }
+                }
+            });
+        }));
     }
 
     /**

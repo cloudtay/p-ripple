@@ -41,15 +41,14 @@
 namespace Cclilshy\PRipple\Worker;
 
 use Cclilshy\PRipple\Core\Event\Event;
+use Cclilshy\PRipple\Core\Kernel;
 use Cclilshy\PRipple\Core\Map\EventMap;
 use Cclilshy\PRipple\Core\Map\WorkerMap;
 use Cclilshy\PRipple\Core\Net\Stream;
 use Cclilshy\PRipple\Core\Output;
 use Cclilshy\PRipple\Core\Standard\WorkerInterface;
-use Cclilshy\PRipple\Facade\Kernel;
+use Cclilshy\PRipple\PRipple;
 use Cclilshy\PRipple\Protocol\Slice;
-use Cclilshy\PRipple\Utils\JsonRPC;
-use Cclilshy\PRipple\Worker\Built\ProcessManager;
 use Closure;
 use Exception;
 use Revolt\EventLoop;
@@ -73,12 +72,12 @@ class Worker implements WorkerInterface
     /**
      * Collaborative work mode
      */
-    public const int        MODE_COLLABORATIVE = 1;
+    public const int MODE_COLLABORATIVE = 1;
 
     /**
      * Stand-alone working mode
      */
-    public const  int       MODE_INDEPENDENT = 2;
+    public const int MODE_INDEPENDENT = 2;
 
     /**
      * Facade class
@@ -123,7 +122,6 @@ class Worker implements WorkerInterface
      */
     public array $subscribes = [];
 
-
     /**
      * Message cutter
      * @var Slice $slice
@@ -135,12 +133,6 @@ class Worker implements WorkerInterface
      * @var Worker $rpcService
      */
     public Worker $rpcService;
-
-    /**
-     * Whether the service has been started
-     * @var bool $launched
-     */
-    public bool $launched = false;
 
     /**
      * Whether it serves the root
@@ -159,6 +151,12 @@ class Worker implements WorkerInterface
      * @var int $thread
      */
     public int $thread = 1;
+
+    /**
+     * A list of client flows
+     * @var Stream[] $streamMap
+     */
+    public array $streamMap = [];
 
     /**
      * Easy to create
@@ -194,7 +192,7 @@ class Worker implements WorkerInterface
         try {
             throw new Exception('Facade class not found.');
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
             return null;
         }
     }
@@ -224,43 +222,6 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * A list of client flows
-     * @var Stream[] $streams
-     */
-    public array $streams = [];
-
-    /**
-     * Process stream events
-     * @param Stream $stream
-     * @param string $event
-     * @return void
-     */
-    final public function handleStream(Stream $stream, string $event): void
-    {
-        switch ($event) {
-            case Kernel::EVENT_STREAM_READ:
-                try {
-                    $this->handleStreamRead($stream);
-                } catch (Throwable $exception) {
-                    Output::printException($exception);
-                    $this->expectStream($exception);
-                }
-                break;
-            case Kernel::EVENT_STREAM_WRITE:
-                try {
-                    $this->handleStreamWrite($stream);
-                } catch (Throwable $exception) {
-                    Output::printException($exception);
-                    $this->expectStream($exception);
-                }
-                break;
-            case Kernel::EVENT_STREAM_EXPECT:
-                $this->expectStream($stream);
-                break;
-        }
-    }
-
-    /**
      * Handle flow exception events
      * @param mixed $stream
      * @return void
@@ -276,9 +237,9 @@ class Worker implements WorkerInterface
      * @param string|null $event
      * @return void
      */
-    final public function addStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_SUBSCRIBE_READ): void
+    final public function addStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_READ): void
     {
-        $this->streams[$stream->id] = $stream;
+        $this->streamMap[$stream->id] = $stream;
         $this->subscribeStream($stream, $event);
     }
 
@@ -290,14 +251,14 @@ class Worker implements WorkerInterface
     final public function removeStream(Stream $stream): void
     {
         $stream->close();
-        unset($this->streams[$stream->id]);
+        unset($this->streamMap[$stream->id]);
         $this->unsubscribeStream($stream);
     }
 
     /**
-     * @var string[] $callableIds
+     * @var string[] $callableIdMap
      */
-    private array $callableIds = [];
+    private array $callableIdMap = [];
 
     /**
      * Subscribe to a stream
@@ -305,17 +266,16 @@ class Worker implements WorkerInterface
      * @param string|null $event
      * @return void
      */
-    final public function subscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_SUBSCRIBE_READ): void
+    final public function subscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_READ): void
     {
         switch ($event) {
-            case Kernel::EVENT_STREAM_SUBSCRIBE_READ:
-                $this->callableIds[$stream->id] = EventLoop::onReadable($stream->stream, fn() => $this->handleStreamRead($stream));
+            case Kernel::EVENT_STREAM_READ:
+                $this->callableIdMap[$stream->id] = EventLoop::onReadable($stream->stream, fn() => $this->handleStreamRead($stream));
                 break;
-            case Kernel::EVENT_STREAM_SUBSCRIBE_WRITE:
-                $this->callableIds[$stream->id] = EventLoop::onWritable($stream->stream, fn() => $this->handleStreamWrite($stream));
+            case Kernel::EVENT_STREAM_WRITE:
+                $this->callableIdMap[$stream->id] = EventLoop::onWritable($stream->stream, fn() => $this->handleStreamWrite($stream));
                 break;
         }
-
     }
 
     /**
@@ -324,37 +284,31 @@ class Worker implements WorkerInterface
      * @param string|null $event
      * @return void
      */
-    final public function unsubscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_UNSUBSCRIBE_READ): void
+    final public function unsubscribeStream(Stream $stream, string|null $event = Kernel::EVENT_STREAM_READ): void
     {
-        if (isset($this->callableIds[$stream->id])) {
-            EventLoop::cancel($this->callableIds[$stream->id]);
-            unset($this->callableIds[$stream->id]);
+        if (isset($this->callableIdMap[$stream->id])) {
+            EventLoop::cancel($this->callableIdMap[$stream->id]);
+            unset($this->callableIdMap[$stream->id]);
         }
     }
 
 
     /**
-     * Whether it is a child process
-     * @return bool
-     */
-    final public function isFork(): bool
-    {
-        return $this->isFork;
-    }
-
-
-    /**
      * Subscribe to an event
-     * @param string $event
+     * @param string $eventName
      * @return void
      */
-    final public function subscribe(string $event): void
+    final public function subscribe(string $eventName): void
     {
         try {
-            EventMap::push(Event::build(Kernel::EVENT_EVENT_SUBSCRIBE, $event, $this->name));
-            $this->subscribes[] = $event;
+            EventMap::push(Event::build(
+                Kernel::EVENT_EVENT_SUBSCRIBE,
+                $eventName,
+                $this->name
+            ));
+            $this->subscribes[] = $eventName;
         } catch (Throwable $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 
@@ -373,7 +327,7 @@ class Worker implements WorkerInterface
                 unset($this->subscribes[$index]);
             }
         } catch (Throwable $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 
@@ -406,6 +360,15 @@ class Worker implements WorkerInterface
     }
 
     /**
+     * Whether it is a child process
+     * @return bool
+     */
+    final public function isFork(): bool
+    {
+        return $this->isFork;
+    }
+
+    /**
      * Whether it is a root service process, usually the first process to listen on the socket
      * @return bool
      */
@@ -420,8 +383,14 @@ class Worker implements WorkerInterface
      */
     public function launch(): void
     {
-        $this->launched = true;
-        $this->root     = true;
+        if ($this->mode === Worker::MODE_INDEPENDENT) {
+            PRipple::kernel()->fork(function () {
+                $this->initialize();
+                PRipple::kernel()->run();
+            });
+        } else {
+            $this->initialize();
+        }
     }
 
     /**
@@ -433,15 +402,7 @@ class Worker implements WorkerInterface
         if (isset(static::$facadeClass)) {
             call_user_func([static::$facadeClass, 'setInstance'], $this);
         }
-        if (!$this->isFork()) {
-            Output::info('[initialize]', $this->name . ' [process:' . posix_getpid() . ']');
-        } else {
-            try {
-                JsonRPC::call([ProcessManager::class, 'outputInfo'], '[initialize]', $this->name . ' [process:' . posix_getpid() . ']');
-            } catch (Built\JsonRPC\Exception\RPCException $exception) {
-                Output::printException($exception);
-            }
-        }
+        Output::info('[initialize]', $this->name . ' [process:' . posix_getpid() . ']');
     }
 
 
@@ -511,6 +472,24 @@ class Worker implements WorkerInterface
         }, false);
     }
 
+
+    /**
+     * Call network events
+     * @param string $method
+     * @param array  $params
+     * @return void
+     */
+    public function callWorkerEvent(string $method, mixed ...$params): void
+    {
+        try {
+            foreach ($this->hooks[$method] ?? [] as $hook) {
+                call_user_func_array($hook, $params);
+            }
+        } catch (Throwable $exception) {
+            Output::error($exception);
+        }
+    }
+
     /**
      * Passive shunts parallelism triggers,
      * which by default cancel all client connections and listeners that take over the parent process
@@ -521,7 +500,7 @@ class Worker implements WorkerInterface
         // Disconnect the client that takes over the parent process
         $this->isFork = true;
         $this->root   = false;
-        foreach ($this->streams as $stream) {
+        foreach ($this->streamMap as $stream) {
             $this->removeStream($stream->stream);
         }
     }
@@ -538,34 +517,17 @@ class Worker implements WorkerInterface
     }
 
     /**
-     * Call network events
-     * @param string $method
-     * @param array  $params
-     * @return void
-     */
-    public function callWorkerEvent(string $method, mixed ...$params): void
-    {
-        try {
-            foreach ($this->hooks[$method] ?? [] as $hook) {
-                call_user_func_array($hook, $params);
-            }
-        } catch (Throwable $exception) {
-            Output::printException($exception);
-        }
-    }
-
-    /**
      * destroy
      * @return void
      */
     public function destroy(): void
     {
         try {
-            foreach ($this->streams as $stream) {
-                $this->removeStream($stream->stream);
+            foreach ($this->streamMap as $stream) {
+                $this->removeStream($stream);
             }
         } catch (Exception $exception) {
-            Output::printException($exception);
+            Output::error($exception);
         }
     }
 }

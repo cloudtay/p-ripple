@@ -54,7 +54,7 @@ final class Output
      * @param Throwable $exception
      * @return void
      */
-    public static function printException(Throwable $exception): void
+    public static function error(Throwable $exception): void
     {
         if (!PRipple::isConsole()) {
             return;

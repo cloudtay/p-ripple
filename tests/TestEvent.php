@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 /*
  * Copyright (c) 2023 cclilshy
  * Contact Information:
@@ -37,79 +37,35 @@
  * 由于软件或软件的使用或其他交易而引起的任何索赔、损害或其他责任承担责任。
  */
 
-namespace Cclilshy\PRipple\Core\Event;
+use PHPUnit\Framework\TestCase;
+use Revolt\EventLoop;
 
-use Cclilshy\PRipple\Core\Kernel;
-use Cclilshy\PRipple\Core\Map\CoroutineMap;
-use Cclilshy\PRipple\Core\Map\EventMap;
-use Cclilshy\PRipple\Core\Map\WorkerMap;
-use Cclilshy\PRipple\Core\Standard\EventLoopInterface;
-use Cclilshy\PRipple\Worker\Worker;
-use Generator;
-use Override;
-use function gc_collect_cycles;
-
-/**
- * @class EventLoop 内置事件循环
- */
-final class EventLoop implements EventLoopInterface
+class TestEvent extends TestCase
 {
-    /**
-     * 速率控制
-     * @var int $rate
-     */
-    private int $rate = 100000;
-
-    /**
-     * 事件生成器
-     * @return Generator
-     */
-    #[Override] public function generator(): Generator
+    public function __construct(string $name)
     {
-        loop:
-        while ($event = EventMap::arrayShift()) {
-            yield $event;
-        }
-        $this->heartbeat();
-        $this->busyHeartbeat();
-        if (EventMap::hasEvent()) {
-            goto loop;
-        }
-        return yield false;
+        parent::__construct($name);
     }
 
-    /**
-     * 低频心跳
-     * @return void
-     */
-    #[Override] public function heartbeat(): void
+    public function testEvent()
     {
-        foreach (WorkerMap::$workerMap as $worker) {
-            $worker->callWorkerEvent(Worker::HOOK_HEARTBEAT);
-        }
-        CoroutineMap::gc();
-        gc_collect_cycles();
-    }
+        ob_end_clean();
 
-    /**
-     * 高频心跳
-     * @return void
-     */
-    #[Override] public function busyHeartbeat(): void
-    {
-        foreach (WorkerMap::$workerMap as $worker) {
-            if ($worker->busy) {
-                $worker->callWorkerEvent(Worker::HOOK_HEARTBEAT);
-            }
-        }
-        CoroutineMap::consumption();
-    }
+        $server = stream_socket_server('tcp://127.0.0.1:3001');
 
-    /**
-     * 内核载入
-     * @param Kernel $kernel
-     */
-    public function __construct(private readonly Kernel $kernel)
-    {
+        EventLoop::repeat(1, function () {
+            var_dump(posix_getpid());
+        });
+
+        EventLoop::onReadable($server, function () use ($server) {
+            $client = stream_socket_accept($server);
+            fwrite($client, "hello\n");
+        });
+
+        $pid = pcntl_fork();
+        if ($pid === 0) {
+            EventLoop::run();
+        }
+        sleep(1000);
     }
 }
